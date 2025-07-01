@@ -1,0 +1,2556 @@
+---
+title: "Celiac_phage_contigs_analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+install.packages("vroom")
+library(vroom)
+library("limma");packageVersion("limma")
+library("edgeR");packageVersion("edgeR")
+library(pheatmap)
+#library(tableone)
+library(survival)
+
+
+```
+
+
+# functions
+```{r}
+filter_and_save_wide_data <- function(genesCoverm, 
+                                      covered_fraction_threshold = 0.75, 
+                                      output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/") {
+  
+  # Set column names to match the original structure
+  colnames(genesCoverm) <- c("sampleID", "ORFID", "RPKM", "ReadCount", "Variance", "Mean", "covered_fraction", "covered_bases")
+  
+  # Apply coverage filter
+  genesCoverm2 <- genesCoverm %>%
+    mutate(
+      ReadCount_modified = ifelse(covered_fraction >= covered_fraction_threshold, ReadCount, 0),
+      Changed = ifelse(ReadCount != ReadCount_modified, 1, 0)
+    ) %>%
+    mutate(ReadCount = ReadCount_modified) %>%
+    select(-ReadCount_modified)
+  
+  # Count the number of changes
+  num_changes <- sum(genesCoverm2$Changed)
+  print(paste("Number of changes:", num_changes))
+  
+  # Convert to wide format
+  wide_rpkm_genes <- reshape2::dcast(genesCoverm2, ORFID ~ sampleID, value.var = "ReadCount")
+  colnames(wide_rpkm_genes) <- gsub("_stats", "", colnames(wide_rpkm_genes))
+  
+  # Filter out rows with all zeroes
+  filtered_wide_rpkm_genes <- wide_rpkm_genes %>%
+    filter(rowSums(across(where(is.numeric))) != 0)
+  
+  # Save the filtered wide format data
+  rds_filename_wide <- paste0("wide_rpkm_genes_", covered_fraction_threshold * 100, "Cov.rds")
+  
+  saveRDS(filtered_wide_rpkm_genes, file = file.path(output_path, rds_filename_wide))
+  
+  return(filtered_wide_rpkm_genes)
+}
+
+
+
+```
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv") %>%
+            column_to_rownames("sampleName")
+
+phold <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/phold_per_cds_predictions.tsv")
+
+mmseqs <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/mmseqs/genomes_and_unresolved_edges_mmseqs_lca.tsv",col_names = FALSE) %>%
+          dplyr::rename("contig_id" = X1)    
+
+
+
+```
+
+
+# prepare contig count table with 75% mapping filtering
+```{r}
+
+contig <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE)
+# 6555 contigs after Coverm mapping
+
+
+# fraction histogram
+p.contig.frag.hist <- ggplot(contig, aes(x=X7)) +
+  geom_histogram(binwidth=0.01, fill="blue", color="black", alpha=0.7) +
+  theme_minimal() +
+  labs(title="contig fraction Histogram", x="Fraction", y="Frequency")
+
+filter_and_save_wide_data(contig, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/")
+library(tidyverse)
+
+contig.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/contig_wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+# 6333 contigs have non-0 counts across all samples after 75% mapping rate filtering
+
+# then let's check colSums and ensure there is no sample have all 0s across contigs
+sample_all_0 <- names(colSums(contig.processed)[colSums(contig.processed) == 0])
+#       NovaSeq_N966_I12920_39636_Celiac_Leonard_Stool_01_GEMM_154_30M       NovaSeq_N978_I13149_39572_Celiac_Leonard_Stool_01_GEMM_093_24M       NovaSeq_N978_I13150_39573_Celiac_Leonard_Stool_01_GEMM_093_30M 
+#                                                                    0                                                                    0                                                                    0 
+#       NovaSeq_N978_I13151_39574_Celiac_Leonard_Stool_01_GEMM_093_36M       NovaSeq_N978_I13152_39575_Celiac_Leonard_Stool_01_GEMM_093_48M       NovaSeq_N978_I13166_39589_Celiac_Leonard_Stool_01_GEMM_106_24M 
+#                                                                    0                                                                    0                                                                    0 
+# NovaSeq_N980_I13250_39529_Leonard_Human_Stool_Celiac_01_GEMM_057_60M NovaSeq_N980_I13258_39537_Leonard_Human_Stool_Celiac_01_GEMM_061_12M       NovaSeq_N981_I13300_39814_Celiac_Leonard_Stool_02_GEMM_021_36M 
+#                                                                    0                                                                    0                                                                    0 
+#       NovaSeq_N981_I13317_39831_Celiac_Leonard_Stool_02_GEMM_057_24M       NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M       NovaSeq_N982_I13347_39861_Celiac_Leonard_Stool_02_GEMM_174_12M 
+#                                                                    0                                                                    0                                                                    0 
+#       NovaSeq_N982_I13357_39871_Celiac_Leonard_Stool_02_GEMM_177_24M       NovaSeq_N982_I13364_39878_Celiac_Leonard_Stool_02_GEMM_194_12M       NovaSeq_N982_I13365_39879_Celiac_Leonard_Stool_02_GEMM_194_18M 
+#                                                                    0                                                                    0                                                                    0 
+#       NovaSeq_N983_I13379_39893_Celiac_Leonard_Stool_02_GEMM_038_12M       NovaSeq_N983_I13387_39901_Celiac_Leonard_Stool_02_GEMM_041_12M       NovaSeq_N983_I13409_39923_Celiac_Leonard_Stool_02_GEMM_228_12M 
+#                                                                    0                                                                    0                                                                    0 
+#       NovaSeq_N983_I13412_39506_Celiac_Leonard_Stool_01_GEMM_041_18M       NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M 
+#                                                                    0                                                                    0                                                                    0 
+# NovaSeq_N983_I13420_39802_Leonard_Human_stool_Celiac_02_GEMM_010_24M 
+#                                                                    0 
+
+
+
+# let's remove the all-0 samples
+contig.processed <- contig.processed %>%
+                    select(all_of(sample_all_0))
+
+dim(contig.processed)
+# 6333  318
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+# since we will just removed it so don't need to do anything here
+contig.count <- contig.processed
+
+
+colnames(contig.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(contig.count))
+
+colnames(contig.count) <- str_replace_all(colnames(contig.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(contig.count) <- sapply(strsplit(colnames(contig.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(contig.count) <- ifelse(colnames(contig.count) %like% "_6Y",gsub("_6Y","_72M",colnames(contig.count)),
+                                           ifelse(colnames(contig.count) %like% "_7Y",gsub("_7Y","_84M",colnames(contig.count)),colnames(contig.count)))
+
+contig.count.table_0.75 <- t(contig.count) 
+# 318 6333
+
+
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+contig.abundance.table_0.75 <- merge(metadata,contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(contig.abundance.table_0.75)
+# 294 6358
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+contig.PA.table_0.75 <- contig.abundance.table_0.75 %>%
+                         mutate(across(26:6358, ~ as.integer(. != 0)))
+
+dim(contig.PA.table_0.75)
+# 294 6358
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+PA.contig.check_0.75 <- contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_0_removed/PA.contig.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples (182 contigs left)
+non_rare_contig_0.75_0.03 <- PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+length(non_rare_contig_0.75_0.03)
+# 182
+
+
+# -------------------------------------prevelence filtering on abundance table------------------------------------------#
+
+contig.abundance.table_0.75_prevFiltered <- contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig_0.75_0.03)))
+dim(contig.abundance.table_0.75_prevFiltered)
+# 294 207
+
+
+# -------------------------------------prevelence filtering on PA table------------------------------------------#
+
+# prevelence filtering on PA table 
+contig.PA.table_0.75_prevFiltered <- contig.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig_0.75_0.03)))
+dim(contig.PA.table_0.75_prevFiltered)
+# 394 207
+
+```
+
+
+# prepare contig count table without 75% mapping filtering
+```{r}
+
+
+
+contig.count.table.full <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE) %>%
+          select(c("X1","X2","X3")) %>%
+          pivot_wider(names_from = "X2",values_from = "X3") %>%
+          mutate(X1 = gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",X1)) %>%
+          mutate(X1 = str_replace_all(X1,"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")) %>%
+          mutate(X1 = sapply(strsplit(X1,"_Stool_|_Stool_Celiac_"),"[",2)) %>%
+          mutate(X1 = ifelse(X1 %like% "_6Y",gsub("_6Y","_72M",X1),
+                                           ifelse(X1 %like% "_7Y",gsub("_7Y","_84M",X1),X1))) %>%
+          filter(X1 != "01_GEMM_106_12M") %>%
+          column_to_rownames("X1")
+dim(contig.count.table.full)
+# 338 6555
+
+# remove the all 0 samples again
+sample_all_0 <- names(colSums(contig.count.table.full)[colSums(contig.count.table.full) == 0])
+
+
+rownames(contig.count.table.full)[rownames(contig.count.table.full) == "01_GEMM_093_30M"]
+
+t <- contig.count.table.full %>% filter(rownames(contig.count.table.full) == "01_GEMM_093_30M")
+
+t[,t>0]
+
+d<-vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE)%>%
+          select(c("X1","X2","X7")) %>%
+          pivot_wider(names_from = "X2",values_from = "X7") %>%
+          mutate(X1 = gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",X1)) %>%
+          mutate(X1 = str_replace_all(X1,"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")) %>%
+          mutate(X1 = sapply(strsplit(X1,"_Stool_|_Stool_Celiac_"),"[",2)) %>%
+          mutate(X1 = ifelse(X1 %like% "_6Y",gsub("_6Y","_72M",X1),
+                                           ifelse(X1 %like% "_7Y",gsub("_7Y","_84M",X1),X1))) %>%
+          filter(X1 != "01_GEMM_106_12M") %>%
+          column_to_rownames("X1")
+
+
+t <- d %>% filter(rownames(d) == "01_GEMM_093_30M")
+
+t[,t>0]
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+contig.abundance.table_full <- merge(metadata,contig.count.table.full,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(contig.abundance.table_full)
+# 313 6580
+
+
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+contig.PA.table_full <- contig.abundance.table_full %>%
+                         mutate(across(26:6580, ~ as.integer(. != 0)))
+
+dim(contig.PA.table_full)
+# 313 6580
+
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+PA.contig.check_full <- contig.PA.table_full %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(PA.contig.check_full,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/PA.contig.check_full.csv")
+
+
+# find viruses that exist in only 3% of the samples (4078 contigs left)
+non_rare_contig_full_0.03 <- PA.contig.check_full %>% filter(total_PA >=9) %>% pull(Contig)
+length(non_rare_contig_full_0.03)
+# 4078
+
+# -------------------------------------3% prevelence filtering on abundance table------------------------------------------#
+
+contig.abundance.table_full_prevFiltered <- contig.abundance.table_full %>% dplyr::select(c(1:25,all_of(non_rare_contig_full_0.03)))
+dim(contig.abundance.table_full_prevFiltered)
+# 313 4103
+
+
+# -------------------------------------3% prevelence filtering on PA table------------------------------------------#
+
+contig.PA.table_full_prevFiltered <- contig.PA.table_full %>% dplyr::select(c(1:25,all_of(non_rare_contig_full_0.03)))
+dim(contig.PA.table_full_prevFiltered)
+# 313 4103
+
+
+```
+
+
+
+analysis design
+
+Q1: what virus/phage/phage_Orfs are significantly different between case and control group?
+
+1.We extract the onset sample from celiac group and their paired control samples for this analysis.
+2.Give the nature of orf data which is not super sparse as virus data, we can use the abundance instead of presense and absense for the model.
+3.We use both non-prevelance filtered data and prevelance filtered data.
+4.To consider the paired-sample feature, and clustered data structure (each patient contributed multiple samples), our model design is as below:
+  ~ Disease_type + pair_ID + Country + Sex + HLA + deliver_mode + feeding_type + gluten_food, blocking=patientID
+5. Some points to pay attention: gluten food has some levels that are with very few data points (< 5). If we can prove the orf level and gluten food taking age has a linear relation, we can treat gluten food as a contenious variable, but we cannot use a very straightforward way to prove that, so we will still treat it as categorical, but in this way we need to keep in mind that, those levels with few data points may add noise to the model which could lead to overfitting, also, the stats output of those levels may not accurate.So be cautious when interpret the results.
+
+
+
+                                                                                             ##########################
+                                                                                             # ###################### #
+                                                                                             # #   Abundance table  # #
+                                                                                             # ###################### #
+                                                                                             ##########################
+
+
+
+
+##--------------------------------------------------------------------Using 75% mapping rate filtered abundance table----------------------------------------------------------------##
+                                                                                               (6333 contigs)
+
+
+
+                                                                     #######################################################################
+                                                                      #             Limma model on 3% pravelance filtered data              #   
+                                                                      #         contig.abundance.table_0.75_prevFiltered (182 contigs)      #
+                                                                      #######################################################################
+
+Abundance simple model (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_0.75_prevFiltered[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 25
+
+
+contig.abundance.clean <- contig.abundance.table_0.75_prevFiltered %>%
+                           select(c("Row.names",26:207)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 182  62
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+
+model.design <- model.matrix(~ Dx.Status + Pair + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+# to avoid error caused by contigs that contain all 0s
+contig.abundance.clean <- contig.abundance.clean + 1
+model.fit <- voomLmFit(contig.abundance.clean,model.design,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 significant contigs
+
+
+# check volcano
+p.vol <- ggplot(model.res, aes(x=logFC, y=-log10(P.Value))) +
+  geom_point(aes(color=abs(logFC) > 1 & P.Value < 0.05), alpha=0.5) +
+  theme_minimal() +
+  labs(title="Volcano Plot", x="Log Fold Change", y="-log10(P-value)") +
+  scale_color_manual(values=c("gray", "red")) +
+  theme(legend.position="none")
+
+
+# check p values histogram
+p.pval.hist <- ggplot(model.res, aes(x=P.Value)) +
+  geom_histogram(binwidth=0.01, fill="blue", color="black", alpha=0.7) +
+  theme_minimal() +
+  labs(title="P-value Histogram", x="P-value", y="Frequency")
+
+
+# check PCA
+# Run PCA
+pca <- prcomp(t(contig.abundance.clean + 1))  # transpose if necessary (samples x genes)
+pca_df <- data.frame(PC1 = pca$x[,1], PC2 = pca$x[,2]) %>%
+          merge(metadata.clean %>% select(Dx.Status),by = 0) %>%
+          column_to_rownames("Row.names")
+
+p.PCA <- ggplot(pca_df, aes(x=PC1, y=PC2, color=Dx.Status,label = rownames(pca_df))) +
+  geom_point() +
+  geom_text() +
+  theme_minimal() +
+  labs(title="PCA Plot", x="PC1", y="PC2")
+
+```
+
+
+Abundance full model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_0.75_prevFiltered[1:25] %>%
+                  column_to_rownames("Row.names")
+# 314  24
+
+contig.abundance.clean <- contig.abundance.table_0.75_prevFiltered %>%
+                           select(c("Row.names",26:207)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 182 314
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+# to avoid error caused by contigs that contain all 0s
+contig.abundance.clean <- contig.abundance.clean + 1
+model.fit <- voomLmFit(contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+colnames(model.fit$coefficients)
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 significant contig
+
+```
+
+
+
+
+
+
+                                                                          #################################################################
+                                                                          #          Limma model on non-3% pravelance filtered data       #
+                                                                          #            contig.abundance.table_0.75 (6333 contigs)         #
+                                                                          #################################################################
+                                                                                    
+                                                                                    
+Abundance model:  (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_0.75[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 25
+
+
+contig.abundance.clean <- contig.abundance.table_0.75 %>%
+                           select(c("Row.names",26:6358)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+dim(contig.abundance.clean)
+# 6333   54
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+# 1_001 1_009 1_014 1_026 1_052 1_061 1_079 1_081 1_085 1_093 1_106 1_119 1_128 1_150 1_151 1_175 2_020 2_021 2_024 2_031 2_041 2_045 2_058 2_134 2_141 2_151 2_158 2_177 2_179 2_194 2_228 
+#     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2    2
+
+metadata.clean.US <- metadata.clean %>%
+                             filter(Country == "USA")
+US.ID <- rownames(metadata.clean.US)
+contig.abundance.clean.US <- contig.abundance.clean %>%
+                             select(all_of(US.ID))
+
+
+# Age.at.Gluten.Introduction..months. +
+USA.model.design <- model.matrix(~ Dx.Status + Delivery.Mode +  HLA.Category + feeding_first_year,metadata.clean.US)
+USA.model.fit <- voomLmFit(contig.abundance.clean.US,USA.model.design,plot=FALSE)
+USA.model.fit <- eBayes(USA.model.fit)
+USA.model.fit$coefficients
+USA.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+USA.sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)chec
+dim(sig.model.res)
+# 0 significant contigs
+
+
+```
+
+
+
+Abundance model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_0.75[1:25] %>%
+                  column_to_rownames("Row.names")
+# 314  24
+
+contig.abundance.clean <- contig.abundance.table_0.75 %>%
+                           select(c("Row.names",26:6358)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 6333  314
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# to avoid errors that caused by contigs that have all 0 values
+contig.abundance.clean <- contig.abundance.clean + 1
+model.fit <- voomLmFit(contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 6266 significant genes 
+# this result is problemetic, because 1.there can't be about 90% percent of the contigs are significant.2. 4000+ significant contigs have exactly the same p-adj values.
+# this could be caused by the low variance of the data, if the variance of a gene is less than 1, limma assume some variability of the data, so when the variance is 0,
+# the test statistics become unstable, and we may get souriously small p values due to numerical artifacts.
+
+# now we check the variance of the genes
+log_data <- log2(contig.abundance.clean + 1)
+# Calculate the variance for each gene across samples
+gene_variance <- apply(log_data, 1, var)
+# Sort the variance to identify genes with low variance
+sorted_variance <- sort(gene_variance)
+hist(gene_variance, breaks = 50, main = "Distribution of Gene Variances (Log-transformed)", xlab = "Variance")
+
+
+# we can see that over 4000 contigs have 0 or near 0 variances. Let's remove the contigs has lower than 1 variance and rerun the model
+contig.abundance.clean.high.variance <- contig.abundance.clean %>%
+                                        filter(rownames(.) %in% c(data.frame(sorted_variance) %>% filter(sorted_variance > 1) %>% rownames(.)))
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean,metadata.clean) # + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year
+model.fit <- voomLmFit(contig.abundance.clean.high.variance,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="CountryUSA",number=Inf)
+sig.model.res <- topTable(model.fit,coef="CountryUSA",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 668 significant contigs
+# this result looks fine but is still a high number of significant among 926 contigs. And there are still 400+ adjust p values that are identical.
+# so we wil need to check: 1.if all the 400+ pvalues are the same, which means model issue. (no)
+#                         2. if all the 400+ t scores and lfc scores are the same. (no)
+#                         3. then the same padj values might be valid because Benjamini-Hochberg (BH) method works by ranking the p-values and asigning the adjusted p values based on their #positions in that rank. so if many p values are close to each other, their adjusted p values can be put in the same category.
+# we can further filtering the contigs based on the lfc scores (e.x. lfc > 1)
+hist(model.res$logFC, breaks=50, main="Histogram of log Fold Changes", xlab="logFC")
+# but here we saw all the lfc scores are positive which means something is off.
+
+p.vol <- ggplot(model.res, aes(x=logFC, y=-log10(P.Value))) +
+  geom_point(aes(color=abs(logFC) > 1 & adj.P.Val < 0.05), alpha=0.5) +
+  theme_minimal() +
+  labs(title="Volcano Plot", x="Log Fold Change", y="-log10(P.Value)") +
+  scale_color_manual(values=c("gray", "red")) +
+  theme(legend.position="none")
+
+
+```
+
+
+
+
+
+
+##-----------------------------------------------------------------Using non 75% mapping rate filtered abundance table----------------------------------------------------------------##
+                                                                                            (6555 contigs)
+
+
+                                                                  ######################################################################
+                                                                  #            Limma model on 3% pravelance filtered data              #
+                                                                  #        contig.abundance.table_full_prevFiltered (4078 contigs)     #
+                                                                  ######################################################################
+
+Abundance model (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_full_prevFiltered[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 25
+contig.abundance.clean <- contig.abundance.table_full_prevFiltered %>%
+                           select(c("Row.names",26:4103)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 4078   62
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+
+
+model.design <- model.matrix(~ Dx.Status + Pair + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+model.fit <- voomLmFit(contig.abundance.clean,model.design,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 significant contig
+
+
+```
+
+
+Abundance model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_full_prevFiltered[1:25] %>%
+                  column_to_rownames("Row.names")
+
+# 313  24
+
+
+contig.abundance.clean <- contig.abundance.table_full_prevFiltered %>%
+                           select(c("Row.names",26:4103)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 4078  313 
+
+
+# we now add 1 to each of the cell of the orf count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+contig.abundance.clean <- contig.abundance.clean + 1
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+model.fit <- voomLmFit(contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+View(sig.model.res)
+# 1650 significant contigs
+
+
+sig.model.res.lfc <- sig.model.res %>% filter(abs(logFC) > 1)
+sig.annotation <- merge(sig.model.res.lfc %>% rownames_to_column("contig_id"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(sig.model.res.lfc %>% rownames_to_column("contig_id"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Limma/contig.abundance.table_full_prevFiltered_Fulldata/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Limma/contig.abundance.table_full_prevFiltered_Fulldata/sig.annotation.phold.csv")
+
+p.vol <- ggplot(sig.annotation, aes(x=logFC, y=-log10(P.Value),color = X4)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Volcano Plot", x="Log Fold Change", y="-log10(P-value)") +
+ # scale_color_manual(values=c("gray", "red")) +
+  theme(legend.position="right")
+
+
+p.vol <- ggplot(model.res, aes(x=logFC, y=-log10(P.Value))) +
+  geom_point(aes(color=abs(logFC) > 1 & P.Value < 0.05), alpha=0.5) +
+  theme_minimal() +
+  labs(title="Volcano Plot", x="Log Fold Change", y="-log10(P-value)") +
+  scale_color_manual(values=c("gray", "red")) +
+  theme(legend.position="none")
+
+
+```
+
+
+
+
+
+
+                                                                      ##################################################################
+                                                                      #         Limma model on non-3% pravelance filtered data         #
+                                                                      #           contig.abundance.table_full (6555 contigs)           #
+                                                                      ##################################################################
+                                                                                    
+                                                                                    
+Abundance model: (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_full[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 25
+
+contig.abundance.clean <- contig.abundance.table_full %>%
+                           select(c("Row.names",26:6580)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+dim(contig.abundance.clean)
+# 6555   62
+
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+# 1_001 1_009 1_014 1_026 1_052 1_061 1_079 1_081 1_085 1_093 1_106 1_119 1_128 1_150 1_151 1_175 2_020 2_021 2_024 2_031 2_041 2_045 2_058 2_134 2_141 2_151 2_158 2_177 2_179 2_194 2_228 
+#     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2    2
+
+
+model.design <- model.matrix(~ Dx.Status + Pair + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+# we now add 1 to each of the cell of the ord count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+contig.abundance.clean <- contig.abundance.clean + 1
+model.fit <- voomLmFit(contig.abundance.clean,model.design,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 significant contig
+
+
+```
+
+
+
+Abundance model (a more complicated model, include all the samples)
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- contig.abundance.table_full[1:25] %>%
+                  column_to_rownames("Row.names")
+# 313  24
+
+contig.abundance.clean <- contig.abundance.table_full %>%
+                           select(c("Row.names",26:6580)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(contig.abundance.clean) <- gsub("X","",colnames(contig.abundance.clean))
+# 6555  313
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+model.fit <- voomLmFit(contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 421 significant contigs
+
+
+sig.model.res.lfc <- sig.model.res %>% filter(abs(logFC) > 1)
+sig.annotation <- merge(sig.model.res.lfc %>% rownames_to_column("contig_id"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(sig.model.res.lfc %>% rownames_to_column("contig_id"),phold,by = "contig_id")
+
+table(sig.annotation$X4)
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Limma/contig.abundance.table_full_Fulldata/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Limma/contig.abundance.table_full_Fulldata/sig.annotation.phold.csv")
+
+
+p.vol <- ggplot(sig.annotation, aes(x=logFC, y=-log10(P.Value),color = X4)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Volcano Plot", x="Log Fold Change", y="-log10(P-value)") +
+ # scale_color_manual(values=c("gray", "red")) +
+  theme(legend.position="none")
+
+
+```
+
+
+
+
+                                                                                             ###################
+                                                                                             # ############### #
+                                                                                             # #   PA table  # #
+                                                                                             # ############### #
+                                                                                             ###################
+
+
+
+
+
+##--------------------------------------------------------------------------------Using 75% mapping rate filtered PA table----------------------------------------------------------------##
+                                                                                               (6333 contigs)
+
+
+
+                                                                      #######################################################################
+                                                                      #             lmer model on 3% pravelance filtered data              #   
+                                                                      #         contig.PA.table_0.75_prevFiltered (182 contigs)             #
+                                                                      #######################################################################
+
+PA model (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+contig.PA.table_0.75_prevFiltered_clean <- contig.PA.table_0.75_prevFiltered %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  select(-case_control_month) %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 206
+
+
+# prepare correct variable format
+contig.PA.table_0.75_prevFiltered_clean$feeding_first_year <- factor(contig.PA.table_0.75_prevFiltered_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+contig.PA.table_0.75_prevFiltered_clean$HLA.Category <- factor(contig.PA.table_0.75_prevFiltered_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+contig.PA.table_0.75_prevFiltered_clean$Country <- factor(contig.PA.table_0.75_prevFiltered_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+contig.PA.table_0.75_prevFiltered_clean$Sex <- factor(contig.PA.table_0.75_prevFiltered_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+contig.PA.table_0.75_prevFiltered_clean$Delivery.Mode <- factor(contig.PA.table_0.75_prevFiltered_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+contig.PA.table_0.75_prevFiltered_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_0.75_prevFiltered_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+contig.PA.table_0.75_prevFiltered_clean$Dx.Status <- factor(contig.PA.table_0.75_prevFiltered_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+contig.PA.table_0.75_prevFiltered_clean$Pair <- factor(contig.PA.table_0.75_prevFiltered_clean$Pair)
+
+
+contig_names <- colnames(contig.PA.table_0.75_prevFiltered_clean)[25:206]
+
+# Initialize storage for results
+model_results.1 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.")
+ )
+  
+  glm_fit <- try(glm(fml, data = contig.PA.table_0.75_prevFiltered_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (!inherits(glm_fit, "try-error")) {
+    smry <- summary(glm_fit)
+    coefs <- smry$coefficients
+    model_results.1$coef[i] <- coefs["Dx.StatusCELIAC", "Estimate"]
+    model_results.1$pval[i] <- coefs["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.1$padj <- p.adjust(model_results.1$pval, method = "fdr")
+# 0 significant contig
+
+
+```
+
+
+PA model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+contig.PA.table_0.75_prevFiltered_clean <- contig.PA.table_0.75_prevFiltered %>%
+                  column_to_rownames("Row.names")
+# 314 206
+
+
+# prepare correct variable format
+contig.PA.table_0.75_prevFiltered_clean$feeding_first_year <- factor(contig.PA.table_0.75_prevFiltered_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+contig.PA.table_0.75_prevFiltered_clean$HLA.Category <- factor(contig.PA.table_0.75_prevFiltered_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+contig.PA.table_0.75_prevFiltered_clean$Country <- factor(contig.PA.table_0.75_prevFiltered_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+contig.PA.table_0.75_prevFiltered_clean$Sex <- factor(contig.PA.table_0.75_prevFiltered_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+contig.PA.table_0.75_prevFiltered_clean$Delivery.Mode <- factor(contig.PA.table_0.75_prevFiltered_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+contig.PA.table_0.75_prevFiltered_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_0.75_prevFiltered_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+contig.PA.table_0.75_prevFiltered_clean$Dx.Status <- factor(contig.PA.table_0.75_prevFiltered_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+library(lme4)
+
+
+contig_names <- colnames(contig.PA.table_0.75_prevFiltered_clean)[25:206]
+
+# Initialize storage for results
+model_results <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + (1 | patientID)")
+ )
+  
+  glm_fit <- try(glmer(fml, data = contig.PA.table_0.75_prevFiltered_clean, family = binomial), silent = TRUE)
+  
+  print(glm_fit)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (class(glm_fit) != "try-error") {
+    summary_fit <- summary(glm_fit)
+    model_results$coef[i] <- fixef(glm_fit)["Dx.StatusCELIAC"]  # Coefficient for Dx.Status
+    model_results$pval[i] <- summary_fit$coefficients["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results$padj <- p.adjust(model_results$pval, method = "fdr")
+
+# 0 significant contig
+  
+
+```
+
+
+
+
+
+
+                                                                          #################################################################
+                                                                          #          lmer model on non-3% pravelance filtered data       #
+                                                                          #            contig.PA.table_0.75 (6333 contigs)         #
+                                                                          #################################################################
+                                                                                    
+                                                                                    
+PA model:  (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+contig.PA.table_0.75_clean <- contig.PA.table_0.75 %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  select(-case_control_month) %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 6357
+
+
+# prepare correct variable format
+contig.PA.table_0.75_clean$feeding_first_year <- factor(contig.PA.table_0.75_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+contig.PA.table_0.75_clean$HLA.Category <- factor(contig.PA.table_0.75_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+contig.PA.table_0.75_clean$Country <- factor(contig.PA.table_0.75_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+contig.PA.table_0.75_clean$Sex <- factor(contig.PA.table_0.75_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+contig.PA.table_0.75_clean$Delivery.Mode <- factor(contig.PA.table_0.75_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+contig.PA.table_0.75_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_0.75_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+contig.PA.table_0.75_clean$Dx.Status <- factor(contig.PA.table_0.75_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+contig.PA.table_0.75_clean$Pair <- factor(contig.PA.table_0.75_clean$Pair)
+
+
+contig_names <- colnames(contig.PA.table_0.75_clean)[25:6357]
+
+# Initialize storage for results
+model_results.3 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.")
+ )
+  
+  glm_fit <- try(glm(fml, data = contig.PA.table_0.75_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (!inherits(glm_fit, "try-error")) {
+    smry <- summary(glm_fit)
+    coefs <- smry$coefficients
+    model_results.3$coef[i] <- coefs["Dx.StatusCELIAC", "Estimate"]
+    model_results.3$pval[i] <- coefs["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.3$padj <- p.adjust(model_results.3$pval, method = "fdr")
+# 0 significant contig
+
+```
+
+
+
+PA model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+contig.PA.table_0.75_clean <- contig.PA.table_0.75 %>%
+                  column_to_rownames("Row.names")
+# 314 6357
+
+
+# prepare correct variable format
+contig.PA.table_0.75_clean$feeding_first_year <- factor(contig.PA.table_0.75_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+contig.PA.table_0.75_clean$HLA.Category <- factor(contig.PA.table_0.75_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+contig.PA.table_0.75_clean$Country <- factor(contig.PA.table_0.75_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+contig.PA.table_0.75_clean$Sex <- factor(contig.PA.table_0.75_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+contig.PA.table_0.75_clean$Delivery.Mode <- factor(contig.PA.table_0.75_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+contig.PA.table_0.75_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_0.75_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+contig.PA.table_0.75_clean$Dx.Status <- factor(contig.PA.table_0.75_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+library(lme4)
+
+
+contig_names <- colnames(contig.PA.table_0.75_clean)[25:6357]
+
+# Initialize storage for results
+model_results.4 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + (1 | patientID)")
+ )
+  
+  glm_fit <- try(glmer(fml, data = contig.PA.table_0.75_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+
+
+if (!inherits(glm_fit, "try-error")) {
+  summary_fit <- try(summary(glm_fit), silent = TRUE)
+
+  if (!inherits(summary_fit, "try-error")) {
+    coefs <- fixef(glm_fit)["Dx.StatusCELIAC"]
+    
+    if ("Dx.Status" %in% rownames(coefs) && !is.na(coefs["Dx.Status", "Estimate"])) {
+      model_results.4$coef[i] <- fixef(glm_fit)["Dx.StatusCELIAC"]
+      model_results.4$pval[i] <- summary_fit$coefficients["Dx.StatusCELIAC", "Pr(>|z|)"]
+    }
+  }
+}
+}
+
+
+# Adjust p-values using FDR
+model_results.4$padj <- p.adjust(model_results.4$pval, method = "fdr")
+
+```
+
+
+
+
+
+
+##--------------------------------------------------------------------------Using non 75% mapping rate filtered PA table----------------------------------------------------------------##
+                                                                                            (6555 contigs)
+
+
+                                                                  ######################################################################
+                                                                  #            lmer model on 3% pravelance filtered data              #
+                                                                  #        contig.PA.table_full_prevFiltered (4078 contigs)            #
+                                                                  ######################################################################
+
+PA model (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+
+# prepare clean metadata
+contig.PA.table_full_prevFiltered_clean <- contig.PA.table_full_prevFiltered %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  select(-case_control_month) %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 6357
+
+
+# prepare correct variable format
+contig.PA.table_full_prevFiltered_clean$feeding_first_year <- factor(contig.PA.table_full_prevFiltered_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+contig.PA.table_full_prevFiltered_clean$HLA.Category <- factor(contig.PA.table_full_prevFiltered_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+contig.PA.table_full_prevFiltered_clean$Country <- factor(contig.PA.table_full_prevFiltered_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+contig.PA.table_full_prevFiltered_clean$Sex <- factor(contig.PA.table_full_prevFiltered_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+contig.PA.table_full_prevFiltered_clean$Delivery.Mode <- factor(contig.PA.table_full_prevFiltered_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+contig.PA.table_full_prevFiltered_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_full_prevFiltered_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+contig.PA.table_full_prevFiltered_clean$Dx.Status <- factor(contig.PA.table_full_prevFiltered_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+contig.PA.table_full_prevFiltered_clean$Pair <- factor(contig.PA.table_full_prevFiltered_clean$Pair)
+
+
+contig_names <- colnames(contig.PA.table_full_prevFiltered_clean)[25:4102]
+
+# Initialize storage for results
+model_results.5 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.")
+ )
+  
+  glm_fit <- try(glm(fml, data = contig.PA.table_full_prevFiltered_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (!inherits(glm_fit, "try-error")) {
+    smry <- summary(glm_fit)
+    coefs <- smry$coefficients
+    model_results.5$coef[i] <- coefs["Dx.StatusCELIAC", "Estimate"]
+    model_results.5$pval[i] <- coefs["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.5$padj <- p.adjust(model_results.5$pval, method = "fdr")
+
+```
+
+
+PA model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+contig.PA.table_full_prevFiltered_clean <- contig.PA.table_full_prevFiltered %>%
+                  column_to_rownames("Row.names")
+# 314 6357
+
+
+# prepare correct variable format
+contig.PA.table_full_prevFiltered_clean$feeding_first_year <- factor(contig.PA.table_full_prevFiltered_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+contig.PA.table_full_prevFiltered_clean$HLA.Category <- factor(contig.PA.table_full_prevFiltered_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+contig.PA.table_full_prevFiltered_clean$Country <- factor(contig.PA.table_full_prevFiltered_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+contig.PA.table_full_prevFiltered_clean$Sex <- factor(contig.PA.table_full_prevFiltered_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+contig.PA.table_full_prevFiltered_clean$Delivery.Mode <- factor(contig.PA.table_full_prevFiltered_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+contig.PA.table_full_prevFiltered_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_full_prevFiltered_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+contig.PA.table_full_prevFiltered_clean$Dx.Status <- factor(contig.PA.table_full_prevFiltered_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+library(lme4)
+
+
+contig_names <- colnames(contig.PA.table_full_prevFiltered_clean)[25:4102]
+
+# Initialize storage for results
+model_results.6 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + (1 | patientID)")
+ )
+  
+  glm_fit <- try(glmer(fml, data = contig.PA.table_full_prevFiltered_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (class(glm_fit) != "try-error") {
+    summary_fit <- summary(glm_fit)
+    model_results.6$coef[i] <- fixef(glm_fit)["Dx.StatusCELIAC"]  # Coefficient for Dx.Status
+    model_results.6$pval[i] <- summary_fit$coefficients["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.6$padj <- p.adjust(model_results.6$pval, method = "fdr")
+
+
+```
+
+
+
+
+
+
+                                                                      ##################################################################
+                                                                      #         lmer model on non-3% pravelance filtered data          #
+                                                                      #           contig.PA.table_full (6555 contigs)                  #
+                                                                      ##################################################################
+                                                                                    
+                                                                                    
+PA model: (only include celiac_onset and control samples: 31 vs 31)
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+
+# prepare clean metadata
+contig.PA.table_full_clean <- contig.PA.table_full %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  select(-case_control_month) %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+# 62 6357
+
+
+# prepare correct variable format
+contig.PA.table_full_clean$feeding_first_year <- factor(contig.PA.table_full_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+contig.PA.table_full_clean$HLA.Category <- factor(contig.PA.table_full_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+contig.PA.table_full_clean$Country <- factor(contig.PA.table_full_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+contig.PA.table_full_clean$Sex <- factor(contig.PA.table_full_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+contig.PA.table_full_clean$Delivery.Mode <- factor(contig.PA.table_full_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+contig.PA.table_full_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_full_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+contig.PA.table_full_clean$Dx.Status <- factor(contig.PA.table_full_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+contig.PA.table_full_clean$Pair <- factor(contig.PA.table_full_clean$Pair)
+
+
+contig_names <- colnames(contig.PA.table_full_clean)[25:6579]
+
+# Initialize storage for results
+model_results.7 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.")
+ )
+  
+  glm_fit <- try(glm(fml, data = contig.PA.table_full_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (!inherits(glm_fit, "try-error")) {
+    smry <- summary(glm_fit)
+    coefs <- smry$coefficients
+    model_results.7$coef[i] <- coefs["Dx.StatusCELIAC", "Estimate"]
+    model_results.7$pval[i] <- coefs["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.7$padj <- p.adjust(model_results.7$pval, method = "fdr")
+
+
+
+```
+
+
+
+PA model (a more complicated model, include all the samples)
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+contig.PA.table_full
+
+# prepare clean metadata
+contig.PA.table_full_clean <- contig.PA.table_full %>%
+                  column_to_rownames("Row.names")
+# 314 6357
+
+
+# prepare correct variable format
+contig.PA.table_full_clean$feeding_first_year <- factor(contig.PA.table_full_clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+contig.PA.table_full_clean$HLA.Category <- factor(contig.PA.table_full_clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+contig.PA.table_full_clean$Country <- factor(contig.PA.table_full_clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+contig.PA.table_full_clean$Sex <- factor(contig.PA.table_full_clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+contig.PA.table_full_clean$Delivery.Mode <- factor(contig.PA.table_full_clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+contig.PA.table_full_clean$Age.at.Gluten.Introduction..months. <- factor(contig.PA.table_full_clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+contig.PA.table_full_clean$Dx.Status <- factor(contig.PA.table_full_clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+library(lme4)
+
+
+contig_names <- colnames(contig.PA.table_full_clean)[25:6579]
+
+# Initialize storage for results
+model_results.8 <- data.frame(
+  Contigs = contig_names,  # Gene names
+  coef = NA, 
+  pval = NA
+)
+
+
+
+
+for (i in 1:length(contig_names)){
+  
+  fml <- as.formula(
+  paste0(contig_names[i], " ~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + (1 | patientID)")
+ )
+  
+  glm_fit <- try(glmer(fml, data = contig.PA.table_full_clean, family = binomial), silent = TRUE)
+  
+  print(i)
+ # If the model successfully fits, extract the coefficients and p-values
+  if (class(glm_fit) != "try-error") {
+    summary_fit <- summary(glm_fit)
+    model_results.8$coef[i] <- fixef(glm_fit)["Dx.StatusCELIAC"]  # Coefficient for Dx.Status
+    model_results.8$pval[i] <- summary_fit$coefficients["Dx.StatusCELIAC", "Pr(>|z|)"]
+  }
+
+}
+  
+# Adjust p-values using FDR
+model_results.6$padj <- p.adjust(model_results.6$pval, method = "fdr")
+
+```
+
+
+
+
+
+                                                                      ############################
+                                                                      #  Do analysis by country  #
+                                                                      ############################
+
+
+# We didn't see many differences in above analysis, especally when we do 75% fraction filtering. But we must do the filtering because otherwise there are many
+# very short mapped contigs which makes downstream analysis inaccurate. 
+# We want to try filtering the 75% mapping rate on two countries separately and see if that could give more contigs
+
+# split dataset and filter 75% fraction by country
+```{r}
+
+US.contig <- contig %>%
+             filter(X1 %like% "_01_GEMM_")
+
+
+
+Italy.contig <- contig %>%
+             filter(X1 %like% "_02_GEMM_")
+
+
+
+filter_and_save_wide_data(US.contig, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/US_Contig/")
+
+
+filter_and_save_wide_data(Italy.contig, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Italy_Contig/")
+
+
+US_contig.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/US_Contig/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+US_sample_all_0 <- names(colSums(US_contig.processed)[colSums(US_contig.processed) == 0])
+
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+# so we will just remove it
+US.contig.count <- US_contig.processed %>%
+                   select(-all_of(c(US_sample_all_0,"NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M"))) 
+
+
+colnames(US.contig.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(US.contig.count))
+
+colnames(US.contig.count) <- str_replace_all(colnames(US.contig.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(US.contig.count) <- sapply(strsplit(colnames(US.contig.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(US.contig.count) <- ifelse(colnames(US.contig.count) %like% "_6Y",gsub("_6Y","_72M",colnames(US.contig.count)),
+                                           ifelse(colnames(US.contig.count) %like% "_7Y",gsub("_7Y","_84M",colnames(US.contig.count)),colnames(US.contig.count)))
+
+US.contig.count.table_0.75 <- t(US.contig.count) 
+# 198 4374
+
+saveRDS(US.contig.count.table_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/US_Contig/US.contig.count.table_0.75_final.rds")
+
+
+
+####Italy#####
+
+Italy_contig.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Italy_Contig/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+Italy_sample_all_0 <- names(colSums(Italy_contig.processed)[colSums(Italy_contig.processed) == 0])
+
+
+Italy.contig.count <- Italy_contig.processed %>%
+                   select(-all_of(Italy_sample_all_0)) 
+
+
+colnames(Italy.contig.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(Italy.contig.count))
+
+colnames(Italy.contig.count) <- str_replace_all(colnames(Italy.contig.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(Italy.contig.count) <- sapply(strsplit(colnames(Italy.contig.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(Italy.contig.count) <- ifelse(colnames(Italy.contig.count) %like% "_6Y",gsub("_6Y","_72M",colnames(Italy.contig.count)),
+                                           ifelse(colnames(Italy.contig.count) %like% "_7Y",gsub("_7Y","_84M",colnames(Italy.contig.count)),colnames(Italy.contig.count)))
+
+Italy.contig.count.table_0.75 <- t(Italy.contig.count) 
+# 120 2903
+
+saveRDS(Italy.contig.count.table_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Italy_Contig/Italy.contig.count.table_0.75_final.rds")
+
+
+
+```
+
+
+
+
+# with or without 3% prevelance filtering
+```{r}
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+US.contig.abundance.table_0.75 <- merge(metadata %>% filter(rownames(.) %in% rownames(US.contig.count.table_0.75)),US.contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(US.contig.abundance.table_0.75)
+#201 4399
+
+
+Italy.contig.abundance.table_0.75 <- merge(metadata %>% filter(rownames(.) %in% rownames(Italy.contig.count.table_0.75)),Italy.contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(Italy.contig.abundance.table_0.75)
+#113 2928
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+US.contig.PA.table_0.75 <- US.contig.abundance.table_0.75 %>%
+                         mutate(across(26:4399, ~ as.integer(. != 0)))
+
+
+Italy.contig.PA.table_0.75 <- Italy.contig.abundance.table_0.75 %>%
+                         mutate(across(26:2928, ~ as.integer(. != 0)))
+
+
+
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+US.PA.contig.check_0.75 <- US.contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+
+write.csv(US.PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/US_Contig/US_PA.contig.check_0.75.csv")
+
+
+Italy.PA.contig.check_0.75 <- Italy.contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(Italy.PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Italy_Contig/Italy_PA.contig.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples (182 contigs left)
+US_non_rare_contig_0.75_0.03 <- US.PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+# 107
+Italy_non_rare_contig_0.75_0.03 <- Italy.PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+# 48
+
+
+# -------------------------------------prevelence filtering on abundance table------------------------------------------#
+
+US.contig.abundance.table_0.75_prevFiltered <- US.contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(US_non_rare_contig_0.75_0.03)))
+
+Italy.contig.abundance.table_0.75_prevFiltered <- Italy.contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(Italy_non_rare_contig_0.75_0.03)))
+
+
+```
+
+
+
+
+
+
+
+                                                        #######################################################################
+                                                        #             Limma model on 3% pravelance filtered data              #   
+                                                        #         contig.abundance.table_0.75_prevFiltered                    #
+                                                        #######################################################################
+                                                                        
+                                                                        
+                                                                        
+                                                                                ###############
+                                                                                #     USA     #
+                                                                                ###############
+
+Abundance full model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- US.contig.abundance.table_0.75_prevFiltered[1:25] %>%
+                  column_to_rownames("Row.names")
+# 132 24
+
+US.contig.abundance.clean <- US.contig.abundance.table_0.75_prevFiltered %>%
+                           select(c("Row.names",26:132)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(US.contig.abundance.clean) <- gsub("X","",colnames(US.contig.abundance.clean))
+# 107 201
+
+
+# prepare correct variable format
+metadata.clean$month <- factor(metadata.clean$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# to avoid error caused by contigs that contain all 0s
+US.contig.abundance.clean <- US.contig.abundance.clean + 1
+model.fit <- voomLmFit(US.contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+colnames(model.fit$coefficients)
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+model.res <- topTable(model.fit,coef="SexMale",number=Inf)
+sig.model.res <- topTable(model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="month18",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+model.res <- topTable(model.fit,coef="month24",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0    6
+
+model.res <- topTable(model.fit,coef="month30",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 66    6
+
+model.res <- topTable(model.fit,coef="month36",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0    6
+
+model.res <- topTable(model.fit,coef="month48",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month48",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2897    6
+
+
+model.res <- topTable(model.fit,coef="month54",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month54",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month60",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month60",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0  6
+
+
+model.res <- topTable(model.fit,coef="month72",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month72",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month84",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month84",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+```
+
+
+
+                                                                                ###############
+                                                                                #   Italy     #
+                                                                                ###############
+                                                                                
+Abundance full model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- Italy.contig.abundance.table_0.75_prevFiltered[1:25] %>%
+                  column_to_rownames("Row.names")
+# 113  24
+
+Italy.contig.abundance.clean <- Italy.contig.abundance.table_0.75_prevFiltered %>%
+                           select(c("Row.names",26:73)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(Italy.contig.abundance.clean) <- gsub("X","",colnames(Italy.contig.abundance.clean))
+# 48 113
+
+
+# prepare correct variable format
+metadata.clean$month <- factor(metadata.clean$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# to avoid error caused by contigs that contain all 0s
+Italy.contig.abundance.clean <- Italy.contig.abundance.clean + 1
+model.fit <- voomLmFit(Italy.contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="SexMale",number=Inf)
+sig.model.res <- topTable(model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="month18",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2894
+
+model.res <- topTable(model.fit,coef="month24",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2902    6
+
+model.res <- topTable(model.fit,coef="month30",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2894    6
+
+model.res <- topTable(model.fit,coef="month36",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2890    6
+
+model.res <- topTable(model.fit,coef="month48",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month48",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2897    6
+
+
+model.res <- topTable(model.fit,coef="month54",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month54",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month60",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month60",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0  6
+
+
+model.res <- topTable(model.fit,coef="month72",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month72",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month84",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month84",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+```
+
+
+
+
+
+                                                      #################################################################
+                                                      #          Limma model on non-3% pravelance filtered data       #
+                                                      #            contig.abundance.table_0.75 (6333 contigs)         #
+                                                      #################################################################
+                                                                                    
+                                                                                    
+                                                                                ###############
+                                                                                #     USA     #
+                                                                                ###############
+                                                                                    
+
+Abundance model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- US.contig.abundance.table_0.75[1:25] %>%
+                  column_to_rownames("Row.names")
+# 201 4399
+
+US.contig.abundance.clean <- US.contig.abundance.table_0.75 %>%
+                           select(c("Row.names",26:4399)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(US.contig.abundance.clean) <- gsub("X","",colnames(US.contig.abundance.clean))
+# 4374  201
+
+# prepare correct variable format
+metadata.clean$month <- factor(metadata.clean$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# to avoid errors that caused by contigs that have all 0 values
+US.contig.abundance.clean <- US.contig.abundance.clean + 1
+model.fit <- voomLmFit(US.contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+colnames(model.fit$coefficients)
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+# if change month to numerical, this number will be 3852
+
+
+model.res <- topTable(model.fit,coef="SexMale",number=Inf)
+sig.model.res <- topTable(model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="month18",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 7
+
+model.res <- topTable(model.fit,coef="month24",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 3873    6
+
+model.res <- topTable(model.fit,coef="month30",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 4006    6
+
+model.res <- topTable(model.fit,coef="month36",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 4359    6
+
+model.res <- topTable(model.fit,coef="month48",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month48",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 6 6
+
+
+model.res <- topTable(model.fit,coef="month54",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month54",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="month60",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month60",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 17  6
+
+
+model.res <- topTable(model.fit,coef="month72",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month72",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 4 6
+
+
+model.res <- topTable(model.fit,coef="month84",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month84",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 5 6
+
+```
+
+
+
+
+                                                                                ###############
+                                                                                #   Italy     #
+                                                                                ###############
+
+Abundance model (a more complicated model, include all the samples) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- Italy.contig.abundance.table_0.75[1:25] %>%
+                  column_to_rownames("Row.names")
+# 314  24
+
+Italy.contig.abundance.clean <- contig.abundance.table_0.75 %>%
+                           select(c("Row.names",26:2928)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(Italy.contig.abundance.clean) <- gsub("X","",colnames(Italy.contig.abundance.clean))
+# 6333  314
+
+# prepare correct variable format
+metadata.clean$month <- factor(metadata.clean$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean) # + Age.at.Gluten.Introduction..months.
+# to avoid errors that caused by contigs that have all 0 values
+Italy.contig.abundance.clean <- Italy.contig.abundance.clean + 1
+model.fit <- voomLmFit(Italy.contig.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+model.res <- topTable(model.fit,coef="SexMale",number=Inf)
+sig.model.res <- topTable(model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+
+model.res <- topTable(model.fit,coef="month18",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2894
+
+model.res <- topTable(model.fit,coef="month24",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2902    6
+
+model.res <- topTable(model.fit,coef="month30",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2894    6
+
+model.res <- topTable(model.fit,coef="month36",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2890    6
+
+model.res <- topTable(model.fit,coef="month48",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month48",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2897    6
+
+
+model.res <- topTable(model.fit,coef="month54",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month54",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month60",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month60",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0  6
+
+
+model.res <- topTable(model.fit,coef="month72",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month72",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+model.res <- topTable(model.fit,coef="month84",number=Inf)
+sig.model.res <- topTable(model.fit,coef="month84",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+
+
+
+```
+
+
+
+
+
+
+
+
+# check data (to be done)
+https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html
+```{r}
+
+v <- voom(orf.abundance.clean, model.design, plot=TRUE)
+raw_pvals <- model.fit$p.value[, "Dx.StatusCELIAC"]
+hist(raw_pvals, breaks=100, main="Raw P-values")  # Should show enrichment near 0
+
+
+# Check effect sizes (logFC)
+logFCs <- model.fit$coefficients[, "Dx.StatusCELIAC"]
+summary(logFCs)  # Median absolute logFC > 0.5 is typical for real signals
+
+
+# Look at top genes WITHOUT p-value adjustment
+top_unadjusted <- topTable(model.fit, coef="Dx.StatusCELIAC", number=20, sort.by="P", adjust.method="none")
+
+# Check if raw p-values are small but killed by FDR
+head(top_unadjusted)
+
+v <- voom(orf.abundance.clean, model.design, plot=TRUE)  # Should show smooth curve
+
+plotMDS(v, col=ifelse(metadata.clean$Dx.Status=="CELIAC", "red", "blue"))
+
+```
+
+
+
+We then use presence and absence (binary info) to build Limma model. this would tell us if the turning on/off of a gene associated with celiac case/control disease
+
+PA model: 
+~ Dx.Status + month + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+block=patientID
+```{r}
+
+# prepare clean metadata and count table
+metadata.clean <- orf.PA.table[1:25] %>%
+                  column_to_rownames("Row.names")
+# 314  25
+
+
+orf.PA.table.clean <- orf.PA.table %>%
+                           select(c("Row.names",26:43429)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.PA.table.clean) <- gsub("X","",colnames(orf.PA.table.clean))
+
+dim(orf.PA.table.clean)
+# 43404  314
+
+
+# now we need to check if there are any samples have 0 counts (AKA. calculate the library size), if so we should remove those samples to prevent error in limma model.Because voom requires log-transformed counts log(library size), but log(0) = -Inf hence will cause the voom/voomLmFit error (offsets must be finite values).
+
+# Step 1: Identify zero-size samples
+zero_samples <- colnames(orf.PA.table.clean)[colSums(orf.PA.table.clean) == 0]
+
+# Step 2: Remove from counts and metadata
+orf.PA.table.0counts.filtered <- orf.PA.table.clean[, !(colnames(orf.PA.table.clean) %in% zero_samples), drop = FALSE]
+metadata.clean.0counts.filtered <- metadata.clean[!(rownames(metadata.clean) %in% zero_samples), ]
+dim(orf.PA.table.0counts.filtered)
+# 43404   308
+
+
+# Step 3: Verify
+summary(colSums(orf.PA.table.0counts.filtered))  # Min should now be >= 1
+   # Min.  1st Qu.  Median    Mean  3rd Qu.    Max. 
+   # 1.0   141.8   397.0    483.5   717.0    2578.0 
+
+
+
+# prepare correct variable format
+metadata.clean.0counts.filtered$feeding_first_year <- factor(metadata.clean.0counts.filtered$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+metadata.clean.0counts.filtered$HLA.Category <- factor(metadata.clean.0counts.filtered$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+metadata.clean.0counts.filtered$Country <- factor(metadata.clean.0counts.filtered$Country,levels = c("ITALY","USA"))
+metadata.clean.0counts.filtered$Sex <- factor(metadata.clean.0counts.filtered$Sex,levels = c("Female","Male"))
+metadata.clean.0counts.filtered$Delivery.Mode <- factor(metadata.clean.0counts.filtered$Delivery.Mode,levels = c("Vaginal","C-Section"))
+metadata.clean.0counts.filtered$Age.at.Gluten.Introduction..months. <- factor(metadata.clean.0counts.filtered$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+metadata.clean.0counts.filtered$month <- factor(metadata.clean.0counts.filtered$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+metadata.clean.0counts.filtered$Dx.Status <- factor(metadata.clean.0counts.filtered$Dx.Status,levels = c("CONTROL","CELIAC"))
+
+
+#model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.,metadata.clean.0counts.filtered)
+model.design <- model.matrix(~ Country,metadata.clean.0counts.filtered)
+model.fit <- voomLmFit(orf.PA.table.0counts.filtered, model.design, block=metadata.clean.0counts.filtered$patientID, plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,number=2154) # coef="Dx.StatusCELIAC",
+sig.model.res <- topTable(model.fit, number=5000) %>% filter(adj.P.Val < 0.05) #coef="Dx.StatusCELIAC",
+dim(sig.model.res)
+# 0
+
+View(sig.model.res)
+
+
+```
+
+
+
+
+
+# check metadata correlation
+```{r}
+
+
+#1. Check Pairwise Correlations Between Variables
+
+str(metadata)
+# Select numeric variables from metadata
+numeric_vars <- metadata %>% 
+  select(-X) %>%
+  mutate(Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)) %>%
+  select(where(is.numeric))  # e.g., month, Age.at.Gluten.Introduction..months.
+
+# Calculate correlation matrix
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Visualize with a heatmap
+library(corrplot)
+corrplot(cor_matrix, method = "circle", type = "upper")
+
+# Threshold: Correlations > |0.7| indicate strong collinearity.
+
+
+# 2. Check Categorical Variables with Chi-Square Tests
+
+# Example: Check association between Dx.Status and Country
+table(metadata.clean.0counts.filtered$Dx.Status, metadata.clean.0counts.filtered$Country)
+
+# Chi-square test of independence
+chisq.test(
+  metadata.clean.0counts.filtered$Dx.Status, 
+  metadata.clean.0counts.filtered$Country
+)
+
+# Significant p-value (p < 0.05) suggests confounding.
+
+
+
+# 3. Variance Inflation Factor (VIF)
+orf_matrix <- as.matrix(orf.PA.table.0counts.filtered)
+class(orf_matrix)  # Should return "matrix" "array"
+
+# Verify all values are 0 or 1
+table(orf_matrix)  # Should only show 0s and 1s
+
+response <- as.numeric(orf_matrix[1, ])
+
+# Check structure
+str(response)  # Should be num [1:N] 0 1 0 0 1 ...
+
+# Remove intercept from design matrix (already done in your code)
+design_data <- as.data.frame(model.design[, -1])
+
+# Fit the model
+tmp_model <- lm(response ~ ., data = design_data)
+
+# Calculate VIF
+library(car)
+vif(tmp_model)
+print(vif(tmp_model))
+
+# Interpretation:
+# VIF < 5: No concerning collinearity.
+# VIF ≥ 5: Variable is confounded with others.
+# VIF ≥ 10: Severe collinearity (remove the variable).
+
+
+
+```

@@ -1,0 +1,819 @@
+---
+title: "Celiac_metadata_organization"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(readxl)
+library(broom.mixed)
+```
+
+
+# load barcode file
+```{r}
+
+
+M966 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run966.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID)) %>%
+        mutate(RunNumber = "N966") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+M978 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run978.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID))  %>%
+        mutate(RunNumber = "N978") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+
+M979 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run979.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID))  %>%
+        mutate(RunNumber = "N979") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",8))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+M980 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run980.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID))  %>%
+        mutate(RunNumber = "N980") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",8))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+# there are some misslabeled samples in this run, so let's correct them first
+M981 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run981.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID)) %>%
+        mutate(RunNumber = "N981") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(Sample_full_name = ifelse(Sample_full_name == "I13286_39649_Celiac_Leonard_Stool_01_GEMM_179_30M","I13286_39793_Celiac_Leonard_Stool_02_GEMM_006_12M",
+                                                ifelse(Sample_full_name == "I13287_39650_Celiac_Leonard_Stool_01_GEMM_179_36M","I13287_39794_Celiac_Leonard_Stool_02_GEMM_006_18M",
+                                                       ifelse(Sample_full_name == "I13288_39651_Celiac_Leonard_Stool_01_GEMM_179_48M","I13288_39797_Celiac_Leonard_Stool_02_GEMM_006_36M",
+                                                              ifelse(Sample_full_name == "I13289_39652_Celiac_Leonard_Stool_01_GEMM_006_12M",
+                                                                     "I13289_39803_Celiac_Leonard_Stool_02_GEMM_010_30M",
+                                                                     ifelse(Sample_full_name == "I13290_39653_Celiac_Leonard_Stool_01_GEMM_006_18M",
+                                                                            "I13290_39804_Celiac_Leonard_Stool_02_GEMM_019_12M",
+                                                                            ifelse(Sample_full_name == "I13291_39654_Celiac_Leonard_Stool_01_GEMM_006_24M","I13291_39805_Celiac_Leonard_Stool_02_GEMM_019_18M",
+                                                                                   ifelse(Sample_full_name == "I13292_39655_Celiac_Leonard_Stool_01_GEMM_006_30M","I13292_39806_Celiac_Leonard_Stool_02_GEMM_019_24M",
+                                                                                          ifelse(Sample_full_name == "I13293_39656_Celiac_Leonard_Stool_01_GEMM_006_36M","I13293_39807_Celiac_Leonard_Stool_02_GEMM_019_30M",
+                                                                                                 ifelse(Sample_full_name == "I13294_39657_Celiac_Leonard_Stool_01_GEMM_006_48M","I13294_39808_Celiac_Leonard_Stool_02_GEMM_019_36M",
+                                                                                                        ifelse(Sample_full_name == "I13295_39658_Celiac_Leonard_Stool_01_GEMM_006_60M","I13295_39809_Celiac_Leonard_Stool_02_GEMM_019_48M",
+                                                                                                               ifelse(Sample_full_name == "I13296_39659_Celiac_Leonard_Stool_01_GEMM_006_6Y","I13296_39810_Celiac_Leonard_Stool_02_GEMM_021_12M",Sample_full_name)))))))))))) %>%
+        mutate(Sample.Name.External.ID = paste0(lapply(strsplit(Sample_full_name,"_"),"[",3),"_",lapply(strsplit(Sample_full_name,"_"),"[",4),"_",lapply(strsplit(Sample_full_name,"_"),"[",5),"_",lapply(strsplit(Sample_full_name,"_"),"[",6),"_",lapply(strsplit(Sample_full_name,"_"),"[",7),"_",lapply(strsplit(Sample_full_name,"_"),"[",8),"_",lapply(strsplit(Sample_full_name,"_"),"[",9))) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+
+M982 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run982.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID))  %>%
+        mutate(RunNumber = "N982") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+# I change this one sample from 01_GEMM_106_12M to 02_GEMM_106_12M just for now, waiting for Martina to double check the mislabeling
+M983 <- read.delim("~/Handley Lab Dropbox/16S/Celiac/update_hecatomb/mapping/NovaSeq_Run983.txt",header = TRUE) %>%
+        filter(!is.na(Database.ID))  %>%
+        filter(Sample.Name.External.ID != "Celiac_Leonard_Stool_01_GEMM_106_12M") %>% # this is a mislabled sample, supposed to be water
+        mutate(Sample.Name.External.ID = gsub("Leonard_Human_stool_Celiac","Celiac_Leonard_Stool",Sample.Name.External.ID)) %>%
+       # mutate(Sample.Name.External.ID = ifelse(Sample.Name.External.ID == "Celiac_Leonard_Stool_01_GEMM_106_12M","Celiac_Leonard_Stool_02_GEMM_106_12M",Sample.Name.External.ID)) %>%
+        mutate(RunNumber = "N983") %>%
+        mutate(Sample_full_name = paste0(Sample..,"_",Database.ID,"_",`Sample.Name.External.ID`)) %>%
+        mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",7))) %>%
+        mutate(patientID = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+        select(RunNumber,Sample_full_name,sampleName,patientID,Sample.Name.External.ID)
+
+
+barcode.total <- rbind(M966,M978,M979,M980,M981,M982,M983)
+
+
+```
+
+
+
+# load metadata file (updated metadata file)
+```{r}
+
+
+metadata.orig <- read_excel("~/Handley Lab Dropbox/16S/Celiac/metadata/CDGEMM Wash U Stool Project_26Nov2024.xlsx") %>%
+                 mutate(`Study ID` = gsub("-","_",`Study ID`)) %>%
+                 mutate(Classification = ifelse(Classification == "2-CONTROL-199","2-CONTROL-177",Classification)) %>% # 2-CONTROL-199 is supposed to be the control of 2-Case-177
+                 mutate(Pair = paste0(lapply(strsplit(Classification,"-"),"[",1),"_",lapply(strsplit(Classification,"-"),"[",3)))
+
+length(metadata.orig$`Study ID`)
+# 72 patients
+
+table(metadata.orig$`HLA Category`)
+# High Risk     Low/No Risk   Standard Risk 
+#        20             7            45 
+
+
+table(metadata.orig$`Feeding Type (0-6 months)`)
+# Breast_fed   Breastmilk_and_formula       Formula     Unknown 
+#        29             20                    15          8 
+
+table(metadata.orig$`Feeding Type (7-12 months)`)
+# Breast_fed    Breastmilk_and_formula      Formula       Unknown 
+#      27               14                     26            5 
+
+
+table(metadata.orig$`Age at Solid Introduction (months)`)
+# 10      11       2       3       4       5       6       7       8 Unknown 
+#   1       1       1       1       5      14      25      15       1       8 
+
+
+table(metadata.orig$`Age at Gluten Introduction (months)`)
+# 10      11      15       2      36       5       6       7       8       9 Unknown 
+#  6       3       2       1       1       2      14      23       8       6       6 
+
+
+metadata.barcode <-  left_join(barcode.total,metadata.orig,join_by(patientID == `Study ID`))
+
+
+
+metadata.morInfo <- read.delim("~/Handley Lab Dropbox/16S/Celiac/metadata/celiacs_metadata.txt") %>%
+                    filter(celiacs_group != "Water") %>%
+                    mutate(PID = ifelse(PID == "GEMM_068_36M","GEMM_068",PID)) %>%
+                    mutate(PIDu = ifelse(Collaborator.ID == "39749","GEMM_013_18M",PIDu),
+                           Sample.Name.External.ID = ifelse(Collaborator.ID == "39749","Leonard_CELIACS_02_GEMM_013_18M",Sample.Name.External.ID),
+                           month = ifelse(Collaborator.ID == "39749",18,month)) %>%  # this one is duplicate/or mislabled. no reseource to know, modified based on other columns
+                    mutate(Sample.Name.External.ID = ifelse(PIDu == "GEMM_057_48M","Leonard_CELIACS_01_GEMM_057_48M",Sample.Name.External.ID)) %>% # this one is apparently mislabled, I modified it based on information in other columns
+                    mutate(sampleName = paste0(lapply(strsplit(Sample.Name.External.ID,"_"),"[",3),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",4),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",5),"_",lapply(strsplit(Sample.Name.External.ID,"_"),"[",6))) %>%
+                    select(sampleName,celiacs_group,month,case_control)
+
+
+
+metadata.final <- metadata.barcode %>%
+                  left_join(metadata.morInfo,join_by(sampleName == sampleName)) %>%
+                  mutate(celiacs_group = ifelse(celiacs_group == "1","01",
+                                                 ifelse(celiacs_group == "2","02",celiacs_group))) %>%
+                  mutate(disease_onset_details = ifelse(`Dx Status` == "CELIAC" & month ==`Onset Dx`,"Case_onset",
+                                                           ifelse(`Dx Status` == "CELIAC" & month !=`Onset Dx`,"Case_precede","Control"))) %>%
+                  mutate(Status_timepoint = paste0(`Dx Status`,"_",month)) %>%
+                  filter(!sampleName %in% c("02_GEMM_041_18M","02_GEMM_035_18M")) %>% # remove the preceding case sample that is later than the onset case sample, also remove its control sample
+                  filter(!sampleName %in% c("01_GEMM_119_36M","01_GEMM_102_36M")) %>% # remove the preceding case sample that is later than the onset case sample, also remove its control sample
+                  select(-case_control)
+
+table(metadata.final$`Dx Status`)
+ # CELIAC CONTROL 
+ #  165     170
+
+         
+length(metadata.final$sampleName)
+# 335 samples
+
+table(metadata.final$disease_onset_details)
+  # Case_onset Case_precede      Control 
+  #         36          129          170
+
+
+
+metadata.final <- metadata.final %>%
+                  mutate(sampleName = ifelse(sampleName %like% "_6Y",gsub("_6Y","_72M",sampleName),
+                                           ifelse(sampleName %like% "_7Y",gsub("_7Y","_84M",sampleName),sampleName))) %>%
+                   mutate(Sample.Name.External.ID = ifelse(Sample.Name.External.ID %like% "_6Y",gsub("_6Y","_72M",Sample.Name.External.ID),
+                                           ifelse(Sample.Name.External.ID %like% "_7Y",gsub("_7Y","_84M",Sample.Name.External.ID),Sample.Name.External.ID))) %>%
+                   mutate(Sample_full_name = ifelse(Sample_full_name %like% "_6Y",gsub("_6Y","_72M",Sample_full_name),
+                                           ifelse(Sample_full_name %like% "_7Y",gsub("_7Y","_84M",Sample_full_name),Sample_full_name))) %>%
+                   mutate(feeding_first_year = ifelse(`Feeding Type (0-6 months)` == `Feeding Type (7-12 months)`,`Feeding Type (0-6 months)`, paste0("first_6M_",`Feeding Type (0-6 months)`,"_second_6M_",`Feeding Type (7-12 months)`))) %>%
+       mutate(feeding_first_year_simplified = ifelse(feeding_first_year == "first_6M_Breastmilk_and_formula_second_6M_Formula","Breastmilk_and_formula",
+                                                     ifelse(feeding_first_year == "first_6M_Unknown_second_6M_Breast_fed","Breast_fed",
+                                                            ifelse(feeding_first_year == "first_6M_Unknown_second_6M_Breast_fed","Breast_fed",
+                                                                   ifelse(feeding_first_year == "first_6M_Unknown_second_6M_Formula","Formula",
+                                                                          ifelse(feeding_first_year == "first_6M_Breast_fed_second_6M_Formula","Breastmilk_and_formula",ifelse(feeding_first_year == "first_6M_Breast_fed_second_6M_Breastmilk_and_formula","Breastmilk_and_formula",
+                                                                                                                                                                               ifelse(feeding_first_year == "first_6M_Breastmilk_and_formula_second_6M_Breast_fed","Breastmilk_and_formula",feeding_first_year)))))))) %>%
+          select(-feeding_first_year) %>%
+          rename(feeding_first_year = feeding_first_year_simplified) %>%
+          mutate(`Age at Solid Introduction (months)` = ifelse(`Age at Solid Introduction (months)` %in% c(2,3),4,`Age at Solid Introduction (months)`)) %>%
+          mutate(`Age at Gluten Introduction (months)` = ifelse(`Age at Gluten Introduction (months)` == 2,4,`Age at Gluten Introduction (months)`))
+
+
+write.csv(metadata.final,"~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv")
+
+
+
+# metadata.final.caseControl <- metadata.barcode %>%
+#                   left_join(metadata.morInfo,join_by(sampleName == sampleName)) %>%
+#                   mutate(celiacs_group = ifelse(celiacs_group == "1","01",
+#                                                  ifelse(celiacs_group == "2","02",celiacs_group))) %>%
+#                   mutate(disease_onset_details = ifelse(case_control == "Case" & month ==`Onset Dx`,"Case_onset",
+#                                                            ifelse(case_control == "Case" & month !=`Onset Dx`,"Case_precede","Control"))) %>%
+#                   arrange(case_control)
+# 
+# table(metadata.final.caseControl$disease_onset_details)
+#   # Case_onset Case_precede      Control 
+#   #         34          123          182 
+# 
+# write.csv(metadata.final.caseControl,"~/Handley Lab Dropbox/16S/Celiac/tables/metadata_final_caseControl.csv")
+
+
+```
+
+
+make study design plot
+```{r}
+
+metadata.final$month <- factor(metadata.final$month,levels = c(0,12,18,24,30,36,48,54,60,72,84))
+
+
+
+celiac.sample.timepoints.p <- ggplot(metadata.final,aes(x = month, y = reorder(patientID,Dx.Status),color = disease_onset_details)) +
+  geom_point(size = 4) +
+  facet_grid(Pair ~ ., scales = "free", space = "free") +
+  scale_color_manual(values = c("Control" = "#329932", "Case_onset" = "#FF0000","Case_precede" = "#f2cb53")) +
+  theme_bw() + 
+  theme(text = element_text(size = 19,face = "bold")) +
+  labs(y = "sampleName") +
+theme(
+  strip.background = element_blank(),
+  strip.text = element_blank()
+)
+
+ggsave(celiac.sample.timepoints.p,file = "~/Handley Lab Dropbox/16S/Celiac/plot/celiac.sample.timepoints.pairwise.p.pdf",width = 12,height = 18,dpi = 600)
+
+```
+
+
+import bigtable
+```{r}
+
+
+bigtable <- as_tibble(fread(file = "~/Handley Lab Dropbox/16S/Celiac/hecatomb_output/bigtable.tsv", header = TRUE))
+
+
+bigtable <- bigtable %>%
+            filter(sampleID != "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M") %>%
+            mutate(sampleID_mod = gsub("Leonard_Human_Stool_Celiac_|Celiac_Leonard_Stool_|Leonard_Human_stool_Celiac_","",sampleID)) %>%
+            mutate(patientID = paste0(lapply(strsplit(sampleID_mod,"_"),"[",5),"_",lapply(strsplit(sampleID_mod,"_"),"[",6),"_",lapply(strsplit(sampleID_mod,"_"),"[",7))) %>%
+            mutate(sampleName = paste0(lapply(strsplit(sampleID_mod,"_"),"[",5),"_",lapply(strsplit(sampleID_mod,"_"),"[",6),"_",lapply(strsplit(sampleID_mod,"_"),"[",7),"_",lapply(strsplit(sampleID_mod,"_"),"[",8)))
+
+# "seqID"          "sampleID"       "count"          "percent"        "alnType"        "targetID"       "evalue"         "pident"         "fident"         "nident"        
+# "mismatches"     "qcov"           "tcov"           "qstart"         "qend"           "qlen"           "tstart"         "tend"           "tlen"           "alnlen"        
+# "bits"           "targetName"     "taxMethod"      "kingdom"        "phylum"         "class"          "order"          "family"         "genus"          "species"       
+# "baltimoreType"  "baltimoreGroup" "sampleID_mod"   "patientID"      "sampleName"
+
+
+length(unique(bigtable$patientID))
+# 72 patients
+length(unique(bigtable$sampleName))
+# 335 samples
+
+unique(bigtable$kingdom)
+# "Viruses"
+
+df.virus.fin.reads <- left_join(bigtable,metadata.final,join_by(sampleName == sampleName))
+dim(df.virus.fin.reads)
+# 15738096       50
+
+
+write.csv(df.virus.fin.reads,"~/Handley Lab Dropbox/16S/Celiac/hecatomb_output/bigtable_mapped.tsv")
+
+```
+
+
+
+extract family of interest
+```{r}
+
+# import the bigtable that is mapped with metadata
+df.virus.fin.reads <- as_tibble(fread("~/Handley Lab Dropbox/16S/Celiac/hecatomb_output/bigtable_mapped.tsv",header = TRUE))
+
+
+# extract the families that of interests
+# mutate a new column positive_count to change the lower than 10 counts to 0 count
+# then select the reads related information
+
+View(df.virus.fin.reads)
+vv.foi <- df.virus.fin.reads %>%
+          filter(family == "Adenoviridae" | family == "Anelloviridae" | family == "Astroviridae" | family == "Caliciviridae" | family == "Circoviridae" | family == "Herpesviridae" & species != "Cercopithecine betaherpesvirus 5" | family == "Papillomaviridae" | family == "Parvoviridae" | family == "Picobirnaviridae" | family == "Picornaviridae" | family == "Polyomaviridae" | family == "Reoviridae" | family == "unclassified Picornavirales family") %>%
+          mutate(positive_count = replace(count, count <10, 0)) %>%
+          select(c("sampleID","kingdom","phylum","class","order","family","genus","species","count","baltimoreType","baltimoreGroup","sampleID_mod","patientID.x","sampleName","positive_count")) %>%
+          distinct()
+
+write.csv(vv.foi,"~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_viruses_strain_counts.tsv")
+
+
+# Glom at family level
+# mutate a lineage column to combine kingdon to family level names so that the family names are unique
+# mutate the PA column to calculate presence and absence of each viral family (PA=1 if positive_count>0, PA=0 if positive_count=0)
+# ungroup the table
+# select the reads related information
+vv.fam <- vv.foi %>%
+  unite("lineage", c("kingdom", "phylum", "class", "order", "family"), sep = ";", remove = FALSE) %>%
+  group_by(sampleName, lineage, family) %>%
+  mutate(PA = ifelse(positive_count >0, 1,0)) %>%
+  separate("lineage", c("kingdom", "phylum", "class", "order", "family"), sep = ";") %>%
+  select(c("sampleID","kingdom","phylum","class","order","family","baltimoreType","baltimoreGroup","sampleID_mod","patientID.x","sampleName","PA","count")) %>%
+  distinct()
+
+
+# Join the count table with metadata table again
+# make sure to put metadata table on the left in left_join() so that the samples that do not contain these families will be retaind in the table as NA value in count/PA
+# we then fill the NAs as 0 to indicate that these samples have 0 counts of these certain familes in them
+vv.fam.all.10 <- left_join(metadata.final,vv.fam,by = "sampleName")
+vv.fam.all.10$PA[is.na(vv.fam.all.10$PA)] <- 0
+vv.fam.all.10$count[is.na(vv.fam.all.10$count)] <- 0
+
+
+# Add a lineage column that contains family full names and balrimoreType and baltimoreGroup
+vv.fam.all.10$lineage <- paste0(vv.fam.all.10$kingdom, ";",vv.fam.all.10$phylum,";" ,vv.fam.all.10$class,";" ,vv.fam.all.10$order, ";", vv.fam.all.10$family, ";", vv.fam.all.10$baltimoreType, ";", vv.fam.all.10$baltimoreGroup)
+
+
+# PA
+# Zero inflate: remove the 
+vv.fam.all.lineage.zero.10 <- reshape2::dcast(vv.fam.all.10,lineage ~ sampleName, value.var = "PA", fun.aggregate = sum) %>%
+  filter(lineage != "NA;NA;NA;NA;NA;NA;NA") %>%
+  droplevels()
+
+
+# count
+# Zero inflate
+vv.fam.all.lineage.zero.10.count <- reshape2::dcast(vv.fam.all.10,lineage ~ sampleName, value.var = "count", fun.aggregate = sum) %>%
+  filter(lineage != "NA;NA;NA;NA;NA;NA;NA") %>%
+  droplevels()
+
+
+# Convert back to long form for PA
+vv.fam.all.lineage.zero.10.tmp.PA <-  reshape2::melt(vv.fam.all.lineage.zero.10) %>%
+  separate_wider_delim("lineage", delim = ";", names = c("kingdom", "phylum", "class", "order", "family", "baltimoreType", "baltimoreGroup")) %>%
+  dplyr::rename("sampleName" = "variable", "SPM" = "value") %>%
+  mutate(PA = ifelse(SPM >0, 1,0)) %>%
+  select(c("sampleName","PA","kingdom","phylum","class","order","family","baltimoreType","baltimoreGroup")) 
+
+
+
+# Convert back to long form for count
+vv.fam.all.lineage.zero.10.tmp.count <-  reshape2::melt(vv.fam.all.lineage.zero.10.count) %>%
+  separate_wider_delim("lineage", delim = ";", names = c("kingdom", "phylum", "class", "order", "family", "baltimoreType", "baltimoreGroup")) %>%
+  dplyr::rename("sampleName" = "variable", "count" = "value") %>%
+  select(c("sampleName","count","kingdom","phylum","class","order","family","baltimoreType","baltimoreGroup")) 
+
+
+# Merge metadata to PA table
+vv.fam.all.zero.10.fin.PA <- left_join(vv.fam.all.lineage.zero.10.tmp.PA,metadata.final, by = "sampleName") 
+
+# Merge metadata to count table
+vv.fam.all.zero.10.fin.count <- left_join(vv.fam.all.lineage.zero.10.tmp.count,metadata.final, by = "sampleName") 
+
+
+length(unique(vv.fam.all.zero.10.fin.PA[["sampleName"]]))
+# 337
+length(unique(metadata.final[["sampleName"]]))
+# 337
+length(unique(vv.fam.all.zero.10.fin.PA[["Classification"]]))
+# 72
+length(unique(metadata.final[["Classification"]]))
+# 72
+
+write.csv(vv.fam.all.zero.10.fin.PA,"~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_viruses_PA.tsv")
+write.csv(vv.fam.all.zero.10.fin.count,"~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_viruses_count.tsv")
+
+```
+
+
+##############################
+# some preliminary analysis  #
+##############################
+
+
+heatmap by country
+```{r}
+
+table(vv.fam.all.10$Country)
+
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    group_by(family, Country) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(Country == "ITALY", (PA_sum/371)*100,(PA_sum/518)*100)) %>% # 132
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Country","percent_positive")) %>%
+                                    distinct()
+
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.Country <- ggplot(df.vertebrate.virus.fam.pp.min, aes(Country, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Country") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+ggsave(p.df.vertebrate.virus.fam.heat.p.Country,file = "~/Handley Lab Dropbox/16S/Celiac/plot/heatmap/Vertebrate.virus.family.Country.pdf",width = 6,height = 8,dpi = 600)
+
+
+
+```
+
+
+
+heatmap by case and control
+```{r}
+table(vv.fam.all.10$`Dx Status`)
+
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    group_by(family, `Dx Status`) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(`Dx Status` == "CELIAC", (PA_sum/413)*100,(PA_sum/476)*100)) %>%  #167  172
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Dx Status","percent_positive")) %>%
+                                    distinct()
+
+
+df.vertebrate.virus.fam.pp.min$`Dx Status` <- factor(df.vertebrate.virus.fam.pp.min$`Dx Status`,levels = c("CONTROL","CELIAC"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.case.control <- ggplot(df.vertebrate.virus.fam.pp.min, aes(`Dx Status`, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Disease Status") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+
+```
+
+
+heatmap by case and control divided by Country
+```{r}
+
+table(vv.fam.all.10 %>% filter(Country == "USA") %>% pull(`Dx Status`))
+
+# ITALY
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    filter(Country == "ITALY") %>%
+                                    group_by(family, `Dx Status`) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(`Dx Status` == "CELIAC", (PA_sum/161)*100,(PA_sum/210)*100)) %>%  #167 172
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Dx Status","percent_positive")) %>%
+                                    distinct()
+
+df.vertebrate.virus.fam.pp.min$`Dx Status` <- factor(df.vertebrate.virus.fam.pp.min$`Dx Status`,levels = c("CONTROL","CELIAC"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.ITALY.case.control <- ggplot(df.vertebrate.virus.fam.pp.min, aes(`Dx Status`, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Disease Status") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+
+
+# USA
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    filter(Country == "USA") %>%
+                                    group_by(family, `Dx Status`) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(`Dx Status` == "CELIAC", (PA_sum/252)*100,(PA_sum/266)*100)) %>% # 167 172
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Dx Status","percent_positive")) %>%
+                                    distinct()
+
+df.vertebrate.virus.fam.pp.min$`Dx Status` <- factor(df.vertebrate.virus.fam.pp.min$`Dx Status`,levels = c("CONTROL","CELIAC"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.USA.case.control <- ggplot(df.vertebrate.virus.fam.pp.min, aes(`Dx Status`, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Disease Status") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+
+```
+
+
+
+heatmap by dilivery mode
+```{r}
+
+table(vv.fam.all.10$`Delivery Mode`)
+
+# ITALY
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    group_by(family, `Delivery Mode`) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(`Delivery Mode` == "C-Section", (PA_sum/273)*100,(PA_sum/616)*100)) %>%  #98 241
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Delivery Mode","percent_positive")) %>%
+                                    distinct()
+
+df.vertebrate.virus.fam.pp.min$`Delivery Mode` <- factor(df.vertebrate.virus.fam.pp.min$`Delivery Mode`,levels = c("C-Section","Vaginal"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.delivery <- ggplot(df.vertebrate.virus.fam.pp.min, aes(`Delivery Mode`, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Delivery Mode") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+
+
+```
+
+
+
+heatmap by dilivery gender
+```{r}
+
+table(metadata.final.Dx$Sex)
+
+# ITALY
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    group_by(family, Sex) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(Sex == "Female", (PA_sum/260)*100,(PA_sum/79)*100)) %>%
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "Sex","percent_positive")) %>%
+                                    distinct()
+
+df.vertebrate.virus.fam.pp.min$Sex <- factor(df.vertebrate.virus.fam.pp.min$Sex,levels = c("Female","Male"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.Sex <- ggplot(df.vertebrate.virus.fam.pp.min, aes(Sex, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="Sex") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+
+
+```
+
+
+heatmap by HLA
+```{r}
+
+table(metadata.final.Dx$HLA)
+  #      DQ2.2 and DQ7        DQ2.2 and DQ8   DQ2.2 Heterozygous     DQ2.2 Homozygous DQ2.2/2.5 Homozygous   DQ2.3 Heterozygous        DQ2.5 and DQ7        DQ2.5 and DQ8 
+  #                 47                    9                   44                   22                   49                    7                   30                    7 
+  # DQ2.5 Heterozygous     DQ2.5 Homozygous                  DQ8          DQ8 and DQ7             Negative 
+  #                 53                   23                   37                    2                    9 
+
+
+View(df.vertebrate.virus.fam.pp.min )
+
+df.vertebrate.virus.fam.pp.min  <- vv.fam.all.10  %>%
+                                    group_by(family, HLA) %>%
+                                    dplyr::mutate(PA_sum = sum(PA)) %>%
+                                    mutate(percent_positive = ifelse(HLA == "DQ2.2 and DQ7", (PA_sum/47)*100,
+                                                                     ifelse(HLA == "DQ2.2 and DQ8",(PA_sum/9)*100,
+                                                                            ifelse(HLA == "DQ2.2 Heterozygous",(PA_sum/44)*100,
+                                                                                   ifelse(HLA == "DQ2.2 Homozygous",(PA_sum/22)*100,
+                                                                                          ifelse(HLA =="DQ2.2/2.5 Homozygous",(PA_sum/49)*100,
+                                                                                                 ifelse(HLA=="DQ2.3 Heterozygous",(PA_sum/7)*100,
+                                                                                                        ifelse(HLA=="DQ2.5 and DQ7",(PA_sum/30)*100,
+                                                                                                               ifelse(HLA=="DQ2.5 and DQ8",(PA_sum/7)*100,
+                                                                                                                      ifelse(HLA=="DQ2.5 Heterozygous",(PA_sum/53)*100,
+                                                                                                                             ifelse(HLA=="DQ2.5 Homozygous",(PA_sum/23)*100,
+                                                                                                                                    ifelse(HLA=="DQ8",(PA_sum/37)*100,
+                                                                                                                                           ifelse(HLA=="DQ8 and DQ7",(PA_sum/2)*100,
+                                                                                                                                                  ifelse(HLA==" Negative",(PA_sum/9)*100,HLA)))))))))))))) %>%
+                                    ungroup() %>%
+                                    select(c("sampleName", "family", "baltimoreType", "HLA","percent_positive")) %>%
+                                    distinct()
+df.vertebrate.virus.fam.pp.min$percent_positive <-as.numeric(df.vertebrate.virus.fam.pp.min$percent_positive)
+
+#df.vertebrate.virus.fam.pp.min$Sex <- factor(df.vertebrate.virus.fam.pp.min$Sex,levels = c("Female","Male"))
+
+# Plot
+p.df.vertebrate.virus.fam.heat.p.HLA<- ggplot(df.vertebrate.virus.fam.pp.min, aes(HLA, factor(family) , fill= percent_positive)) + 
+  facet_grid(baltimoreType ~ .,  scales="free_y", space="free") +
+  theme(strip.text.y = element_text(face = "bold.italic", size = 14)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "black",limits=c(0,44), breaks = seq(0, 44, by = 4)) +
+  labs(fill = "% positive") + 
+  labs(title="", y="Family", x="HLA") + 
+  theme(legend.position="right")  +
+  theme(text = element_text(family = "Arial")) +
+  theme(axis.text.x = element_text(size=14, angle=45, hjust=1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0))
+
+
+```
+
+
+mixed linear model and odds ratio plot
+
+model plot
+```{r}
+
+for (i in unique(vv.fam.all.zero.10.fin$family)[5:5]){
+  
+  print(i)
+  
+    df <- vv.fam.all.zero.10.fin %>%
+             filter(family == i)
+
+    df$PA <- as.factor(as.character(df$PA))
+    df$`Dx Status` <- factor(df$`Dx Status`,levels = c("CONTROL","CELIAC"))
+    df$month <- factor(df$month,levels = c("12","18","24","30","36","48","60","72","84","54"))
+
+    # PA ~ FOBT + finaImputedlLogFCP + sex + age_at_collection + smoker
+    glmer <- glmer(PA ~  `Dx Status` + Country + Sex + `Delivery Mode` + month + (1|patientID), data = df, family = binomial)
+    
+    summary(glmer) 
+   #   AIC      BIC   logLik deviance df.resid 
+   # 102.5    125.4    -45.2     90.5      333 
+    # Fixed effects:
+    #                        Estimate Std. Error z value Pr(>|z|)    
+    # (Intercept)             -2.9309     0.8427  -3.478 0.000505 ***
+    # `Dx Status`CELIAC       -1.6272     0.8691  -1.872 0.061170 .  
+    # CountryUSA              -0.8788     0.8407  -1.045 0.295884    
+    # SexMale                 -0.6370     1.0085  -0.632 0.527628    
+    # `Delivery Mode`Vaginal   0.3229     0.8790   0.367 0.713335 
+
+# Plot 
+    glmer.df <- tidy(glmer, conf.int = TRUE, exponentiate = TRUE) %>%
+      filter(effect == "fixed") %>%
+      filter(term !=  "(Intercept)" & term != "sd__(Intercept)") %>%
+      mutate(term = str_replace_all(term, fixed("`Dx Status`CELIAC"), "Dx Status: Case")) %>%
+      mutate(term = str_replace_all(term, fixed("Sex"), "Sex:")) %>%
+      mutate(term = str_replace_all(term, fixed("CountryUSA"), "Country: USA")) %>%
+      mutate(term = str_replace_all(term, fixed("`Delivery Mode`Vaginal"), "Delivery Mode: Vaginal")) %>%
+      select(term, estimate, conf.low, conf.high, p.value) %>%
+      mutate(comparison = term) 
+
+    
+   file.name <- paste0("~/Handley Lab Dropbox/16S/Celiac/plot/model_plot/",i,"_month_glmer_stats.csv")  
+   write.csv(glmer.df,file.name)
+
+      glmer.df$stars <- cut(glmer.df$p.value, breaks = c(-Inf, 0.0001, 0.001, 0.01, 0.05, Inf), labels = c("****","***", "**", "*", "n.s."), right = FALSE)
+      
+      glmer.df <- glmer.df %>%
+        mutate(sig = paste(sprintf(estimate, fmt = '%.2f'),stars,sep=" "))
+      
+      
+      p <- ggplot(glmer.df, aes(y = term, x = estimate, 
+                              xmin = conf.low, xmax = conf.high, color = ifelse(p.value>0.05, 'black', 'red'))) +
+        geom_text(aes(label = sig), color = ifelse(glmer.df$p.value>0.05, 'black', 'red'), vjust = -0.5, hjust = 0.51, size = 4, position = position_dodge(width = 0.5), show.legend = F) +
+        #cellTheme +
+        geom_pointrange(position = position_dodge(width = 0.5)) +
+        geom_vline(xintercept = 1, linetype = "dashed", color = "gray") +
+        scale_x_log10(limits = c(0.001, 10000), 
+                      breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                      labels = c("1e-03","1e-02", "1e-01", "1e+00", "1e+01", "1e+02", "1e+03")) +
+        labs(x = "Odds Ratio (log scale)", 
+             y = "") +
+        theme(legend.position = "none") +
+        scale_color_identity()
+        
+        
+      plot.name <- paste0("~/Handley Lab Dropbox/16S/Celiac/plot/model_plot/",i,"_month_glmer_plot.pdf")
+      
+      ggsave(p,file = plot.name,width = 7,height = 8,dpi=600)
+  
+  
+}
+
+
+```
+
+
+
+# extract count table
+```{r}
+
+count.species <-left_join(metadata.final,vv.foi,by = "sampleName")
+count.species$count[is.na(count.species$count)] <- 0
+count.species <- count.species %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family","genus","species"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_species = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "count", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 column_to_rownames("lineage")
+                             
+dim(count.species)
+```
+
+
+
+# time series analysis on pairwise data.
+# LRT (Likely Ratio Test)
+The LRT examines two models for the counts, a full model with a certain number of terms and a reduced model, in which some of the terms of the full model are removed. The test determines if the increased likelihood of the data using the extra terms in the full model is more than expected if those extra terms are truly zero.
+comparing the differences between case and control data at each timepoint.
+```{r}
+library(DESeq2)
+
+# metadata.final.deseq <- metadata.final %>%
+#                         column_to_rownames("sampleName") %>%
+#                         rename(`Dx Status` = "Disease_status")
+# 
+# dds <- DESeqDataSetFromMatrix(countData = count.species, 
+#                               colData = metadata.final.deseq, 
+#                               design = ~ Pair + month + Disease_status)
+
+
+
+ddsTC <- DESeqDataSet(fission, ~ strain + minute + strain:minute)
+
+ddsTC <- DESeq(ddsTC, test="LRT", reduced = ~ strain + minute)
+resTC <- results(ddsTC)
+resTC$symbol <- mcols(ddsTC)$symbol
+head(resTC[order(resTC$padj),], 4)
+
+
+
+fiss <- plotCounts(ddsTC, which.min(resTC$padj), 
+                   intgroup = c("minute","strain"), returnData = TRUE)
+fiss$minute <- as.numeric(as.character(fiss$minute))
+ggplot(fiss,
+  aes(x = minute, y = count, color = strain, group = strain)) + 
+  geom_point() + stat_summary(fun.y=mean, geom="line") +
+  scale_y_log10()
+
+
+resultsNames(ddsTC)
+
+
+res30 <- results(ddsTC, name="strainmut.minute30", test="Wald")
+res30[which.min(res30$padj),]
+
+
+betas <- coef(ddsTC)
+colnames(betas)
+
+
+
+topGenes <- head(order(resTC$padj),20)
+mat <- betas[topGenes, -c(1,2)]
+thr <- 3 
+mat[mat < -thr] <- -thr
+mat[mat > thr] <- thr
+pheatmap(mat, breaks=seq(from=-thr, to=thr, length=101),
+         cluster_col=FALSE)
+
+
+```

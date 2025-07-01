@@ -1,0 +1,193 @@
+---
+title: "Phage_prediction_pipeline_outputs"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(data.table)
+library(tidyverse)
+```
+
+
+jaeger outputs
+```{r}
+
+jaeger.output <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/jaeger/passing_Viralcontigs_default_jaeger.tsv")
+table(jaeger.output$prediction)
+# 8305 contigs detected
+
+```
+
+
+
+geNomad outputs
+```{r}
+
+# within the passing_Viralcontigs_aggregated_classification folder
+
+contig.IDs <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_aggregated_classification/passing_Viralcontigs_aggregated_classification.tsv")
+# 8485 IDs in total
+
+
+dim(contig.IDs %>% filter(virus_score > 0.6))
+# 7807
+dim(contig.IDs %>% filter(virus_score > 0.8))
+# 7036
+dim(contig.IDs %>% filter(virus_score > 0.95))
+# 4924
+
+
+
+# within passing_Viralcontigs_annotate folder
+
+# mmseqs2 results
+mmseqs <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_annotate/passing_Viralcontigs_mmseqs2.tsv",header = FALSE)
+# 32821
+
+geNomad.genes <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_annotate/passing_Viralcontigs_genes.tsv")
+# 51537
+
+taxonomy <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_annotate/passing_Viralcontigs_taxonomy.tsv")
+# 7755
+
+# within passing_Viralcontigs_find_proviruses folder
+
+provirus.genes <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_find_proviruses/passing_Viralcontigs_provirus_genes.tsv")
+dim(provirus.genes)
+# 0 16
+
+
+# within passing_Viralcontigs_marker_classification folder
+
+features <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_marker_classification/passing_Viralcontigs_features.tsv")
+dim(features)
+# 8485
+
+marker <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_marker_classification/passing_Viralcontigs_marker_classification.tsv")
+dim(marker)
+# 8485
+
+
+
+# within passing_Viralcontigs_nn_classification folder
+nn <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_nn_classification/passing_Viralcontigs_nn_classification.tsv")
+# 8485
+
+View(nn)
+
+# within passing_Viralcontigs_summary folder
+plasmid_genes <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_summary/passing_Viralcontigs_plasmid_genes.tsv")
+# 230
+
+View(plasmid_genes)
+
+plasmid_summary <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_summary/passing_Viralcontigs_plasmid_summary.tsv")
+# 73
+
+View(plasmid_summary)
+
+View(plasmid_summary)
+
+virus_genes <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_summary/passing_Viralcontigs_virus_genes.tsv")
+# 49805
+View(virus_genes)
+
+virus_summary <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/geNomad/passing_Viralcontigs_summary/passing_Viralcontigs_virus_summary.tsv")
+# 7806
+
+
+
+```
+
+
+
+phold outputs
+```{r}
+
+
+cds_functions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/phold_all_cds_functions.tsv")
+# 135728
+
+# columns:
+# Total CDS counts
+# Total CDS counts of each PHROG category
+# Total CDS counts for CARD, VFDB, Defensefinder and ACR databases
+
+
+cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/phold_per_cds_predictions.tsv")
+# 51537
+# columns:
+# phrog which gives the tophit PHROG group
+# function which gives the PHROG category associated with the top hit
+# product which gives the detailed protein annotation
+# bitscore until tLen - these are taken from the foldseek output for the top hit protein
+# function_with_highest_bitscore_proportion and all columns with bitscore_proportion are related to probabilistic annotation
+
+unique(cds_predictions$category)
+
+
+colnames(cds_predictions)[7] <- "category"
+
+pholdVirPassed_filt <- cds_predictions %>%
+  filter(product != "hypothetical protein") %>%
+  filter(category != "other") %>%
+  filter(category != "moron, auxiliary metabolic gene and host takeover") %>%
+  filter(category != "transcription regulation") %>%
+  filter(category != "unknown function") %>%
+  filter(category != "DNA, RNA and nucleotide metabolism")
+
+
+
+phrogsPerContig <- pholdVirPassed_filt %>%
+  group_by(contig_id, category) %>%
+  dplyr::count(contig_id, category) %>%
+  dcast(contig_id ~ category, value.var = "n")
+
+
+
+phrogsPerContig[is.na(phrogsPerContig)] <- 0
+colnames(phrogsPerContig) <- c("contig_id", "Connector", "Head_Packaging", "Integration_Excision", "Lysis", "Tail")
+
+phrogsPerContig <- phrogsPerContig %>%
+  rowwise() %>%
+  mutate(
+    Functionaldiversity = sum(c_across(-contig_id) > 0)
+  ) %>%
+  ungroup()
+
+
+View(phrogsPerContig)
+
+
+
+prostT5_3di_mean_probabilities <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/phold_prostT5_3di_mean_probabilities.csv",header = FALSE,sep = ",")
+# 51537
+
+
+
+# within sub_db_tophits folder
+
+acr_cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/sub_db_tophits/acr_cds_predictions.tsv")
+# 57
+
+
+card_cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/sub_db_tophits/card_cds_predictions.tsv")
+# 13
+
+
+defensefinder_cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/sub_db_tophits/defensefinder_cds_predictions.tsv")
+# 41
+
+
+netflax_cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/sub_db_tophits/netflax_cds_predictions.tsv")
+# 19
+
+
+vfdb_cds_predictions <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/sub_db_tophits/vfdb_cds_predictions.tsv")
+# 68
+
+
+```

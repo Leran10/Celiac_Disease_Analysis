@@ -1,0 +1,1709 @@
+---
+title: "Celiac_Phage_contigs_analysis_Coxph"
+output: html_document
+date: '2025-04-16'
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(vroom)
+library("limma");packageVersion("limma")
+library("edgeR");packageVersion("edgeR")
+library(pheatmap)
+library(survival)
+
+
+```
+
+
+# functions
+```{r}
+
+filter_and_save_wide_data <- function(genesCoverm, 
+                                      covered_fraction_threshold = 0.75, 
+                                      output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/") {
+  
+  # Set column names to match the original structure
+  colnames(genesCoverm) <- c("sampleID", "ORFID", "RPKM", "ReadCount", "Variance", "Mean", "covered_fraction", "covered_bases")
+  
+  # Apply coverage filter
+  genesCoverm2 <- genesCoverm %>%
+    mutate(
+      ReadCount_modified = ifelse(covered_fraction >= covered_fraction_threshold, ReadCount, 0),
+      Changed = ifelse(ReadCount != ReadCount_modified, 1, 0)
+    ) %>%
+    mutate(ReadCount = ReadCount_modified) %>%
+    select(-ReadCount_modified)
+  
+  # Count the number of changes
+  num_changes <- sum(genesCoverm2$Changed)
+  print(paste("Number of changes:", num_changes))
+  
+  # Convert to wide format
+  wide_rpkm_genes <- reshape2::dcast(genesCoverm2, ORFID ~ sampleID, value.var = "ReadCount")
+  colnames(wide_rpkm_genes) <- gsub("_stats", "", colnames(wide_rpkm_genes))
+  
+  # Filter out rows with all zeroes
+  filtered_wide_rpkm_genes <- wide_rpkm_genes %>%
+    filter(rowSums(across(where(is.numeric))) != 0)
+  
+  # Save the filtered wide format data
+  rds_filename_wide <- paste0("wide_rpkm_genes_", covered_fraction_threshold * 100, "Cov.rds")
+  
+  saveRDS(filtered_wide_rpkm_genes, file = file.path(output_path, rds_filename_wide))
+  
+  return(filtered_wide_rpkm_genes)
+}
+
+
+
+```
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv") %>%
+            column_to_rownames("sampleName")
+
+phold <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/phold/phold_per_cds_predictions.tsv")
+
+mmseqs <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/mmseqs/genomes_and_unresolved_edges_mmseqs_lca.tsv",col_names = FALSE) %>%
+          dplyr::rename("contig_id" = X1)  
+
+```
+
+
+# prepare contig count table with 75% mapping filtering
+```{r}
+
+contig <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE)
+# 6555 contigs after Coverm mapping
+
+# fraction histogram
+p.contig.frag.hist <- ggplot(contig, aes(x=X7)) +
+  geom_histogram(binwidth=0.01, fill="blue", color="black", alpha=0.7) +
+  theme_minimal() +
+  labs(title="contig fraction Histogram", x="Fraction", y="Frequency")
+
+filter_and_save_wide_data(contig, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/")
+
+
+contig.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/contig_wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+# 6333 contigs have non-0 counts across all samples after 75% mapping rate filtering
+
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+# so we will just remove it
+contig.count <- contig.processed %>%
+            select(-c("NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M"))
+
+
+colnames(contig.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(contig.count))
+
+colnames(contig.count) <- str_replace_all(colnames(contig.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(contig.count) <- sapply(strsplit(colnames(contig.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(contig.count) <- ifelse(colnames(contig.count) %like% "_6Y",gsub("_6Y","_72M",colnames(contig.count)),
+                                           ifelse(colnames(contig.count) %like% "_7Y",gsub("_7Y","_84M",colnames(contig.count)),colnames(contig.count)))
+
+contig.count.table_0.75 <- t(contig.count) 
+# 339 6333
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+contig.abundance.table_0.75 <- merge(metadata,contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(contig.abundance.table_0.75)
+# 314 6358
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+contig.PA.table_0.75 <- contig.abundance.table_0.75 %>%
+                         mutate(across(26:6358, ~ as.integer(. != 0)))
+
+dim(contig.PA.table_0.75)
+# 314 6358
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+PA.contig.check_0.75 <- contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/PA.contig.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples (182 contigs left)
+non_rare_contig_0.75_0.03 <- PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+length(non_rare_contig_0.75_0.03)
+# 182
+
+
+# -------------------------------------prevelence filtering on abundance table------------------------------------------#
+
+contig.abundance.table_0.75_prevFiltered <- contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig_0.75_0.03)))
+dim(contig.abundance.table_0.75_prevFiltered)
+# 314 207
+
+
+# -------------------------------------prevelence filtering on PA table------------------------------------------#
+
+# prevelence filtering on PA table 
+contig.PA.table_0.75_prevFiltered <- contig.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig_0.75_0.03)))
+dim(contig.PA.table_0.75_prevFiltered)
+# 314 207
+
+```
+
+
+# prepare contig count table without 75% mapping filtering
+```{r}
+
+contig.count.table.full <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE) %>%
+          select(c("X1","X2","X3")) %>%
+          pivot_wider(names_from = "X2",values_from = "X3") %>%
+          mutate(X1 = gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",X1)) %>%
+          mutate(X1 = str_replace_all(X1,"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")) %>%
+          mutate(X1 = sapply(strsplit(X1,"_Stool_|_Stool_Celiac_"),"[",2)) %>%
+          mutate(X1 = ifelse(X1 %like% "_6Y",gsub("_6Y","_72M",X1),
+                                           ifelse(X1 %like% "_7Y",gsub("_7Y","_84M",X1),X1))) %>%
+          filter(X1 != "01_GEMM_106_12M") %>%
+          column_to_rownames("X1")
+dim(contig.count.table.full)
+# 338 6555
+
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+contig.abundance.table_full <- merge(metadata,contig.count.table.full,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(contig.abundance.table_full)
+# 313 6580
+
+
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+contig.PA.table_full <- contig.abundance.table_full %>%
+                         mutate(across(26:6580, ~ as.integer(. != 0)))
+
+dim(contig.PA.table_full)
+# 313 6580
+
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+PA.contig.check_full <- contig.PA.table_full %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(PA.contig.check_full,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/PA.contig.check_full.csv")
+
+
+# find viruses that exist in only 3% of the samples (4078 contigs left)
+non_rare_contig_full_0.03 <- PA.contig.check_full %>% filter(total_PA >=9) %>% pull(Contig)
+length(non_rare_contig_full_0.03)
+# 4078
+
+# -------------------------------------3% prevelence filtering on abundance table------------------------------------------#
+
+contig.abundance.table_full_prevFiltered <- contig.abundance.table_full %>% dplyr::select(c(1:25,all_of(non_rare_contig_full_0.03)))
+dim(contig.abundance.table_full_prevFiltered)
+# 313 4103
+
+
+# -------------------------------------3% prevelence filtering on PA table------------------------------------------#
+
+contig.PA.table_full_prevFiltered <- contig.PA.table_full %>% dplyr::select(c(1:25,all_of(non_rare_contig_full_0.03)))
+dim(contig.PA.table_full_prevFiltered)
+# 313 4103
+
+
+```
+
+
+
+analysis design
+
+Q2: I dentify viruses that could be the preceding markers of celiac disease
+1. For this analysis, we only extract the precede samples from disease group,
+2.Give the nature of orf data which is not super sparse as virus data, we can use the abundance instead of presense and absense for the model.
+3.since this analysis need to be done for each orf individually, we first apply it on the filtered data, which contains 2154 orfs.
+4.We calculate the time-to-event variable, and use it as the outcome variable in the model. The predictor would be each orf, and the confounder variables:
+  coxph(surv(month-to-onset) ~ orf1_count + Sex + Country + HLA+ deliver_mode + feeding_type + gluten + (1|patient_ID))
+5. Some points to pay attention: gluten food has some levels that are with very few data points (< 5). If we can prove the orf level and gluten food taking age has a linear relation, we can treat gluten food as a contenious variable, but we cannot use a very straightforward way to prove that, so we will still treat it as categorical, but in this way we need to keep in mind that, those levels with few data points may add noise to the model which could lead to overfitting, also, the stats output of those levels may not accurate.So be cautious when interpret the results.
+
+
+
+
+                                                                                             ##########################
+                                                                                             # ###################### #
+                                                                                             # #   Abundance table  # #
+                                                                                             # ###################### #
+                                                                                             ##########################
+
+
+
+##--------------------------------------------------------------------------------Using 75% mapping rate filtered abundance table----------------------------------------------------------------##
+                                                                                                (6333 contigs)
+                                                                                              
+                                                                                                
+                                                                      #######################################################################
+                                                                      #             Limma model on 3% pravelance filtered data              #   
+                                                                      #         contig.abundance.table_0.75_prevFiltered (182 contigs)      #
+                                                                      #######################################################################
+```{r}
+
+contig.abundance.table_0.75_prevFiltered_clean <- contig.abundance.table_0.75_prevFiltered %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,208,209,everything()))
+
+
+colnames(contig.abundance.table_0.75_prevFiltered_clean)
+
+dge <- DGEList(counts = contig.abundance.table_0.75_prevFiltered_clean[,28:209] + 1)
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log = TRUE, prior.count = 1)  # log2(CPM + pseudo count)
+contig.abundance.table_0.75_prevFiltered_clean.norm <- contig.abundance.table_0.75_prevFiltered_clean
+contig.abundance.table_0.75_prevFiltered_clean.norm[,28:209] <- logCPM
+
+# 118 209
+
+contig.name <- colnames(contig.abundance.table_0.75_prevFiltered_clean.norm)[28:209]
+
+contig.stats.list.1 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.abundance.table_0.75_prevFiltered_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75_prevFiltered/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75_prevFiltered/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.1[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.1) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+View(contig.cox.res)
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75_prevFiltered/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75_prevFiltered/contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+
+```
+
+
+
+
+                                                                          #################################################################
+                                                                          #          Limma model on non-3% pravelance filtered data       #
+                                                                          #            contig.abundance.table_0.75 (6333 contigs)         #
+                                                                          #################################################################
+                                                                          
+                                                                          
+```{r}
+
+contig.abundance.table_0.75_clean <- contig.abundance.table_0.75 %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,6359,6360,everything()))
+
+
+dge <- DGEList(counts = contig.abundance.table_0.75_clean[,28:6360] + 1)
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log = TRUE, prior.count = 1)  # log2(CPM + pseudo count)
+contig.abundance.table_0.75_clean.norm <- contig.abundance.table_0.75_clean
+contig.abundance.table_0.75_clean.norm[,28:6360] <- logCPM
+# 118 6360
+
+# prepare correct variable format
+contig.abundance.table_0.75_clean.norm$feeding_first_year <- factor(contig.abundance.table_0.75_clean.norm$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+contig.abundance.table_0.75_clean.norm$HLA.Category <- factor(contig.abundance.table_0.75_clean.norm$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+contig.abundance.table_0.75_clean.norm$Country <- factor(contig.abundance.table_0.75_clean.norm$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+contig.abundance.table_0.75_clean.norm$Sex <- factor(contig.abundance.table_0.75_clean.norm$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+contig.abundance.table_0.75_clean.norm$Delivery.Mode <- factor(contig.abundance.table_0.75_clean.norm$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+contig.abundance.table_0.75_clean.norm$Age.at.Gluten.Introduction..months. <- factor(contig.abundance.table_0.75_clean.norm$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+contig.abundance.table_0.75_clean.norm$Dx.Status <- factor(contig.abundance.table_0.75_clean.norm$Dx.Status,levels = c("CONTROL","CELIAC"))
+
+
+contig.name <- colnames(contig.abundance.table_0.75_clean.norm)[28:6360]
+
+contig.stats.list.2 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.abundance.table_0.75_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.2[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.2) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/sig.annotation.phold.csv")
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_0.75/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+
+```
+
+
+
+
+                                                                  ######################################################################
+                                                                  #            Limma model on 3% pravelance filtered data              #
+                                                                  #        contig.abundance.table_full_prevFiltered (4078 contigs)     #
+                                                                  ######################################################################
+                                                                  
+```{r}
+
+contig.abundance.table_full_prevFiltered_clean <- contig.abundance.table_full_prevFiltered %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,4104,4105,everything()))
+# 313 4103
+
+dge <- DGEList(counts = contig.abundance.table_full_prevFiltered_clean[,28:4105] + 1)
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log = TRUE, prior.count = 1)  # log2(CPM + pseudo count)
+contig.abundance.table_full_prevFiltered_clean.norm <- contig.abundance.table_full_prevFiltered_clean
+contig.abundance.table_full_prevFiltered_clean.norm[,28:4105] <- logCPM
+# 117 4105
+contig.name <- colnames(contig.abundance.table_full_prevFiltered_clean.norm)[28:4105]
+
+contig.stats.list.3 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.abundance.table_full_prevFiltered_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.3[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.3) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/sig.annotation.phold.csv")
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full_prevFiltered/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+                                                                 
+```
+
+
+
+                                                                      ##################################################################
+                                                                      #         Limma model on non-3% pravelance filtered data         #
+                                                                      #           contig.abundance.table_full (6555 contigs)           #
+                                                                      ##################################################################
+```{r}
+
+
+contig.abundance.table_full_clean <- contig.abundance.table_full %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,6581,6582,everything()))
+                                                   
+dim(contig.abundance.table_full_clean)                                                   
+# 117 6582
+
+dge <- DGEList(counts = contig.abundance.table_full_clean[,28:6582] + 1)
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log = TRUE, prior.count = 1)  # log2(CPM + pseudo count)
+contig.abundance.table_full_clean.norm <- contig.abundance.table_full_clean
+contig.abundance.table_full_clean.norm[,28:6582] <- logCPM
+# 117 6582
+contig.name <- colnames(contig.abundance.table_full_clean.norm)[28:6582]
+
+contig.stats.list.4 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.abundance.table_full_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.4[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.4) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/sig.annotation.phold.csv")
+
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.abundance.table_full/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+```
+
+
+
+
+                                                                                             ###################
+                                                                                             # ############### #
+                                                                                             # #   PA table  # #
+                                                                                             # ############### #
+                                                                                             ###################
+                                                                                             
+##--------------------------------------------------------------------------------Using 75% mapping rate filtered PA table----------------------------------------------------------------##
+                                                                                               (6333 contigs)
+                                                                                               
+                                                                                               
+                                                                      #######################################################################
+                                                                      #             Limma model on 3% pravelance filtered data              #   
+                                                                      #         contig.PA.table_0.75_prevFiltered (182 contigs)             #
+                                                                      #######################################################################
+                                                                                             
+                                                                                             
+```{r}
+
+contig.PA.table_0.75_prevFiltered_clean <- contig.PA.table_0.75_prevFiltered %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,208,209,everything()))
+                                                   
+dim(contig.PA.table_0.75_prevFiltered_clean)                                                  
+# 118 209
+
+contig.PA.table_0.75_prevFiltered_clean.norm <- contig.PA.table_0.75_prevFiltered_clean
+contig.name <- colnames(contig.PA.table_0.75_prevFiltered_clean.norm)[28:209]
+
+contig.stats.list.5 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.PA.table_0.75_prevFiltered_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.5[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.5) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/sig.annotation.phold.csv")
+
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+```
+                                                                          
+
+
+                                                                          #################################################################
+                                                                          #          Limma model on non-3% pravelance filtered data       #
+                                                                          #            contig.PA.table_0.75 (6333 contigs)                #
+                                                                          #################################################################
+                                                                          
+```{r}
+
+contig.PA.table_0.75_clean <- contig.PA.table_0.75 %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,6359,6360,everything()))
+                                                   
+dim(contig.PA.table_0.75_clean)                                                  
+# 118 6360
+
+contig.PA.table_0.75_clean.norm <- contig.PA.table_0.75_clean
+
+contig.name <- colnames(contig.PA.table_0.75_clean.norm)[28:6360]
+
+contig.stats.list.6 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.PA.table_0.75_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.6[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+
+contig.cox.res <- bind_rows(contig.stats.list.6) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75_prevFiltered/sig.annotation.phold.csv")
+
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_0.75/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+```
+                                                                          
+                                                                          
+##--------------------------------------------------------------------------Using non 75% mapping rate filtered PA table----------------------------------------------------------------##
+                                                                                            (6555 contigs)
+                                                                                            
+                                                                                            
+                                                                  ######################################################################
+                                                                  #            Limma model on 3% pravelance filtered data              #
+                                                                  #        contig.PA.table_full_prevFiltered (4078 contigs)            #
+                                                                  ######################################################################
+                                                                  
+```{r}
+
+
+contig.PA.table_full_prevFiltered_clean <- contig.PA.table_full_prevFiltered %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,4104,4105,everything()))
+                                                   
+dim(contig.PA.table_full_prevFiltered_clean)                                                  
+# 117 4105
+
+contig.PA.table_full_prevFiltered_clean.norm <- contig.PA.table_full_prevFiltered_clean
+
+
+contig.name <- colnames(contig.PA.table_full_prevFiltered_clean.norm)[28:4105]
+
+contig.stats.list.7 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.PA.table_full_prevFiltered_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.7[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.7) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/sig.annotation.phold.csv")
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full_prevFiltered/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+                                                                  
+```
+
+
+                                                                      ##################################################################
+                                                                      #         Limma model on non-3% pravelance filtered data         #
+                                                                      #           contig.PA.table_full (6555 contigs)                  #
+                                                                      ##################################################################
+                                                                      
+```{r}
+
+contig.PA.table_full_clean <- contig.PA.table_full %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,6581,6582,everything()))
+                                                   
+dim(contig.PA.table_full_clean)                                                  
+# 117 6582
+
+contig.PA.table_full_clean.norm <- contig.PA.table_full_clean
+
+contig.name <- colnames(contig.PA.table_full_clean.norm)[28:6582]
+
+contig.stats.list.8 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = contig.PA.table_full_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.8[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.8) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+View(sig.annotation)
+sig.annotation <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),mmseqs,by = "contig_id")
+sig.annotation.phold <- merge(contig.cox.res %>% filter(`P-adjust` < 0.05) %>% rename("contig_id" = "Contig"),phold,by = "contig_id")
+
+write.csv(sig.annotation,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/sig.annotation.csv")
+write.csv(sig.annotation.phold,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/sig.annotation.phold.csv")
+
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/contig_cox_res.csv",sep = "\t")
+
+library(ggrepel)
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/p.contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ggsave(p.adj.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/contig.PA.table_full/p.adj.contig.stats.pdf",width = 10, height = 15,dpi=600)
+
+
+p.adj.sig.only <- ggplot(sig.annotation,aes(x = `exp.coef.`,y=contig_id,color = `P-adjust-sig`)) +
+geom_point(size = 2) +
+geom_text_repel(aes(label = X4)) +
+geom_vline(xintercept = 1,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+# check contig 10983
+table(contig.PA.table_full_clean.norm$virus_comp_10983_cycle_1)
+
+```
+
+
+
+
+
+
+
+
+                                                                      ############################
+                                                                      #  Do analysis by country  #
+                                                                      ############################
+
+
+# We didn't see many differences in above analysis, especally when we do 75% fraction filtering. But we must do the filtering because otherwise there are many
+# very short mapped contigs which makes downstream analysis inaccurate. 
+# We want to try filtering the 75% mapping rate on two countries separately and see if that could give more contigs
+
+# split dataset and filter 75% fraction by country
+```{r}
+
+US.contig <- contig %>%
+             filter(X1 %like% "_01_GEMM_")
+
+
+
+Italy.contig <- contig %>%
+             filter(X1 %like% "_02_GEMM_")
+
+
+
+
+US.contig.abundance.table_0.75_prevFiltered_clean <- contig.abundance.table_0.75_prevFiltered %>%
+                                                   filter(Country %like% "US") %>%
+                                                   filter(disease_onset_details == "Case_precede") %>%
+                                                   mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                                                   mutate(event = 1) %>%
+                                                   select(c(1:25,208,209,everything()))
+
+
+dge <- DGEList(counts = US.contig.abundance.table_0.75_prevFiltered_clean[,28:209] + 1)
+dge <- calcNormFactors(dge)
+logCPM <- cpm(dge, log = TRUE, prior.count = 1)  # log2(CPM + pseudo count)
+US.contig.abundance.table_0.75_prevFiltered_clean.norm <- US.contig.abundance.table_0.75_prevFiltered_clean
+US.contig.abundance.table_0.75_prevFiltered_clean.norm[,28:209] <- logCPM
+dim(US.contig.abundance.table_0.75_prevFiltered_clean.norm)
+# 85 209
+
+contig.name <- colnames(US.contig.abundance.table_0.75_prevFiltered_clean.norm)[28:209]
+
+contig.stats.list.1 <- list()
+for (i in contig.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Delivery.Mode + deliver_Age.at.Gluten.Introduction..months., data = US.contig.abundance.table_0.75_prevFiltered_clean.norm)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/By_country/contig.abundance.table_0.75_prevFiltered/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/By_country/contig.abundance.table_0.75_prevFiltered/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("Contigs") %>% 
+           mutate(Contig = i)
+     
+     print(dim(df))
+     
+     contig.stats.list.1[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)||grepl("contrasts can be applied only to factors with 2 or more levels", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+contig.cox.res <- bind_rows(contig.stats.list.1) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+View(contig.cox.res)
+
+write.csv(contig.cox.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/By_country/contig.abundance.table_0.75_prevFiltered/contig_cox_res.csv",sep = "\t")
+
+
+p.contig.stats <- ggplot(contig.cox.res %>% filter(!is.na(`exp.coef.`)),aes(x = `exp.coef.`,y=Contig,color = `P-Value`)) +
+geom_point(size = 2) +
+geom_vline(xintercept = 0,linetype="dotted") +
+scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+#geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+theme(axis.text.y = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12,face = "bold")) +
+labs(x = "exp(Coef)",y = "") +
+theme_bw()
+
+
+ 
+ggsave(p.contig.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Cox/By_country/contig.abundance.table_0.75_prevFiltered/contig.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+
+
+
+
+```
+
+
+
+
+# with or without 3% prevelance filtering
+```{r}
+
+##############################
+# no 3% pravelance filtering #
+##############################
+
+#-------------------------------------------prepare abundance table----------------------------------------------------#
+
+US.contig.abundance.table_0.75 <- merge(metadata %>% filter(rownames(.) %in% rownames(US.contig.count.table_0.75)),US.contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(US.contig.abundance.table_0.75)
+#201 4399
+
+
+Italy.contig.abundance.table_0.75 <- merge(metadata %>% filter(rownames(.) %in% rownames(Italy.contig.count.table_0.75)),Italy.contig.count.table_0.75,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(Italy.contig.abundance.table_0.75)
+#113 2928
+
+
+#-------------------------------------------prepare PA table------------------------------------------------------#
+
+US.contig.PA.table_0.75 <- US.contig.abundance.table_0.75 %>%
+                         mutate(across(26:4399, ~ as.integer(. != 0)))
+
+
+Italy.contig.PA.table_0.75 <- Italy.contig.abundance.table_0.75 %>%
+                         mutate(across(26:2928, ~ as.integer(. != 0)))
+
+
+
+
+
+###########################
+# 3% pravelance filtering #
+###########################
+
+US.PA.contig.check_0.75 <- US.contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+
+write.csv(US.PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/US_Contig/US_PA.contig.check_0.75.csv")
+
+
+Italy.PA.contig.check_0.75 <- Italy.contig.PA.table_0.75 %>% 
+                   dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                   pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                   group_by(Contig) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Contig,total_PA) %>%
+                   arrange(-total_PA)
+
+write.csv(Italy.PA.contig.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Italy_Contig/Italy_PA.contig.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples (182 contigs left)
+US_non_rare_contig_0.75_0.03 <- US.PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+# 107
+Italy_non_rare_contig_0.75_0.03 <- Italy.PA.contig.check_0.75 %>% filter(total_PA >=9) %>% pull(Contig)
+# 48
+
+
+# -------------------------------------prevelence filtering on abundance table------------------------------------------#
+
+US.contig.abundance.table_0.75_prevFiltered <- US.contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(US_non_rare_contig_0.75_0.03)))
+
+Italy.contig.abundance.table_0.75_prevFiltered <- Italy.contig.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(Italy_non_rare_contig_0.75_0.03)))
+
+
+```
+
+
+
