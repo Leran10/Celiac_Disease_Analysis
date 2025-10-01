@@ -1,0 +1,30 @@
+# R data files (typically large binary files)
+*.rds
+*.RData
+*.Rdata
+
+# Large concatenated files
+*concatenated.txt
+*Coverm_concatenated.txt
+
+# PDF outputs and plots
+*.pdf
+
+# Large protein sequence files
+*.faa
+
+# Temporary files
+*.tmp
+*.temp
+
+# R temporary files
+.Rhistory
+.RData
+.Ruserdata
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
