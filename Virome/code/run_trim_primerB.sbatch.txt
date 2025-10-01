@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# bbduk trim_primerB.sbatch
+
+#SBATCH --constraint=cpu_E52650
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=128G
+#SBATCH --array=1-48
+#SBATCH -J bbduk
+#SBATCH --mail-user=leranwang
+#SBATCH --mail-type=ALL
+
+
+source /ref/sahlab/software/anaconda3/bin/activate
+conda activate bbtools
+
+# Set Variables
+CONPATH=/scratch/sahlab/leran/update_hecatomb/databases/contaminants # non-biological sequences
+HOSTPATH=/scratch/sahlab/leran/update_hecatomb/databases/human_masked # host sequence database
+
+
+# Prep output directories
+#mkdir -p ./clumped
+#mkdir -p ./QC/step_{1..8;
+
+# Set file names
+read1=$(sed -n ${SLURM_ARRAY_TASK_ID}p ./lookup.txt)
+sample=$(basename ${read1} _R1.fastq.gz)
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_8digits_primerB_rc.fa \
+out=./processed_data/right_8_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_8_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_8_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_8_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_8_primerB_rc/${sample}.s1.stats \
+k=8 restrictright=8 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_9digits_primerB_rc.fa \
+out=./processed_data/right_9_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_9_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_9_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_9_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_9_primerB_rc/${sample}.s1.stats \
+k=9 restrictright=9 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_10digits_primerB_rc.fa \
+out=./processed_data/right_10_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_10_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_10_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_10_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_10_primerB_rc/${sample}.s1.stats \
+k=10 restrictright=10 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_11digits_primerB_rc.fa \
+out=./processed_data/right_11_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_11_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_11_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_11_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_11_primerB_rc/${sample}.s1.stats \
+k=11 restrictright=11 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_12digits_primerB_rc.fa \
+out=./processed_data/right_12_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_12_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_12_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_12_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_12_primerB_rc/${sample}.s1.stats \
+k=12 restrictright=12 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_13digits_primerB_rc.fa \
+out=./processed_data/right_13_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_13_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_13_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_13_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_13_primerB_rc/${sample}.s1.stats \
+k=13 restrictright=13 ordered=t rcomp=f ow=t
+
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_14digits_primerB_rc.fa \
+out=./processed_data/right_14_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_14_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_14_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_14_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_14_primerB_rc/${sample}.s1.stats \
+k=14 restrictright=14 ordered=t rcomp=f ow=t
+
+
+
+bbduk.sh in=${sample}._R1.fastq.gz in2=${sample}._R1.fastq.gz \
+ref=$CONPATH/right_first_15digits_primerB_rc.fa \
+out=./processed_data/right_15_primerB_rc/${sample}_R1.s1.out.fastq out2=./processed_data/right_15_primerB_rc/${sample}_R2.s1.out.fastq \
+outm=./processed_data/right_15_primerB_rc/${sample}_R1.removed_reads.fastq outm2= ./processed_data/right_15_primerB_rc/${sample}_R2.removed_reads.fastq
+stats=./QC/step_1/right_15_primerB_rc/${sample}.s1.stats \
+k=15 restrictright=15 ordered=t rcomp=f ow=t
+         

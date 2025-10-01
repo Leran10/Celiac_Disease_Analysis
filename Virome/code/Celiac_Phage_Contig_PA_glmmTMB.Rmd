@@ -1,0 +1,567 @@
+---
+title: "Celiac_Phage_Contig_PA_glmmTMB"
+output: html_document
+date: "2025-09-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(edgeR)
+library(glmmTMB)
+library(broom.mixed)  # tidy() for mixed models
+library(dplyr)
+library(purrr)
+library(tibble)
+```
+
+
+# load data
+```{r}
+
+# total cohort
+total.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(total.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(total.contig.abundance.clean_0.75_0.03))
+
+total.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+
+# US cohort
+US.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(US.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(US.contig.abundance.clean_0.75_0.03))
+
+
+US.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+# Italy cohort
+Italy.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(Italy.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(Italy.contig.abundance.clean_0.75_0.03))
+
+
+Italy.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+```
+
+
+# clean metadata, including modifying the formats of the data and setting up the threshold
+```{r}
+
+# check if column names of abundance table is consistent with row names of the metadata table
+stopifnot(identical(colnames(total.contig.abundance.clean_0.75_0.03), rownames(total.contig.metadata.clean_0.75_0.03)))
+
+# clean metadata
+# prepare correct variable format
+total.contig.metadata.clean_0.75_0.03$feeding_first_year <- factor(total.contig.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(total.contig.metadata.clean_0.75_0.03$feeding_first_year)
+# Breast_fed  Formula       Breastmilk_and_formula 
+#  100            40                    103
+total.contig.metadata.clean_0.75_0.03$HLA.Category <- factor(total.contig.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+table(total.contig.metadata.clean_0.75_0.03$HLA.Category)
+# Standard Risk     High Risk   Low/No Risk 
+#      123            82            38
+total.contig.metadata.clean_0.75_0.03$Sex <- factor(total.contig.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+table(total.contig.metadata.clean_0.75_0.03$Sex)
+# Female   Male 
+#    194     49 
+total.contig.metadata.clean_0.75_0.03$Delivery.Mode <- factor(total.contig.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+table(total.contig.metadata.clean_0.75_0.03$Delivery.Mode)
+  # Vaginal C-Section 
+  #     180     63 
+total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+table(total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 4  9 46 64 32 27 29  7  1 15  9
+total.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(total.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CELIAC","CONTROL"))
+table(total.contig.metadata.clean_0.75_0.03$Dx.Status)
+ # CELIAC CONTROL 
+ #    114    129 
+total.contig.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+table(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined)
+# t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+# 53        20        40        19        23        25        27        36 
+
+
+```
+
+
+
+#----------------------------------------------------Total Cohort---------------------------------------------------#
+
+# Compute PA threshold (CPM-anchored, library-aware)
+```{r}
+
+total.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+total.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(total.contig.abundance.clean_0.75_0.03) %in% rownames(total.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+total.contig.metadata.clean_0.75_0.03 <- total.contig.metadata.clean_0.75_0.03[colnames(total.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+total.y <- DGEList(counts = total.contig.abundance.clean_0.75_0.03, samples = total.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+total.y <- total.y[rowSums(total.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robust for sparse data)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+total.cpm_mat <- edgeR::cpm(total.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+total.present_logical <- (total.cpm_mat >= total.target_cpm) & (total.y$counts >= total.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+total.PA <- matrix(
+  as.integer(total.present_logical),
+  nrow = nrow(total.present_logical),
+  ncol = ncol(total.present_logical),
+  dimnames = dimnames(total.present_logical)
+)
+
+dim(total.PA)
+# 109 243
+
+## ---- 4) Quick sanity checks ------------------------------------------------
+# How many “present” calls overall?
+mean(total.PA)                      # fraction of 1s
+summary(rowSums(total.PA))          # #samples present per gene
+summary(colSums(total.PA))          # #genes present per sample
+
+# Optional: keep genes present in at least M samples (global prevalence)
+total.M <- 6L
+total.keep <- rowSums(total.PA) >= M
+total.PA_kept <- total.PA[total.keep, , drop = FALSE]
+dim(total.PA_kept)
+# 109 243
+
+```
+
+
+
+# fit glmmTMB model
+```{r}
+
+## 0) Align metadata to PA columns (safety)
+stopifnot(all(colnames(total.PA) %in% rownames(total.contig.metadata.clean_0.75_0.03)))
+total.PA.meta <- total.contig.metadata.clean_0.75_0.03[colnames(total.PA), , drop = FALSE]
+dim(total.PA.meta)
+# 243  24
+
+## 1) Make sure key variables are factors with sensible baselines
+total.PA.meta <- within(total.PA.meta, {
+  Dx.Status                 <- relevel(factor(Dx.Status), ref = "CONTROL")  # set your baseline
+  onset_timeline_combined   <- droplevels(factor(onset_timeline_combined))
+  Country                   <- droplevels(factor(Country))
+  Sex                       <- droplevels(factor(Sex))
+  HLA.Category              <- droplevels(factor(HLA.Category))
+  feeding_first_year        <- droplevels(factor(feeding_first_year))
+  Delivery.Mode             <- droplevels(factor(Delivery.Mode))
+  patientID                 <- factor(patientID)
+})
+
+## 2) Helper to build a long data.frame for gene g (row index)
+make_df <- function(g) {
+  tibble(
+    gene   = rownames(total.PA)[g],
+    PA     = as.integer(total.PA[g, ]),
+    patientID,
+    Dx.Status,
+    onset_timeline_combined,
+    Country, Sex,
+    Age.at.Gluten.Introduction..months.,
+    HLA.Category, feeding_first_year, Delivery.Mode
+  ) %>% bind_cols(total.PA.meta[, c("patientID","Dx.Status","onset_timeline_combined",
+                           "Country","Sex","Age.at.Gluten.Introduction..months.",
+                           "HLA.Category","feeding_first_year","Delivery.Mode")])
+  # The above line ensures columns come from 'meta'; if name conflict appears,
+  # you can just build from 'meta' directly:
+  # df <- cbind(PA = as.integer(PA[g, ]), meta)
+}
+
+## 3) Fitting function for one gene
+fit_one <- function(g) {
+  df <- data.frame(total.PA = as.integer(total.PA[g, ]), total.PA.meta, check.names = FALSE)
+
+  # Skip degenerate cases (all 0 or all 1)
+  if (length(unique(df$total.PA)) < 2L) return(NULL)
+
+  # Fit logistic GLMM with a random intercept for patientID (your "block")
+  fm <- try(
+    glmmTMB(
+      total.PA ~ Dx.Status * onset_timeline_combined +
+           Country + Sex + Age.at.Gluten.Introduction..months. +
+           HLA.Category + feeding_first_year + Delivery.Mode +
+           (1 | patientID),
+      family = binomial(link = "logit"),
+      data   = df,
+      control = glmmTMBControl(profile = TRUE, optCtrl = list(iter.max = 2e3, eval.max = 2e3))
+    ),
+    silent = TRUE
+  )
+  if (inherits(fm, "try-error")) return(NULL)
+
+  # Tidy fixed effects only; add gene id
+  tt <- broom.mixed::tidy(fm, effects = "fixed")
+  tt$gene <- rownames(total.PA)[g]
+  tt
+}
+
+## 4) Run across all genes (start with a subset first if you want)
+total.idx <- seq_len(nrow(total.PA))              # or subset, e.g., which(rowSums(PA) >= 6)
+total.res_list <- lapply(total.idx, fit_one)
+total.res <- bind_rows(total.res_list)
+
+## 5) (Optional) Focus on the Dx × time interaction terms and main Dx
+total.res_focus <- total.res %>%
+  filter(grepl("^Dx\\.Status", term)) %>%
+  group_by(term) %>%
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+## 6) Inspect results
+# Top signals in a specific contrast (example: CELIAC vs CONTROL at time t0-6)
+total.res_focus %>%
+  filter(grepl("Dx\\.StatusCELIAC:onset_timeline_combinedt0-6", term)) %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(20)
+
+# Or overall best signals across all Dx-related terms
+total.res_focus %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(30)
+
+
+
+
+```
+
+
+
+#-----------------------------------------------------US-----------------------------------------------------------#
+
+# Compute PA threshold (CPM-anchored, library-aware)
+```{r}
+
+
+US.target_cpm  <- 0.5   # e.g., 0.25–1.0 for very sparse data
+US.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(US.contig.abundance.clean_0.75_0.03) %in% rownames(US.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+US.contig.metadata.clean_0.75_0.03 <- US.contig.metadata.clean_0.75_0.03[colnames(US.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+sum(US.contig.abundance.clean_0.75_0.03 > 0)
+#1547
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+US.y <- DGEList(counts = US.contig.abundance.clean_0.75_0.03, samples = US.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+US.y <- US.y[rowSums(US.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+
+# Library-size normalization (robust for sparse data)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+US.cpm_mat <- edgeR::cpm(US.y, normalized.lib.sizes = TRUE)
+
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+US.present_logical <- (US.cpm_mat >= US.target_cpm) & (US.y$counts >= US.min_reads_floor)
+# FALSE  TRUE 
+# 24703  1547 
+
+# every non-zero count passed
+
+# Convert to 0/1 matrix with dimnames preserved
+US.PA <- matrix(
+  as.integer(US.present_logical),
+  nrow = nrow(US.present_logical),
+  ncol = ncol(US.present_logical),
+  dimnames = dimnames(US.present_logical)
+)
+
+dim(US.PA)
+# 150 175
+
+## ---- 4) Quick sanity checks ------------------------------------------------
+# How many “present” calls overall?
+mean(US.PA) # 0.05893333  
+summary(rowSums(US.PA))          # #samples present per gene
+summary(colSums(US.PA))          # #genes present per sample
+
+# Optional: keep genes present in at least M samples (global prevalence)
+US.M <- 6L
+US.keep <- rowSums(US.PA) >= US.M
+US.PA_kept <- US.PA[US.keep, , drop = FALSE]
+# 150 175
+
+
+```
+
+
+# fit glmmTMB model
+```{r}
+
+## 0) Align metadata to PA columns (safety)
+stopifnot(all(colnames(US.PA) %in% rownames(US.contig.metadata.clean_0.75_0.03)))
+US.PA.meta <- US.contig.metadata.clean_0.75_0.03[colnames(US.PA), , drop = FALSE]
+dim(US.PA.meta)
+# 175  25
+
+
+## 1) Make sure key variables are factors with sensible baselines
+US.PA.meta <- within(US.PA.meta, {
+  Dx.Status                 <- relevel(factor(Dx.Status), ref = "CONTROL")  # set your baseline
+  onset_timeline_combined   <- droplevels(factor(onset_timeline_combined))
+  Sex                       <- droplevels(factor(Sex))
+  HLA.Category              <- droplevels(factor(HLA.Category))
+  feeding_first_year        <- droplevels(factor(feeding_first_year))
+  Delivery.Mode             <- droplevels(factor(Delivery.Mode))
+  patientID                 <- factor(patientID)
+})
+
+## 2) Helper to build a long data.frame for gene g (row index)
+make_df <- function(g) {
+  tibble(
+    gene   = rownames(US.PA)[g],
+    PA     = as.integer(US.PA[g, ]),
+    patientID,
+    Dx.Status,
+    onset_timeline_combined,
+    Sex,
+    Age.at.Gluten.Introduction..months.,
+    HLA.Category, feeding_first_year, Delivery.Mode
+  ) %>% bind_cols(US.PA.meta[, c("patientID","Dx.Status","onset_timeline_combined",
+                                    "Sex","Age.at.Gluten.Introduction..months.",
+                                    "HLA.Category","feeding_first_year","Delivery.Mode")])
+}
+
+## 3) Fitting function for one gene
+fit_one <- function(g) {
+  df <- data.frame(US.PA = as.integer(US.PA[g, ]), US.PA.meta, check.names = FALSE)
+  
+  # Skip degenerate cases (all 0 or all 1)
+  if (length(unique(df$US.PA)) < 2L) return(NULL)
+  
+  # Fit logistic GLMM with a random intercept for patientID (your "block")
+  fm <- try(
+    glmmTMB(
+      US.PA ~ Dx.Status * onset_timeline_combined +
+        Sex + Age.at.Gluten.Introduction..months. +
+        HLA.Category + feeding_first_year + Delivery.Mode +
+        (1 | patientID),
+      family = binomial(link = "logit"),
+      data   = df,
+      control = glmmTMBControl(profile = TRUE, optCtrl = list(iter.max = 2e3, eval.max = 2e3))
+    ),
+    silent = TRUE
+  )
+  if (inherits(fm, "try-error")) return(NULL)
+  
+  # Tidy fixed effects only; add gene id
+  tt <- broom.mixed::tidy(fm, effects = "fixed")
+  tt$gene <- rownames(US.PA)[g]
+  tt
+}
+
+## 4) Run across all genes (start with a subset first if you want)
+US.idx <- seq_len(nrow(US.PA))              # or subset, e.g., which(rowSums(PA) >= 6)
+US.res_list <- lapply(US.idx, fit_one)
+US.res <- bind_rows(US.res_list)
+
+
+## 5) (Optional) Focus on the Dx × time interaction terms and main Dx
+US.res_focus <- US.res %>%
+  filter(grepl("^Dx\\.Status", term)) %>%
+  group_by(term) %>%
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+## 6) Inspect results
+# Top signals in a specific contrast (example: CELIAC vs CONTROL at time t0-6)
+US.res_focus %>%
+  filter(grepl("Dx\\.StatusCELIAC:onset_timeline_combinedt0-6", term)) %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(20)
+
+# Or overall best signals across all Dx-related terms
+US.res_focus %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(30)
+
+
+
+```
+
+
+
+#-----------------------------------------------------Italy-----------------------------------------------------------#
+
+# Compute PA threshold (CPM-anchored, library-aware)
+```{r}
+
+
+Italy.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+Italy.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(Italy.contig.abundance.clean_0.75_0.03) %in% rownames(Italy.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+Italy.contig.metadata.clean_0.75_0.03 <- Italy.contig.metadata.clean_0.75_0.03[colnames(Italy.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+Italy.y <- DGEList(counts = Italy.contig.abundance.clean_0.75_0.03, samples = Italy.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+Italy.y <- Italy.y[rowSums(Italy.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robItalyt for sparse data)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (Italyes effective library sizes = lib.size * norm.factors)
+Italy.cpm_mat <- edgeR::cpm(Italy.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+Italy.present_logical <- (Italy.cpm_mat >= Italy.target_cpm) & (Italy.y$counts >= Italy.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+Italy.PA <- matrix(
+  as.integer(Italy.present_logical),
+  nrow = nrow(Italy.present_logical),
+  ncol = ncol(Italy.present_logical),
+  dimnames = dimnames(Italy.present_logical)
+)
+
+dim(Italy.PA)
+# 125  83
+
+
+```
+
+
+# fit glmmTMB model
+```{r}
+
+View(Italy.PA)
+# 125  83
+
+## 0) Align metadata to PA columns (safety)
+stopifnot(all(colnames(Italy.PA) %in% rownames(Italy.contig.metadata.clean_0.75_0.03)))
+Italy.PA.meta <- Italy.contig.metadata.clean_0.75_0.03[colnames(Italy.PA), , drop = FALSE]
+dim(Italy.PA.meta)
+# 83 25
+
+# check why some contigs fail
+p <- Italy.PA %>% data.frame(.) %>% filter(rownames(.) == "edge_311")
+rowSums(p)
+View(p)
+
+## 1) Make sure key variables are factors with sensible baselines
+Italy.PA.meta <- within(Italy.PA.meta, {
+  Dx.Status                 <- relevel(factor(Dx.Status), ref = "CONTROL")  # set your baseline
+  onset_timeline_combined   <- droplevels(factor(onset_timeline_combined))
+  Sex                       <- droplevels(factor(Sex))
+  HLA.Category              <- droplevels(factor(HLA.Category))
+  feeding_first_year        <- droplevels(factor(feeding_first_year))
+  Delivery.Mode             <- droplevels(factor(Delivery.Mode))
+  patientID                 <- factor(patientID)
+})
+
+## 2) Helper to build a long data.frame for gene g (row index)
+make_df <- function(g) {
+  tibble(
+    gene   = rownames(Italy.PA)[g],
+    PA     = as.integer(Italy.PA[g, ]),
+    patientID,
+    Dx.Status,
+    onset_timeline_combined,
+    Sex,
+    Age.at.Gluten.Introduction..months.,
+    HLA.Category, feeding_first_year, Delivery.Mode
+  ) %>% bind_cols(Italy.PA.meta[, c("patientID","Dx.Status","onset_timeline_combined",
+                                 "Sex","Age.at.Gluten.Introduction..months.",
+                                 "HLA.Category","feeding_first_year","Delivery.Mode")])
+
+}
+
+
+
+## 3) Fitting function for one gene
+fit_one <- function(g) {
+  df <- data.frame(Italy.PA = as.integer(Italy.PA[g, ]), Italy.PA.meta, check.names = FALSE)
+  
+  # Skip degenerate cases (all 0 or all 1)
+  #if (length(unique(df$Italy.PA)) < 3L) return(NULL)
+  
+  # Fit logistic GLMM with a random intercept for patientID (your "block")
+  fm <- try(
+    glmmTMB(
+      Italy.PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+        HLA.Category + feeding_first_year + Delivery.Mode +
+        (1 | patientID),
+      family = binomial(link = "logit"),
+      data   = df,
+      control = glmmTMBControl(profile = TRUE, optCtrl = list(iter.max = 2e3, eval.max = 2e3))
+    ),
+    silent = TRUE
+  )
+  if (inherits(fm, "try-error")) return(NULL)
+  
+  # Tidy fixed effects only; add gene id
+  tt <- broom.mixed::tidy(fm, effects = "fixed")
+  tt$gene <- rownames(Italy.PA)[g]
+  tt
+}
+
+## 4) Run across all genes (start with a subset first if you want)
+Italy.idx <- seq_len(nrow(Italy.PA))              # or subset, e.g., which(rowSums(PA) >= 6)
+Italy.res_list <- lapply(Italy.idx, fit_one)
+Italy.res <- bind_rows(Italy.res_list)
+
+View(Italy.res)
+
+## 5) (Optional) FocItaly on the Dx × time interaction terms and main Dx
+Italy.res_focus <- Italy.res %>%
+  filter(grepl("^Dx\\.Status", term)) %>%
+  group_by(term) %>%
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+## 6) Inspect results
+# Top signals in a specific contrast (example: CELIAC vs CONTROL at time t0-6)
+Italy.res_focus %>%
+  filter(grepl("Dx\\.StatusCELIAC:onset_timeline_combinedt0-6", term)) %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(20)
+
+# Or overall best signals across all Dx-related terms
+Italy.res_focItaly %>%
+  arrange(p_adj) %>%
+  select(gene, term, estimate, std.error, statistic, p.value, p_adj) %>%
+  head(30)
+
+
+```
+

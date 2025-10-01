@@ -1,0 +1,555 @@
+---
+title: "Celiac_phage_orf_contig_phrog_PA_abundance_analysis"
+output: html_document
+date: "2025-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(edgeR)
+library(glmmTMB)
+library(broom.mixed)  # tidy() for mixed models
+library(dplyr)
+library(purrr)
+library(tibble)
+```
+
+
+# load clean metadata
+```{r load and clean metadata}
+
+# check if column names of abundance table is consistent with row names of the metadata table
+stopifnot(identical(colnames(total.contig.abundance.clean_0.75_0.03), rownames(total.contig.metadata.clean_0.75_0.03)))
+
+# clean metadata
+# prepare correct variable format
+total.contig.metadata.clean_0.75_0.03$feeding_first_year <- factor(total.contig.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(total.contig.metadata.clean_0.75_0.03$feeding_first_year)
+# Breast_fed  Formula       Breastmilk_and_formula 
+#  100            40                    103
+total.contig.metadata.clean_0.75_0.03$HLA.Category <- factor(total.contig.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+table(total.contig.metadata.clean_0.75_0.03$HLA.Category)
+# Standard Risk     High Risk   Low/No Risk 
+#      123            82            38
+total.contig.metadata.clean_0.75_0.03$Sex <- factor(total.contig.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+table(total.contig.metadata.clean_0.75_0.03$Sex)
+# Female   Male 
+#    194     49 
+total.contig.metadata.clean_0.75_0.03$Delivery.Mode <- factor(total.contig.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+table(total.contig.metadata.clean_0.75_0.03$Delivery.Mode)
+  # Vaginal C-Section 
+  #     180     63 
+total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+table(total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 4  9 46 64 32 27 29  7  1 15  9
+total.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(total.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CELIAC","CONTROL"))
+table(total.contig.metadata.clean_0.75_0.03$Dx.Status)
+ # CELIAC CONTROL 
+ #    114    129 
+total.contig.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+table(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined)
+# t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+# 53        20        40        19        23        25        27        36 
+
+
+```
+
+
+# load clean abundant table
+```{r create clean abundance tables for three cohorts}
+
+# total cohort
+total.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(total.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(total.contig.abundance.clean_0.75_0.03))
+
+total.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+
+# US cohort
+US.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(US.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(US.contig.abundance.clean_0.75_0.03))
+
+
+US.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+# Italy cohort
+Italy.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(Italy.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(Italy.contig.abundance.clean_0.75_0.03))
+
+
+Italy.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+
+```
+
+
+# create total PA table
+```{r generate total PA table}
+
+total.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+total.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(total.contig.abundance.clean_0.75_0.03) %in% rownames(total.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+total.contig.metadata.clean_0.75_0.03 <- total.contig.metadata.clean_0.75_0.03[colnames(total.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+total.y <- DGEList(counts = total.contig.abundance.clean_0.75_0.03, samples = total.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+total.y <- total.y[rowSums(total.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robust for sparse data)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+total.cpm_mat <- edgeR::cpm(total.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+total.present_logical <- (total.cpm_mat >= total.target_cpm) & (total.y$counts >= total.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+total.PA <- matrix(
+  as.integer(total.present_logical),
+  nrow = nrow(total.present_logical),
+  ncol = ncol(total.present_logical),
+  dimnames = dimnames(total.present_logical)
+)
+
+dim(total.PA)
+# 109 243
+
+## ---- 4) Quick sanity checks ------------------------------------------------
+# How many “present” calls overall?
+mean(total.PA)                      # fraction of 1s
+summary(rowSums(total.PA))          # #samples present per gene
+summary(colSums(total.PA))          # #genes present per sample
+
+# Optional: keep genes present in at least M samples (global prevalence)
+total.M <- 6L
+total.keep <- rowSums(total.PA) >= M
+total.PA_kept <- total.PA[total.keep, , drop = FALSE]
+dim(total.PA_kept)
+# 109 243
+
+
+```
+
+
+# create US PA table
+```{r generate US PA table}
+
+US.target_cpm  <- 0.5   # e.g., 0.25–1.0 for very sparse data
+US.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(US.contig.abundance.clean_0.75_0.03) %in% rownames(US.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+US.contig.metadata.clean_0.75_0.03 <- US.contig.metadata.clean_0.75_0.03[colnames(US.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+sum(US.contig.abundance.clean_0.75_0.03 > 0)
+#1547
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+US.y <- DGEList(counts = US.contig.abundance.clean_0.75_0.03, samples = US.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+US.y <- US.y[rowSums(US.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+
+# Library-size normalization (robust for sparse data)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+US.cpm_mat <- edgeR::cpm(US.y, normalized.lib.sizes = TRUE)
+
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+US.present_logical <- (US.cpm_mat >= US.target_cpm) & (US.y$counts >= US.min_reads_floor)
+# FALSE  TRUE 
+# 24703  1547 
+
+# every non-zero count passed
+
+# Convert to 0/1 matrix with dimnames preserved
+US.PA <- matrix(
+  as.integer(US.present_logical),
+  nrow = nrow(US.present_logical),
+  ncol = ncol(US.present_logical),
+  dimnames = dimnames(US.present_logical)
+)
+
+dim(US.PA)
+# 150 175
+
+## ---- 4) Quick sanity checks ------------------------------------------------
+# How many “present” calls overall?
+mean(US.PA) # 0.05893333  
+summary(rowSums(US.PA))          # #samples present per gene
+summary(colSums(US.PA))          # #genes present per sample
+
+# Optional: keep genes present in at least M samples (global prevalence)
+US.M <- 6L
+US.keep <- rowSums(US.PA) >= US.M
+US.PA_kept <- US.PA[US.keep, , drop = FALSE]
+# 150 175
+
+
+```
+
+
+# create Italy PA table
+```{r generate Italy PA table}
+
+
+Italy.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+Italy.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(Italy.contig.abundance.clean_0.75_0.03) %in% rownames(Italy.contig.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+Italy.contig.metadata.clean_0.75_0.03 <- Italy.contig.metadata.clean_0.75_0.03[colnames(Italy.contig.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+Italy.y <- DGEList(counts = Italy.contig.abundance.clean_0.75_0.03, samples = Italy.contig.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+Italy.y <- Italy.y[rowSums(Italy.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robItalyt for sparse data)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (Italyes effective library sizes = lib.size * norm.factors)
+Italy.cpm_mat <- edgeR::cpm(Italy.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+Italy.present_logical <- (Italy.cpm_mat >= Italy.target_cpm) & (Italy.y$counts >= Italy.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+Italy.PA <- matrix(
+  as.integer(Italy.present_logical),
+  nrow = nrow(Italy.present_logical),
+  ncol = ncol(Italy.present_logical),
+  dimnames = dimnames(Italy.present_logical)
+)
+
+dim(Italy.PA)
+# 125  83
+
+
+
+```
+
+
+# Contrast-aware prevalence filter
+Your current rule (CPM ≥ 0.5 and counts ≥ 3) decides per sample if a contig is present.
+A contrast-aware filter then checks, per timepoint, that each contig has enough 1’s in both arms (e.g., ≥2 CELIAC and ≥2 CONTROL) so the per-timepoint Dx effect is actually estimable (avoids separation/NA fits).
+```{r}
+
+# PA: genes x samples (0/1), meta rows aligned to colnames(PA)
+stopifnot(identical(colnames(PA), rownames(meta)))
+
+# build Dx×time groups
+grp <- interaction(meta$Dx.Status, meta$onset_timeline_combined, drop = TRUE)
+lev <- levels(grp)
+
+# counts of "present" per gene within each Dx×time group
+by_grp <- t(vapply(lev, function(g) rowSums(PA[, grp == g, drop = FALSE]),
+                   integer(nrow(PA))))
+rownames(by_grp) <- lev
+
+# helper: require >= k in BOTH arms at a given timepoint
+k <- 2L
+tps <- levels(factor(meta$onset_timeline_combined))  # or a subset you plan to test
+
+arm_ok <- function(tp_label) {
+  ctrl <- paste0("CONTROL.", tp_label)
+  case <- paste0("CELIAC.",  tp_label)
+  if (!all(c(ctrl, case) %in% rownames(by_grp))) return(rep(FALSE, ncol(by_grp)))
+  (by_grp[ctrl, ] >= k) & (by_grp[case, ] >= k)
+}
+
+# keep genes that satisfy the rule for at least one tested timepoint
+ok_any_tp <- Reduce("|", lapply(tps, arm_ok))
+keep_idx  <- which(ok_any_tp)
+length(keep_idx)  # how many genes pass
+
+
+```
+
+
+
+# PA model - glmmTMB (Mixed-effects logistic) - logit link
+When: Default choice for pooled-over-time models with within-patient correlation.
+Why: True random intercept (and optional random slope), fast, flexible links.
+Pros: Handles complex fixed effects; supports cloglog link (family = binomial("cloglog")) if events are very rare.
+Cons: Can struggle with extreme sparsity/separation—try GEE or Bayesian if convergence issues persist.
+```{r}
+
+PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+
+
+```
+
+
+# PA model - glmmTM (Mixed-effects logistic) - cloglog link
+When: Events are very rare (asymmetric). Sometimes converges better than logit.
+```{r}
+
+glmmTMB(PA ~ Dx.Status * onset_timeline_combined + covars + (1|patientID),
+        family = binomial(link="cloglog"), data=df_gene)
+
+```
+
+
+# compare the two glmmTMB models
+```{r}
+
+m_logit <- glmmTMB(
+  PA ~ Dx.Status * time_to_onset + Country + Sex + Delivery.Mode + feeding_method +
+       (1 | patientID),
+  family = binomial(link = "logit"),
+  data   = df
+)
+
+m_cloglog <- glmmTMB(
+  PA ~ Dx.Status * time_to_onset + Country + Sex + Delivery.Mode + feeding_method +
+       (1 | patientID),
+  family = binomial(link = "cloglog"),
+  data   = df
+)
+
+AIC(m_logit, m_cloglog)  # lower is better (rough guide)
+
+
+```
+
+
+
+# PA model - glmer (Mixed-effects logistic)
+When: You want a second mixed-model engine (very standard).
+Why: Solid optimizer, good diagnostics; similar results to glmmTMB on many datasets.
+Pros: Widely used; good default.
+Cons: No alternative links beyond logit; no zero-inflation (not needed for binary anyway).
+```{r}
+
+library(lme4)
+
+fit_glmer <- glmer(
+  PA ~ Dx.Status * time_to_onset +
+       Country + Sex + Delivery.Mode + feeding_method +
+       (1 | patientID),
+  family = binomial(link = "logit"),
+  data   = df,
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+)
+summary(fit_glmer)
+
+```
+
+
+# PA model - GEE (population-averaged logistic)
+When: Repeated measures (patientID), convergence issues with random effects, want robust SEs.
+Pros: Fewer failures than GLMM; interprets as average effect.
+Pros: Robust sandwich SEs; simple to fit.
+Cons: No subject-specific effects (interpretation is population-average); no random slopes.
+```{r}
+
+library(geepack)
+fit <- geeglm(PA ~ Dx.Status * onset_timeline_combined + Country + Sex + Age +
+                HLA.Category + feeding_first_year + Delivery.Mode,
+              id = patientID, family = binomial, corstr = "exchangeable", data = df_gene)
+summary(fit)
+
+
+```
+
+
+# PA model - Bayesian mixed-effects logistic (brms/Stan)
+When: Ultra-sparse, separation, or you want partial pooling with priors (more stable).
+Why: Priors stabilize estimates; rich inference (CIs/ORs); handles complex structures.
+Pros: Very stable with sparsity; full posteriors; can change link (e.g., cloglog).
+Cons: Slower; requires MCMC checks (R̂, ESS, pp-checks).
+```{r}
+
+library(brms)
+
+bfit <- brm(
+  PA ~ Dx.Status * time_to_onset +
+       Country + Sex + Delivery.Mode + feeding_method +
+       (1 | patientID),
+  family = bernoulli(link = "logit"),
+  data   = df,
+  prior = c(
+    set_prior("normal(0, 1)", class = "b"),     # fixed effects
+    set_prior("exponential(2)", class = "sd")   # random-effect SDs
+  ),
+  cores = 4, chains = 4, iter = 2000
+)
+summary(bfit)
+
+
+```
+
+
+# A) Count GLMMs (per-contig), with random effects
+
+# abundance model - Negative Binomial GLMM — workhorse
+```{r}
+
+library(edgeR); library(glmmTMB)
+
+# prep
+y <- DGEList(counts); y <- calcNormFactors(y, method="TMMwsp")
+lib_eff <- with(y$samples, lib.size * norm.factors)
+df <- cbind(meta[ colnames(y), ], 
+            count = as.integer(y$counts["GENE_ID", ]), 
+            offset = log(lib_eff[ colnames(y) ]))
+
+# NB2 (variance ~ μ + μ^2)
+fit_nb <- glmmTMB(
+  count ~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method +
+          (1 | patientID) + offset(offset),
+  family = nbinom2, data = df
+)
+summary(fit_nb)
+
+
+
+```
+
+
+# abundance model - Hurdle Negative Binomial GLMM — excess zeros, two-part
+```{r}
+
+fit_hurdle <- glmmTMB(
+  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
+  ziformula = ~ Dx.Status * time + covars + (1 | patientID),  # zero (hurdle) part
+  family = truncated_nbinom2, data = df
+)
+
+```
+
+
+# abundance model - Zero-Inflated NB GLMM — structural zeros
+```{r}
+
+fit_zinb <- glmmTMB(
+  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
+  ziformula = ~ Dx.Status * time + covars + (1 | patientID),
+  family = nbinom2, data = df
+)
+
+
+```
+
+
+# abundance model - Poisson GLMM (+ OLRE) — baseline
+```{r}
+
+fit_pois <- glmmTMB(
+  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
+  family = poisson, data = df
+)
+
+```
+
+
+# abundance model - Tweedie GLMM — semi-continuous, many zeros
+```{r}
+
+fit_twd <- glmmTMB(
+  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
+  family = tweedie(link="log"), data = df
+)
+
+
+```
+
+
+# abundance model - Bayesian NB / hurdle / ZINB GLMM — stability with priors
+```{r}
+library(brms)
+bfit_nb <- brm(
+  count ~ Dx.Status * time + covars + (1|patientID) + offset(log(lib_eff)),
+  family = negbinomial(), data = your_long_df,
+  prior = c(set_prior("normal(0,1)", class="b"),
+            set_prior("exponential(2)", class="sd"),
+            set_prior("gamma(0.01, 0.01)", class="shape"))
+)
+
+
+```
+
+
+# B) Voom / Linear Mixed Models on log-counts (rate scale)
+
+# abundance model - limma-voom + duplicateCorrelation — fast, empirical Bayes
+```{r}
+
+library(limma); library(edgeR)
+y <- DGEList(counts); y <- calcNormFactors(y, "TMMwsp")
+design <- model.matrix(~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method, data=meta)
+v <- voom(y, design, plot=FALSE)
+corfit <- duplicateCorrelation(v, design, block = meta$patientID)
+v2 <- voom(y, design, plot=FALSE, block=meta$patientID, correlation=corfit$consensus)
+fit <- lmFit(v2, design, block=meta$patientID, correlation=corfit$consensus)
+fit <- eBayes(fit); topTable(fit, coef="Dx.StatusCELIAC:time_t0_6")
+
+
+```
+
+
+# abundance model - variancePartition::dream — true LMM on voom weights
+```{r}
+
+library(variancePartition); library(limma); library(edgeR)
+y <- DGEList(counts); y <- calcNormFactors(y)
+design <- model.matrix(~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method, meta)
+v <- voom(y, design, plot=FALSE)
+form <- ~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method + (1|patientID)
+fit <- dream(v, form, meta)      # mixed model
+fit <- eBayes(fit)
+topTable(fit, coef="Dx.StatusCELIAC:time_t0_6")
+
+```
+
+
+
+# C) Latent-factor + Count model (denoise then test)
+
+# abundance model - GLM-PCA factors as covariates (denoise counts)
+```{r}
+library(glmpca); # obtain factors on counts with offset
+glp <- glmpca(y = counts, L = 5, fam = "poi", ctl = list(verbosity=0))
+meta$LF1 <- glp$factors[,1]; meta$LF2 <- glp$factors[,2]
+# add LF1:LFk as covariates in any of A) or B) models to absorb hidden structure
+
+```
+
+
+# abundance model - ZINB-WaVE factors as covariates
+```{r}
+library(zinbwave); library(SingleCellExperiment)
+sce <- SingleCellExperiment(list(counts=as.matrix(counts)))
+sce <- zinbwave(sce, K=3, observationalWeights=TRUE)
+meta$Z1 <- reducedDim(sce)[,1]; meta$Z2 <- reducedDim(sce)[,2]
+# include Z1:ZK in glmmTMB / dream to improve fit under extreme sparsity
+
+```
+
+
+

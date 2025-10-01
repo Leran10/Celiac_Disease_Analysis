@@ -1,0 +1,909 @@
+---
+title: "Celiac_Data_Structure_Explore"
+output: html_document
+date: '2025-04-23'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("dplyr")
+library("tidyverse")
+library("DESeq2")
+```
+
+
+# functions
+```{r}
+filter_and_save_wide_data <- function(genesCoverm, 
+                                      covered_fraction_threshold = 0.75, 
+                                      output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/") {
+  
+  # Set column names to match the original structure
+  colnames(genesCoverm) <- c("sampleID", "ORFID", "RPKM", "ReadCount", "Variance", "Mean", "covered_fraction", "covered_bases")
+  
+  # Apply coverage filter
+  genesCoverm2 <- genesCoverm %>%
+    mutate(
+      ReadCount_modified = ifelse(covered_fraction >= covered_fraction_threshold, ReadCount, 0),
+      Changed = ifelse(ReadCount != ReadCount_modified, 1, 0)
+    ) %>%
+    mutate(ReadCount = ReadCount_modified) %>%
+    select(-ReadCount_modified)
+  
+  # Count the number of changes
+  num_changes <- sum(genesCoverm2$Changed)
+  print(paste("Number of changes:", num_changes))
+  
+  # Convert to wide format
+  wide_rpkm_genes <- reshape2::dcast(genesCoverm2, ORFID ~ sampleID, value.var = "ReadCount")
+  colnames(wide_rpkm_genes) <- gsub("_stats", "", colnames(wide_rpkm_genes))
+  
+  # Filter out rows with all zeroes
+  filtered_wide_rpkm_genes <- wide_rpkm_genes %>%
+    filter(rowSums(across(where(is.numeric))) != 0)
+  
+  # Save the filtered wide format data
+  rds_filename_wide <- paste0("wide_rpkm_genes_", covered_fraction_threshold * 100, "Cov.rds")
+  
+  saveRDS(filtered_wide_rpkm_genes, file = file.path(output_path, rds_filename_wide))
+  
+  return(filtered_wide_rpkm_genes)
+}
+
+
+
+```
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv") %>%
+            column_to_rownames("sampleName")
+
+```
+
+
+# prepare abundance/PA table with 75% mapping filtering
+```{r}
+
+contig <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/Coverm_concatenated.txt",col_names = FALSE) %>%
+          filter(!X1 %like% "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M") %>%
+          mutate(X1 = gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",X1)) %>%
+          mutate(X1 = str_replace_all(X1,"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")) %>%
+          mutate(X1 = sapply(strsplit(X1,"_Stool_|_Stool_Celiac_"),"[",2)) %>%
+          mutate(X1 = ifelse(X1 %like% "_6Y",gsub("_6Y","_72M",X1),
+                                           ifelse(X1 %like% "_7Y",gsub("_7Y","_84M",X1),X1)))
+
+
+# 6555 contigs after Coverm mapping
+
+
+#----------------------------------------------12M-----------------------------------------------------#
+
+contig.12M <- contig %>%
+             filter(X1 %like% "_12M")
+
+filter_and_save_wide_data(contig.12M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_12M/")
+contig.processed.12M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_12M/wide_rpkm_genes_75Cov.rds") %>%
+                         column_to_rownames("ORFID")
+contig.12M.count.table_0.75 <- t(contig.processed.12M) 
+# 71 1486
+
+
+#prepare abundance table
+contig.12M.abundance.table_0.75 <- merge(metadata,contig.12M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 65 1511
+
+
+#prepare PA table
+contig.12M.PA.table_0.75 <- contig.12M.abundance.table_0.75 %>%
+                         mutate(across(26:1511, ~ as.integer(. != 0)))
+
+dim(contig.12M.PA.table_0.75)
+# 65 1511
+
+
+# make 12M PA check table
+PA.contig.12M.check_0.75 <- contig.12M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.12M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_12M/PA.contig.12M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 65 * 0.03 = 1.95
+non_rare_contig.12M_0.75_0.03 <- PA.contig.12M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 193 contigs
+
+
+#prevelence filtering on abundance table
+contig.12M.abundance.table_0.75_prevFiltered <- contig.12M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.12M_0.75_0.03)))
+dim(contig.12M.abundance.table_0.75_prevFiltered)
+# 65 218
+
+# prevelence filtering on PA table 
+contig.12M.PA.table_0.75_prevFiltered <- contig.12M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.12M_0.75_0.03)))
+dim(contig.12M.PA.table_0.75_prevFiltered)
+# 65 218
+
+
+
+#----------------------------------------------18M-----------------------------------------------------#
+
+
+
+contig.18M <- contig %>%
+             filter(X1 %like% "_18M")
+
+
+filter_and_save_wide_data(contig.18M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_18M/")
+
+contig.processed.18M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_18M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.18M.count.table_0.75 <- t(contig.processed.18M) 
+
+#prepare abundance table
+contig.18M.abundance.table_0.75 <- merge(metadata,contig.18M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+dim(contig.18M.abundance.table_0.75)
+# 62 2227
+
+
+#prepare PA table
+contig.18M.PA.table_0.75 <- contig.18M.abundance.table_0.75 %>%
+                         mutate(across(26:2227, ~ as.integer(. != 0)))
+
+dim(contig.18M.PA.table_0.75)
+# 62 2227
+
+# make 12M PA check table
+PA.contig.18M.check_0.75 <- contig.18M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.18M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_18M/PA.contig.18M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 62 * 0.03 = 1.86
+non_rare_contig.18M_0.75_0.03 <- PA.contig.18M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 348 contigs
+
+
+#prevelence filtering on abundance table
+contig.18M.abundance.table_0.75_prevFiltered <- contig.18M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.18M_0.75_0.03)))
+dim(contig.18M.abundance.table_0.75_prevFiltered)
+# 62 373
+
+# prevelence filtering on PA table 
+contig.18M.PA.table_0.75_prevFiltered <- contig.18M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.18M_0.75_0.03)))
+dim(contig.18M.PA.table_0.75_prevFiltered)
+# 62 373
+
+#----------------------------------------------24M-----------------------------------------------------#
+
+contig.24M <- contig %>%
+             filter(X1 %like% "_24M")
+
+
+filter_and_save_wide_data(contig.24M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_24M/")
+
+contig.processed.24M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_24M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.24M.count.table_0.75 <- t(contig.processed.24M) 
+
+
+#prepare abundance table
+contig.24M.abundance.table_0.75 <- merge(metadata,contig.24M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 48 2098
+
+#prepare PA table
+contig.24M.PA.table_0.75 <- contig.24M.abundance.table_0.75 %>%
+                         mutate(across(26:2098, ~ as.integer(. != 0)))
+
+dim(contig.24M.PA.table_0.75)
+# 48 2098
+
+
+# make 12M PA check table
+PA.contig.24M.check_0.75 <- contig.24M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.24M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_24M/PA.contig.24M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 48 * 0.03 = 1.44
+non_rare_contig.24M_0.75_0.03 <- PA.contig.24M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 274 contigs
+
+
+#prevelence filtering on abundance table
+contig.24M.abundance.table_0.75_prevFiltered <- contig.24M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.24M_0.75_0.03)))
+dim(contig.24M.abundance.table_0.75_prevFiltered)
+# 48 299
+
+# prevelence filtering on PA table 
+contig.24M.PA.table_0.75_prevFiltered <- contig.24M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.24M_0.75_0.03)))
+dim(contig.24M.PA.table_0.75_prevFiltered)
+# 48 299
+
+
+
+
+
+#----------------------------------------------30M-----------------------------------------------------#
+
+
+contig.30M <- contig %>%
+             filter(X1 %like% "_30M")
+
+filter_and_save_wide_data(contig.30M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_30M/")
+
+contig.processed.30M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_30M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.30M.count.table_0.75 <- t(contig.processed.30M)
+
+
+#prepare abundance table
+contig.30M.abundance.table_0.75 <- merge(metadata,contig.30M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 45 1920
+
+
+#prepare PA table
+contig.30M.PA.table_0.75 <- contig.30M.abundance.table_0.75 %>%
+                         mutate(across(26:1920, ~ as.integer(. != 0)))
+
+dim(contig.30M.PA.table_0.75)
+# 45 1920
+
+
+# make 12M PA check table
+PA.contig.30M.check_0.75 <- contig.30M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.30M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_30M/PA.contig.30M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 45 * 0.03 = 1.35
+non_rare_contig.30M_0.75_0.03 <- PA.contig.30M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 248 contigs
+
+
+#prevelence filtering on abundance table
+contig.30M.abundance.table_0.75_prevFiltered <- contig.30M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.30M_0.75_0.03)))
+dim(contig.30M.abundance.table_0.75_prevFiltered)
+# 45 273
+
+# prevelence filtering on PA table 
+contig.30M.PA.table_0.75_prevFiltered <- contig.30M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.30M_0.75_0.03)))
+dim(contig.30M.PA.table_0.75_prevFiltered)
+# 45 273
+
+
+
+#----------------------------------------------36M-----------------------------------------------------#
+
+
+contig.36M <- contig %>%
+             filter(X1 %like% "_36M")
+
+
+filter_and_save_wide_data(contig.36M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_36M/")
+contig.processed.36M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_36M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.36M.count.table_0.75 <- t(contig.processed.36M)
+
+
+#prepare abundance table
+contig.36M.abundance.table_0.75 <- merge(metadata,contig.36M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+dim(contig.36M.abundance.table_0.75)
+# 35 1727
+
+#prepare PA table
+contig.36M.PA.table_0.75 <- contig.36M.abundance.table_0.75 %>%
+                         mutate(across(26:1727, ~ as.integer(. != 0)))
+
+dim(contig.36M.PA.table_0.75)
+# 35 1727
+
+
+# make 12M PA check table
+PA.contig.36M.check_0.75 <- contig.36M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.36M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_36M/PA.contig.36M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 35 * 0.03 = 1.05
+non_rare_contig.36M_0.75_0.03 <- PA.contig.36M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 271 contigs
+
+
+#prevelence filtering on abundance table
+contig.36M.abundance.table_0.75_prevFiltered <- contig.36M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.36M_0.75_0.03)))
+dim(contig.36M.abundance.table_0.75_prevFiltered)
+# 35 196
+
+# prevelence filtering on PA table 
+contig.36M.PA.table_0.75_prevFiltered <- contig.36M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.36M_0.75_0.03)))
+dim(contig.36M.PA.table_0.75_prevFiltered)
+# 35 196
+
+#----------------------------------------------48M-----------------------------------------------------#
+
+contig.48M <- contig %>%
+             filter(X1 %like% "_48M")
+
+filter_and_save_wide_data(contig.48M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_48M/")
+
+contig.processed.48M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_48M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.48M.count.table_0.75 <- t(contig.processed.48M)
+
+
+#prepare abundance table
+contig.48M.abundance.table_0.75 <- merge(metadata,contig.48M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 33 1509
+
+
+#prepare PA table
+contig.48M.PA.table_0.75 <- contig.48M.abundance.table_0.75 %>%
+                         mutate(across(26:1509, ~ as.integer(. != 0)))
+
+dim(contig.48M.PA.table_0.75)
+# 33 1509
+
+
+# make 12M PA check table
+PA.contig.48M.check_0.75 <- contig.48M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.48M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_48M/PA.contig.48M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 35 * 0.03 = 1.05
+non_rare_contig.48M_0.75_0.03 <- PA.contig.48M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 181 contigs
+
+
+#prevelence filtering on abundance table
+contig.48M.abundance.table_0.75_prevFiltered <- contig.48M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.48M_0.75_0.03)))
+dim(contig.48M.abundance.table_0.75_prevFiltered)
+# 33 206
+
+# prevelence filtering on PA table 
+contig.48M.PA.table_0.75_prevFiltered <- contig.48M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.48M_0.75_0.03)))
+dim(contig.48M.PA.table_0.75_prevFiltered)
+# 33 206
+
+
+
+#----------------------------------------------60M-----------------------------------------------------#
+
+
+contig.60M <- contig %>%
+             filter(X1 %like% "_60M")
+
+filter_and_save_wide_data(contig.60M, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_60M/")
+contig.processed.60M <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_60M/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.60M.count.table_0.75 <- t(contig.processed.60M)
+
+#prepare abundance table
+contig.60M.abundance.table_0.75 <- merge(metadata,contig.60M.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 16 1005
+
+
+#prepare PA table
+contig.60M.PA.table_0.75 <- contig.60M.abundance.table_0.75 %>%
+                         mutate(across(26:1005, ~ as.integer(. != 0)))
+
+dim(contig.60M.PA.table_0.75)
+# 16 1005
+
+
+# make 12M PA check table
+PA.contig.60M.check_0.75 <- contig.60M.PA.table_0.75 %>% 
+                           dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+                           pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+                           group_by(Contig) %>% 
+                           mutate(total_PA = sum(PA)) %>%
+                           distinct(Contig,total_PA) %>%
+                           arrange(-total_PA)
+
+write.csv(PA.contig.60M.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_60M/PA.contig.60M.check_0.75.csv")
+
+
+# find viruses that exist in only 3% of the samples
+# 35 * 0.03 = 1.05
+non_rare_contig.60M_0.75_0.03 <- PA.contig.60M.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 125 contigs
+
+
+#prevelence filtering on abundance table
+contig.60M.abundance.table_0.75_prevFiltered <- contig.60M.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.60M_0.75_0.03)))
+dim(contig.60M.abundance.table_0.75_prevFiltered)
+# 16 150
+
+# prevelence filtering on PA table 
+contig.60M.PA.table_0.75_prevFiltered <- contig.60M.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.60M_0.75_0.03)))
+dim(contig.60M.PA.table_0.75_prevFiltered)
+# 16 150
+
+
+
+
+
+#----------------------------------------------72M-----------------------------------------------------#
+
+contig.6Y <- contig %>%
+             filter(X1 %like% "_72M")
+
+filter_and_save_wide_data(contig.6Y, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_6Y/")
+
+contig.processed.6Y <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_6Y/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.6Y.count.table_0.75 <- t(contig.processed.6Y)
+
+#prepare abundance table
+contig.6Y.abundance.table_0.75 <- merge(metadata,contig.6Y.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 4 270
+
+#prepare PA table
+contig.6Y.PA.table_0.75 <- contig.6Y.abundance.table_0.75 %>%
+                         mutate(across(26:270, ~ as.integer(. != 0)))
+
+dim(contig.6Y.PA.table_0.75)
+# 4 270
+
+
+# # make 12M PA check table
+# PA.contig.6Y.check_0.75 <- contig.6Y.PA.table_0.75 %>% 
+#                            dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+#                            pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+#                            group_by(Contig) %>% 
+#                            mutate(total_PA = sum(PA)) %>%
+#                            distinct(Contig,total_PA) %>%
+#                            arrange(-total_PA)
+# 
+# write.csv(PA.contig.6Y.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_6Y/PA.contig.6Y.check_0.75.csv")
+# 
+# 
+# # find viruses that exist in only 3% of the samples
+# # 4 * 0.03 = 0.12
+# non_rare_contig.6Y_0.75_0.03 <- PA.contig.6Y.check_0.75 %>% filter(total_PA >=0) %>% pull(Contig)
+# 
+# 
+# 
+# #prevelence filtering on abundance table
+# contig.6Y.abundance.table_0.75_prevFiltered <- contig.6Y.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.6Y_0.75_0.03)))
+# dim(contig.6Y.abundance.table_0.75_prevFiltered)
+# 
+# 
+# # prevelence filtering on PA table 
+# contig.6Y.PA.table_0.75_prevFiltered <- contig.6Y.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.6Y_0.75_0.03)))
+# dim(contig.6Y.PA.table_0.75_prevFiltered)
+
+
+
+
+#----------------------------------------------84M-----------------------------------------------------#
+
+contig.7Y <- contig %>%
+             filter(X1 %like% "_84M")
+
+filter_and_save_wide_data(contig.7Y, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_7Y/")
+
+contig.processed.7Y <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_7Y/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+contig.7Y.count.table_0.75 <- t(contig.processed.7Y)
+
+#prepare abundance table
+contig.7Y.abundance.table_0.75 <- merge(metadata,contig.7Y.count.table_0.75,by = 0,all.y = TRUE) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+# 4 258
+
+#prepare PA table
+contig.7Y.PA.table_0.75 <- contig.7Y.abundance.table_0.75 %>%
+                         mutate(across(26:258, ~ as.integer(. != 0)))
+
+dim(contig.7Y.PA.table_0.75)
+# 4 258
+
+# # make 7Y PA check table
+# PA.contig.7Y.check_0.75 <- contig.7Y.PA.table_0.75 %>% 
+#                            dplyr::select(Row.names,starts_with("virus_"),starts_with("edge")) %>% 
+#                            pivot_longer(cols = c(starts_with("virus_"),starts_with("edge")),names_to = "Contig",values_to = "PA") %>% 
+#                            group_by(Contig) %>% 
+#                            mutate(total_PA = sum(PA)) %>%
+#                            distinct(Contig,total_PA) %>%
+#                            arrange(-total_PA)
+# 
+# write.csv(PA.contig.7Y.check_0.75,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig_7Y/PA.contig.7Y.check_0.75.csv")
+# 
+# 
+# # find viruses that exist in only 3% of the samples
+# # 4 * 0.03 = 0.12
+# non_rare_contig.7Y_0.75_0.03 <- PA.contig.7Y.check_0.75 %>% filter(total_PA >=2) %>% pull(Contig)
+# 
+# 
+# #prevelence filtering on abundance table
+# contig.7Y.abundance.table_0.75_prevFiltered <- contig.7Y.abundance.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.7Y_0.75_0.03)))
+# dim(contig.7Y.abundance.table_0.75_prevFiltered)
+# 
+# 
+# # prevelence filtering on PA table 
+# contig.7Y.PA.table_0.75_prevFiltered <- contig.7Y.PA.table_0.75 %>% dplyr::select(c(1:25,all_of(non_rare_contig.7Y_0.75_0.03)))
+# dim(contig.7Y.PA.table_0.75_prevFiltered)
+
+
+
+```
+
+
+# Use DESeq do DE analysis
+```{r}
+
+#-------12M---------#
+
+countData.12M <- contig.12M.abundance.table_0.75 %>%
+                 select(Row.names,26:1511) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+# 1486   65
+metadata.12M <- contig.12M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+# prepare correct variable format
+metadata.18M$feeding_first_year <- factor(metadata.18M$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.18M$HLA.Category <- factor(metadata.18M$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.18M$Country <- factor(metadata.18M$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.18M$Sex <- factor(metadata.18M$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.18M$Delivery.Mode <- factor(metadata.18M$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.18M$Age.at.Gluten.Introduction..months. <- factor(metadata.18M$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.18M$Dx.Status <- factor(metadata.18M$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+metadata.18M$Delivery.Mode <- factor(metadata.18M$Delivery.Mode,levels = c("C-Section","Vaginal"))
+
+
+
+
+dds.12M <- DESeqDataSetFromMatrix(countData=countData.12M + 1, 
+                              colData=metadata.12M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode)
+
+dds.12M <- DESeq(dds.12M)
+resultsNames(dds.12M)
+res.12M <- results(dds.12M, name = "Dx.Status_CONTROL_vs_CELIAC",contrast = c("Dx.Status", "CONTROL","CELIAC"))
+sig.res.12M <- res.12M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+
+dim(sig.res.12M)
+dim(sig.res.18M)
+sig.12M.contigs <- rownames(sig.res.12M)
+sig.18M.contigs <- rownames(sig.res.18M)
+
+intersect(sig.12M.contigs,sig.18M.contigs)
+
+
+volcano_data.12M <- as.data.frame(res.12M)
+volcano_data.12M$logpval <- -log10(volcano_data.12M$pvalue)
+
+# Basic volcano plot
+vol.12M.Disease <- ggplot(volcano_data.12M %>% filter(!is.na(padj)), aes(x = log2FoldChange, y = logpval)) +
+  geom_point(aes(color = ifelse(padj < 0.05, "significant", "not significant")), alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Volcano Plot Control vs Disease", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("gray", "red"))
+
+
+
+# PCA
+vsd.12M <- varianceStabilizingTransformation(dds.12M, blind = FALSE)  # Variance stabilizing transformation
+
+# Perform PCA
+pca_res.12M <- prcomp(t(assay(vsd.12M)), scale. = TRUE)
+
+# Extract PCA results
+pca_data.12M <- data.frame(pca_res.12M$x)
+
+# Add metadata variable for coloring.
+pca_data.12M.meta <- merge(pca_data.12M,metadata.12M,by = 0)
+
+
+# Create PCA plot using ggplot2
+pca.12M <- ggplot(pca_data.12M.meta, aes(x = PC1, y = PC2, color = Dx.Status)) +
+  geom_point(size = 3) +
+  scale_color_brewer(palette = "Set1") + # Adjust color palette
+  labs(title = "Colored by Disease Status", x = "PC1", y = "PC2") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+
+
+#-------18M---------#
+
+countData.18M <- contig.18M.abundance.table_0.75 %>%
+                 select(Row.names,26:2227) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+# 2202   62
+
+metadata.18M <- contig.18M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+
+# prepare correct variable format
+metadata.18M$feeding_first_year <- factor(metadata.18M$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.18M$HLA.Category <- factor(metadata.18M$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.18M$Country <- factor(metadata.18M$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.18M$Sex <- factor(metadata.18M$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.18M$Delivery.Mode <- factor(metadata.18M$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.18M$Age.at.Gluten.Introduction..months. <- factor(metadata.18M$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.18M$Dx.Status <- factor(metadata.18M$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+metadata.18M$Delivery.Mode <- factor(metadata.18M$Delivery.Mode,levels = c("C-Section","Vaginal"))
+
+
+
+dds.18M <- DESeqDataSetFromMatrix(countData=countData.18M + 1, 
+                              colData=metadata.18M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode)
+
+dds.18M <- DESeq(dds.18M)
+resultsNames(dds.18M)
+res.18M <- results(dds.18M, name = "Dx.Status_CONTROL_vs_CELIAC",contrast = c("Dx.Status", "CONTROL","CELIAC"))
+sig.res.18M <- res.18M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+dim(sig.res.18M)
+# 327   6
+
+volcano_data.18M <- as.data.frame(res.18M)
+volcano_data.18M$logpval <- -log10(volcano_data.18M$pvalue)
+
+# Basic volcano plot
+vol.18M.Disease <- ggplot(volcano_data.18M %>% filter(!is.na(padj)), aes(x = log2FoldChange, y = logpval)) +
+  geom_point(aes(color = ifelse(padj < 0.05, "significant", "not significant")), alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Volcano Plot 18M Control vs Disease", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("gray", "red"))
+
+
+
+# PCA
+vsd.18M <- varianceStabilizingTransformation(dds.18M, blind = FALSE)  # Variance stabilizing transformation
+
+# Perform PCA
+pca_res.18M <- prcomp(t(assay(vsd.18M)), scale. = TRUE)
+
+# Extract PCA results
+pca_data.18M <- data.frame(pca_res.18M$x)
+
+# Add metadata variable for coloring.
+pca_data.18M.meta <- merge(pca_data.18M,metadata.18M,by = 0)
+
+
+# Create PCA plot using ggplot2
+pca.18M <- ggplot(pca_data.18M.meta, aes(x = PC1, y = PC2, color = Dx.Status)) +
+  geom_point(size = 3) +
+  scale_color_brewer(palette = "Set1") + # Adjust color palette
+  labs(title = "Colored by Disease Status", x = "PC1", y = "PC2") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+
+
+#-------24M---------#
+
+countData.24M <- contig.24M.abundance.table_0.75 %>%
+                 select(Row.names,26:1511) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+
+metadata.24M <- contig.24M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+dds.24M <- DESeqDataSetFromMatrix(countData=countData.24M + 1, 
+                              colData=metadata.24M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year)
+
+dds.24M <- DESeq(dds.24M)
+resultsNames(dds.24M)
+res.24M <- results(dds.24M, name = "Dx.Status_CONTROL_vs_CELIAC")
+sig.res.24M <- res.24M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+
+
+
+```
+
+
+
+
+# Make PCA plot to check which variable affects the abundance the most
+```{r}
+
+#-------12M---------#
+
+countData.12M <- contig.12M.abundance.table_0.75 %>%
+                 select(Row.names,26:1511) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+
+metadata.12M <- contig.12M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+dds.12M <- DESeqDataSetFromMatrix(countData=countData.12M + 1, 
+                              colData=metadata.12M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year)
+
+dds.12M <- DESeq(dds.12M)
+resultsNames(dds.12M)
+res.12M <- results(dds.12M, name = "Dx.Status_CONTROL_vs_CELIAC")
+sig.res.12M <- res.12M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+
+
+
+
+#-------18M---------#
+
+countData.18M <- contig.18M.abundance.table_0.75 %>%
+                 select(Row.names,26:1511) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+
+metadata.18M <- contig.18M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+dds.18M <- DESeqDataSetFromMatrix(countData=countData.18M + 1, 
+                              colData=metadata.18M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year)
+
+dds.18M <- DESeq(dds.18M)
+resultsNames(dds.18M)
+res.18M <- results(dds.18M, name = "Dx.Status_CONTROL_vs_CELIAC")
+sig.res.18M <- res.18M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+
+
+
+
+#-------24M---------#
+
+countData.24M <- contig.24M.abundance.table_0.75 %>%
+                 select(Row.names,26:1511) %>%
+                 column_to_rownames("Row.names") %>%
+                 t(.)
+
+metadata.24M <- contig.24M.abundance.table_0.75 %>%
+                select(Row.names,1:25) %>%
+                column_to_rownames("Row.names")
+
+
+dds.24M <- DESeqDataSetFromMatrix(countData=countData.24M + 1, 
+                              colData=metadata.24M, 
+                              design= ~ Dx.Status + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year)
+
+dds.24M <- DESeq(dds.24M)
+resultsNames(dds.24M)
+res.24M <- results(dds.24M, name = "Dx.Status_CONTROL_vs_CELIAC")
+sig.res.24M <- res.24M %>% 
+               data.frame(.) %>% 
+               filter(padj < 0.05)
+
+
+
+```

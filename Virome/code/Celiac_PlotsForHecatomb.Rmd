@@ -1,0 +1,560 @@
+---
+title: "PLots For Hecatomb"
+output: 
+  html_notebook: 
+    fig_width: 22
+    fig_height: 30
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+install.packages("tidylog")
+library(tidylog)
+library(data.table)
+library(ggpubr)
+library(ggplot2)
+library(rstatix)
+library("vroom")
+# Global settings
+theme_set(theme_bw())
+options(scipen=999) # Not necessary, but enables consistent evaluation of e-values
+
+#Set working directory
+knitr::opts_knit$set(root.dir = '~/Handley\ Lab\ Dropbox/16S/Celiac/hecOUT_Celiac_total_data')
+```
+
+
+
+
+```{r}
+setwd("~/Handley\ Lab\ Dropbox/16S/Celiac/hecOUT_Celiac_total_data/")
+BigTable <- vroom("~/Handley\ Lab\ Dropbox/16S/Celiac/hecatomb_output/bigtable.tsv")
+
+colnames(BigTable)
+# "seqID"          "sampleID"       "count"          "percent"        "alnType"        "targetID"       "evalue"         "pident"         "fident"        
+# "nident"         "mismatches"     "qcov"           "tcov"           "qstart"         "qend"           "qlen"           "tstart"         "tend"          
+# "tlen"           "alnlen"         "bits"           "targetName"     "taxMethod"      "kingdom"        "phylum"         "class"          "order"         
+# "family"         "genus"          "species"        "baltimoreType"  "baltimoreGroup"
+
+
+unique(BigTable$kingdom)
+# "Viruses"
+
+BigTableJustViruses <- BigTable %>% 
+  filter(kingdom=="Viruses")
+
+
+BigTableJustViruses$linage <- paste0(BigTableJustViruses$kingdom, ";",BigTableJustViruses$phylum,"," ,BigTableJustViruses$class,";" ,BigTableJustViruses$order, ";", BigTableJustViruses$family, ";", BigTableJustViruses$genus, ";", BigTableJustViruses$species)
+
+
+
+View(BigTableJustViruses %>% 
+  select(seqID,family) %>%
+  group_by(family) %>%
+  mutate(count = n()) %>%
+  distinct(family,.keep_all = TRUE) %>%
+  select(-seqID) %>%
+  arrange(-count))
+  
+
+
+wide <- reshape2::dcast(BigTableJustViruses,linage ~ sampleID, value.var = "percent", fun.aggregate = sum)
+
+View(head(ContigTable))
+##Contig table 
+ContigTable <- fread('~/Handley\ Lab\ Dropbox/16S/Celiac/hecatomb_output/contigSeqTable.tsv',header=T,sep='\t', fill =TRUE)
+ContigTable <- ContigTable %>% mutate_all(na_if,"")
+
+
+#filter by target 
+target <- c("Viruses", NA)
+ContigTableJustViruses <- filter(ContigTable, kingdom %in% target)
+#filter by aln qual 
+ContigTableQualFilter <- ContigTableJustViruses %>% 
+  filter(qual>20 & len>150)
+
+```
+
+
+Visualize data by family using alnlen or qcov in x-axis and pident in y-axis
+```{r}
+p1 <- ggplot(BigTableJustViruses) +
+  geom_point(
+    aes(x=alnlen,y=pident,color=alnType,size=count),
+    alpha=0.1) +
+  facet_wrap(~family) +
+  geom_vline(xintercept=150,colour='red',linetype='longdash') +
+  geom_hline(yintercept=75,colour='red',linetype='longdash')
+
+ggsave(p1,file = "~/Downloads/p1.pdf",width = 30, height = 30, dpi = 600)
+
+ggplot(BigTableJustViruses) +
+  geom_point(
+    aes(x=qcov,y=pident,color=alnType,size=count),
+    alpha=0.1) +
+  facet_wrap(~family) +
+  geom_vline(xintercept=0.6,colour='red',linetype='longdash') +
+  geom_hline(yintercept=75,colour='red',linetype='longdash')
+
+ggplot(BigTableJustViruses) +
+  geom_point(
+    aes(x=qcov,y=pident,color=taxMethod,size=count),
+    alpha=0.1) +
+  facet_wrap(~family) +
+  geom_vline(xintercept=0.6,colour='red',linetype='longdash') +
+  geom_hline(yintercept=75,colour='red',linetype='longdash')
+```
+
+Filter by e-value, identity,  alingment length query coverage 
+```{r}
+MinEvalue <- 1e-20
+MinAlnlen <- 150  
+MinPident <- 75
+MInQcovcov <- 0.6
+
+filt_evalue_allen_piden <- BigTableJustViruses %>% 
+  mutate(filter=ifelse(alnlen>MinAlnlen & pident>MinPident & evalue<MinEvalue  & qcov>MInQcovcov,'pass','filter'))
+
+#Plot of filtered table using x= alignemnt length and y = percentage of identity 
+p2 <- ggplot(filt_evalue_allen_piden) +
+  geom_point(
+    aes(x=alnlen,y=pident,color=filter),
+    alpha=0.2) +
+  facet_wrap(~family) +
+  geom_vline(xintercept=150,colour='red',linetype='longdash') +
+  geom_hline(yintercept=75,colour='red',linetype='longdash')
+
+ggsave(p2,file = "~/Downloads/p2.pdf",width = 30, height = 30, dpi = 600)
+
+```
+
+Filter bigtable with just hits that passes previous filters. 
+```{r}
+FilteredTablebyParams <- filt_evalue_allen_piden %>% 
+  filter(filter=="pass")
+
+# ggplot(FilteredTablebyParams) +
+#   geom_point(
+#     aes(x=alnlen,y=pident,color=taxMethod,shape=alnType),
+#     alpha=0.1) +
+#   facet_wrap(~family)
+```
+
+
+Plot families by overall CPM and filter and plor the 10 most abundant families 
+```{r}
+#Counts by CPM 
+viralFamCounts <- FilteredTablebyParams %>% 
+  group_by(family) %>% 
+  summarise(n=sum(percent)) %>% 
+  arrange(desc(n))
+
+View(viralFamCounts)
+
+# Vector of families as factor 
+viralFamCounts$family <- factor(viralFamCounts$family,levels=viralFamCounts$family)
+
+#Plot families by abundance 
+
+PlotViralFamCounts <- ggplot(viralFamCounts) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip() 
+
+##Get the 10 most abundant ones 
+num_taxa <- 10
+topXviralFamCounts <- viralFamCounts %>%
+  head(n=num_taxa)
+
+topXviralFamCounts$family <- factor(topXviralFamCounts$family,levels=topXviralFamCounts$family)
+
+##Plot the 10 most abundant ones
+PlotTopXviralFamCounts <- ggplot(topXviralFamCounts) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip()
+
+##Plot the 10 most abundant ones by sample ID
+FilteredTablebyParamsJustXtop <- FilteredTablebyParams %>% 
+  filter(family %in% topXviralFamCounts$family)
+
+PlotFilteredTablebyParamsJustXtop <- ggplot(FilteredTablebyParamsJustXtop) +
+  geom_bar(aes(x=family,y=sum(percent)),stat='identity') +
+  coord_flip() + facet_wrap(~sampleID)
+PlotFilteredTablebyParamsJustXtop
+
+##Display both plots 
+
+ggarrange(PlotViralFamCounts, PlotTopXviralFamCounts,common.legend = TRUE, legend = "right",
+          labels = c("A", "B"),
+          ncol =2, nrow = 1)
+```
+
+Changein most abundant taxa using taxMethod as filter
+
+```{r}
+#LCA
+FilteredTableJust_LCA <- FilteredTablebyParams %>% 
+  filter(taxMethod=="LCA")
+
+topXviralFamCounts_LCA <- FilteredTableJust_LCA %>% 
+  group_by(family) %>% 
+  summarise(n=sum(percent)) %>%  
+  arrange(desc(n)) %>%
+  head(n=num_taxa)  
+  
+topXviralFamCounts_LCA$family <- factor(topXviralFamCounts_LCA$family,levels=topXviralFamCounts_LCA$family)
+
+#FilteredTablebyParamsJustXtop_LCA <- FilteredTableJust_LCA %>% 
+  #filter(family %in% topXviralFamCounts_LCA$family)
+
+PlotFilteredTablebyParamsJustXtop_LCA <- ggplot(topXviralFamCounts_LCA) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip()
+
+#TopHit
+FilteredTableJust_TopHit <- FilteredTablebyParams %>% 
+  filter(taxMethod=="TopHit") 
+
+topXviralFamCounts_TopHit <- FilteredTableJust_TopHit %>% 
+  group_by(family) %>% 
+  summarise(n=sum(CPM)) %>% 
+  arrange(desc(n)) %>%
+  head(n=num_taxa)
+
+topXviralFamCounts_TopHit$family <- factor(topXviralFamCounts_TopHit$family,levels=topXviralFamCounts_TopHit$family)
+
+#FilteredTablebyParamsJustXtop_TopHit <- FilteredTableJust_TopHit %>% 
+  #filter(family %in% topXviralFamCounts_TopHit$family)
+
+PlotFilteredTablebyParamsJustXtop_TopHit <- ggplot(topXviralFamCounts_TopHit) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip()
+
+##Plot both 
+ggarrange(PlotFilteredTablebyParamsJustXtop_LCA, PlotFilteredTablebyParamsJustXtop_TopHit,common.legend = TRUE, legend = "right",
+          labels = c("A", "B"),
+          ncol =2, nrow = 1)
+```
+
+
+Ploting abundance per sample. CPM in y-axis. 
+```{r}
+#para phage attach 
+mergeFilteredTablebyParams <- merge(FilteredTablebyParams, Mfile, by ="sampleID")
+
+ggplot(mergeFilteredTablebyParams) +
+  geom_bar(aes(x=Day,y=CPM,fill=family),position='fill',stat='identity') +
+  facet_wrap(~ Condition) + theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+ggplot(mergeFilteredTablebyParams, aes(Condition, CPM)) +
+       geom_boxplot() + facet_wrap(~ family)
+         
+
+ggplot(FilteredTablebyParams) +
+  geom_bar(aes(x=sampleID,y=CPM,fill=family),position='fill',stat='identity') +
+  coord_flip() 
+
+ggplot(FilteredTablebyParams) +
+  geom_point(
+    aes(x=alnlen,y=pident,color=baltimoreGroup,shape=alnType),
+    alpha=0.1) +
+  facet_wrap(~sampleID)
+```
+
+Since unclassified families were very abundant, extract unclassifed families 
+```{r}
+JustUnclassfamily <- FilteredTablebyParams %>%
+  filter(str_detect(family, "unclassified"))
+
+PlotJustUnclassfamily <- ggplot(JustUnclassfamily) +
+  geom_bar(aes(x=family,y=sum(CPM)),stat='identity') +
+  coord_flip() + facet_wrap(~sampleID)
+
+ggplot(JustUnclassfamily) +
+  geom_point(
+    aes(x=alnlen,y=pident,color=alnType,size=count),
+    alpha=0.1) +
+  facet_wrap(~family) 
+
+##Extract bacteriophage in species level 
+
+JustBacteriophage <- FilteredTablebyParams %>%
+  filter(str_detect(species, "Bacteriophage"))
+
+PlotJustBacteriophage <- ggplot(JustBacteriophage) +
+  geom_bar(aes(x=sampleID,y=CPM,fill=species),position='fill',stat='identity') +
+  coord_flip() 
+
+```
+
+Working with contig table (useless)
+```{r}
+Contig_len <- fread("ReadLen_Seqkit_Filt.txt", sep = "\t", header = T)
+
+Contig_len$adios <- NULL
+Contig_len$adios1 <- NULL
+Contig_len$adios3 <- NULL
+Contig_len$adios4 <- NULL
+Contig_len$adios5 <- NULL
+Contig_len$adios2 <- NULL
+
+
+#Get contigs with higher overall CPM 
+#ContigTableNoNAs <- ContigTable %>% drop_na(family)
+
+##Get the number of reads per contig 
+ReadsPerContig <- ContigTableQualFilter %>% 
+  group_by(contigID) %>% 
+  count(contigID)  %>% 
+  arrange(desc(n))
+colnames(ReadsPerContig)[2] <- "ReadsPerContig" 
+
+##Get the reads per contig / contig len 
+Contigs_reads_len <- merge(ReadsPerContig,Contig_len, by = "contigID" ) 
+
+Contigs_reads_len$read_div_len <- Contigs_reads_len$ReadsPerContig/Contigs_reads_len$Length
+Contigs_reads_len$read_div_len <- round(Contigs_reads_len$read_div_len, digits = 2 )
+
+##Get coverage: NUmber of bases (len covered by reads) / contig len 
+
+#Estimate the length of the contig covered by reads 
+lenCoveredbyReads <- ContigTableQualFilter %>% 
+  group_by(contigID) %>% 
+  summarise(n=sum(len)) %>% 
+  arrange(desc(n))
+colnames(lenCoveredbyReads)[2] <- "LengthCovered"
+##Get percentage of contig len that is covered by reads 
+ConsolTable <- merge(lenCoveredbyReads,Contigs_reads_len, by = "contigID" ) 
+ConsolTable$Coverage <- ConsolTable$LengthCovered/ConsolTable$Length
+ConsolTable$Coverage <- round(ConsolTable$Coverage, digits = 1)
+
+ggplot(ConsolTable, aes(x=contigID, y=Coverage, group=1)) +
+  theme(axis.text.x = element_blank()) +
+  geom_point() 
+
+#Get the number of contigs matching a specific coverage 
+Contigs_per_Coverage <- ConsolTable %>% 
+  group_by(Coverage) %>% 
+  count(Coverage)  %>% 
+  arrange(desc(n)) 
+colnames(Contigs_per_Coverage)[2] <- "NumberOfContigs"
+
+##Ralationship of coverage and contigs having that coverage 
+ggplot(Contigs_per_Coverage, aes(x=Coverage, y=NumberOfContigs, group=1)) +
+  geom_point() 
+
+#get contigs counting length and coverage 
+ConsolTable$Cov_vs_lencovered <- ConsolTable$LengthCovered/ConsolTable$Coverage
+ConsolTable$Cov_vs_lencovered <- round(ConsolTable$Cov_vs_lencovered, digits = 1)
+
+Contigs_per_Cov_vs_lencovered <- ConsolTable %>% 
+  group_by(Cov_vs_lencovered) %>% 
+  count(Cov_vs_lencovered)  %>% 
+  arrange(desc(n)) 
+colnames(Contigs_per_Cov_vs_lencovered)[2] <- "NumberOfContigs"
+
+ggplot(Contigs_per_Cov_vs_lencovered, aes(x=Cov_vs_lencovered, y=NumberOfContigs, group=1)) +
+  geom_point() 
+
+
+#Ralationship of coverage and reads per contig 
+ggplot(ConsolTable, aes(x=Coverage, y=ReadsPerContig, group=1)) +
+  geom_point() 
+
+
+  # scale_y_continuous(expand = c(0, 0), limits=c(0,1000)) +
+  # scale_x_continuous(expand = c(0, 0), limits=c(0,5))
+
+ContigsJustXtopCoverage <- ConsolTable %>%
+  arrange(desc(Coverage)) %>%
+  head(10)
+
+  
+##Plots each conting and the start position of the reads 
+FilteredTablebyContigsJustXtop <- ContigTableQualFilter %>% 
+  filter(contigID %in% ContigsJustXtopCoverage$contigID)
+
+ggplot(FilteredTablebyContigsJustXtop) +
+    geom_point(aes(x=start,y=family, color = family)) +
+   facet_wrap(~contigID) +  theme(legend.position="none")
+
+ggplot(ContigTableQualFilter %>%
+        filter(contigID=='contig_1132')
+    ) +
+    geom_point(aes(x=start,y=genus,color=family))
+```
+
+Make coverage graphs with new table of statistics
+```{r}
+contigCountTable <- fread("contig_count_table.tsv")
+contigCountTable$cov_perc <- round(contigCountTable$cov_perc)
+
+contigCountTable <- contigCountTable %>% 
+  filter(length>=500)
+
+#Get the number of contigs matching a specific coverage per sample Id 
+Contigs_per_CovPerc <- contigCountTable %>% 
+  group_by(sample_id) %>%
+  count(cov_perc)  %>% 
+  arrange(desc(n)) 
+colnames(Contigs_per_CovPerc)[3] <- "NumberOfContigs"
+
+##Plot Number of contigs  vs coverage excluding counts of zero 
+Contigs_per_CovPerc <- filter(Contigs_per_CovPerc, cov_perc > 0)
+#Contigs_per_CovPerc <- filter(Contigs_per_CovPerc, cov_perc < 100)
+
+ggplot(Contigs_per_CovPerc, aes(cov_perc, NumberOfContigs, color = sample_id)) + 
+ geom_line() + theme(legend.position="none") 
+
+##Boxplor of sample_id vs the co_percent in all samples 
+ggplot(contigCountTable, aes(sample_id, cov_perc)) +
+  geom_boxplot(outlier.shape = NA) + theme(axis.text.x = element_blank()) 
+# +  geom_point(position=position_jitterdodge(jitter.width=0, dodge.width = 0.3),
+#              aes(color=factor(contig_id)), show.legend = F)
+
+
+```
+
+Computation of R filter criterium.
+A) Computing C0 = Ls / Lg 
+  Ls = actual length of the genome supported or covered by the mapped reads 
+  Lg = length of the genome.
+  
+B) Computing Ce: The expected extent of genome coverage, assuming a Poisson distribution for the mapped reads along the genome.
+![Formula](/Users/luischica/MEGA/PasantiaWashu/ManagingHecatombOutput/IMG1.png)
+  N = number of mapped reads to the genome
+  Lr = read length 
+  Lg = length of the genome
+  
+C) Get R= C0/Ce 
+If a virus has R < 0.3, FastViromeExplorer discards the virus.
+
+```{r}
+contigTable_RFilter <- contigCountTable
+#A
+contigTable_RFilter$C0 <- contigTable_RFilter$cov_bases/contigTable_RFilter$length
+#B
+readLen=250
+contigTable_RFilter$Ce <- 1 - exp(-((contigTable_RFilter$reads*readLen)/contigTable_RFilter$length))
+#C
+contigTable_RFilter$R <- contigTable_RFilter$C0/contigTable_RFilter$Ce
+
+contigTable_RFilter$R <- replace(contigTable_RFilter$R, grepl("NaN",contigTable_RFilter$R, ignore.case = T), 0)  
+
+contigTable_RFilter$R <- round(contigTable_RFilter$R, digits = 1)
+
+Contigs_per_R <- contigTable_RFilter %>% 
+  group_by(sample_id) %>%
+  count(R)  %>% 
+  arrange(desc(n)) 
+colnames(Contigs_per_R)[3] <- "NumberOfContigs"
+
+ggplot(Contigs_per_R, aes(R, NumberOfContigs, color = sample_id)) + 
+ geom_line() + theme(legend.position="none") +
+  scale_x_continuous(expand = c(0, 0), limits=c(0,1)) +
+  geom_vline(xintercept=0.3,colour='red',linetype='longdash')
+
+#filter by R
+contigTable_RFiltered <- contigTable_RFilter %>% 
+  filter(R>0.3 & C0>0.1 & reads >= 10)
+
+Contigs_per_CovPerc_RFiltered <- contigTable_RFiltered %>% 
+  group_by(sample_id) %>%
+  count(cov_perc)  %>% 
+  arrange(desc(n)) 
+colnames(Contigs_per_CovPerc_RFiltered)[3] <- "NumberOfContigs"
+
+#Contigs_per_CovPerc <- filter(Contigs_per_CovPerc, cov_perc < 100)
+
+ggplot(Contigs_per_CovPerc_RFiltered, aes(cov_perc, NumberOfContigs, color = sample_id)) + 
+ geom_line() + theme(legend.position="none") 
+```
+
+```{r}
+ContigTableQualFiltered_Rfilter <- filter(ContigTableQualFilter, contigID %in% contigTable_RFiltered$contig_id)
+```
+
+Working with probable novel viruses: Good aln length low % identity
+
+```{r}
+TableProbableNewViruses <- BigTableJustViruses %>% 
+  filter(alnlen>150 & pident<75)
+
+
+ContigTableProbableNewViruses <- ContigTableJustViruses %>% 
+  filter(seqID %in% TableProbableNewViruses$seqID) %>%
+  filter(is.na(family))
+
+
+View(ContigTableJustViruses %>% 
+  select(seqID,family) %>%
+  group_by(family) %>%
+  mutate(count = n()) %>%
+  distinct(family,.keep_all = TRUE) %>%
+  select(-seqID) %>%
+  arrange(-count))
+
+
+#Counts by CPM 
+contigFamCounts <- ContigTableJustViruses %>% 
+  group_by(family) %>% 
+  summarise(n=sum(CPM)) %>% 
+  arrange(desc(n))
+
+View(contigFamCounts)
+
+# Vector of families as factor 
+contigFamCounts$family <- factor(contigFamCounts$family,levels=contigFamCounts$family)
+
+#Plot families by abundance 
+
+PlotViralFamCounts <- ggplot(contigFamCounts) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip() 
+
+##Get the 10 most abundant ones 
+num_taxa <- 10
+topXviralFamCounts <- contigFamCounts %>%
+  head(n=num_taxa)
+
+topXviralFamCounts$family <- factor(topXviralFamCounts$family,levels=topXviralFamCounts$family)
+
+##Plot the 10 most abundant ones
+PlotTopXviralFamCounts <- ggplot(topXviralFamCounts) +
+  geom_bar(aes(x=family,y=n),stat='identity') +
+  coord_flip()
+
+
+
+
+ggarrange(PlotViralFamCounts, PlotTopXviralFamCounts,common.legend = TRUE, legend = "right",
+          labels = c("A", "B"),
+          ncol =2, nrow = 1)
+
+
+
+
+
+
+num_contigs = 20
+TopContigsProbableNewVirusesSupportingbyReads <- ContigTableProbableNewViruses %>% 
+  count(contigID)  %>% 
+  arrange(desc(n)) %>% 
+  head(n=num_contigs)  
+
+FilteredTablebyContigsProbableNewVirusesJustXtop <- ContigTableProbableNewViruses %>% 
+  filter(contigID %in% TopContigsProbableNewVirusesSupportingbyReads$contigID)
+
+
+FilteredTablebyContigsProbableNewVirusesJustXtop
+
+ggplot(FilteredTablebyContigsProbableNewVirusesJustXtop) +
+    geom_point(aes(x=start,y=genus, color = family)) +
+   facet_wrap(~contigID) +  theme(legend.position="none")
+
+```
+
+where Ls is the actual length of the genome that is supported or covered by the mapped reads and Lg is the length of the genome.
+counts per sample 

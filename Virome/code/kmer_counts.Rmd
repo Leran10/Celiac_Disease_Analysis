@@ -1,0 +1,40 @@
+---
+title: "Kmer_counts"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DESeq2)
+```
+
+
+```{r}
+
+
+# Load the table
+US.counts <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/kmer_counts/kmer_sample_table.csv", row.names="kmer")
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv")# %>%
+            filter(sampleName %in% colnames(US.counts)) %>%
+            column_to_rownames("sampleName")
+dim(metadata %>% filter(disease_onset_details == "Case_precede"))
+
+
+# Normalize
+dds <- DESeqDataSetFromMatrix(countData = US.counts, colData = metadata, design = ~Country)
+dds <- DESeq(dds)
+normalized_counts <- counts(dds, normalized=TRUE)
+write.csv(normalized_counts, "~/Handley Lab Dropbox/16S/Celiac/Phage/kmer_counts/normalized_kmer_table.csv")
+
+
+```
+
+PCA
+```{r}
+
+pca <- prcomp(t(normalized_counts), scale.=TRUE)
+plot(pca$x[,1], pca$x[,2], col=as.factor(metadata$group), main="PCA by Country")
+
+
+```

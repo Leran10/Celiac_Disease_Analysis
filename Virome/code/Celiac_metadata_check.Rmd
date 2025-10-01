@@ -1,0 +1,280 @@
+---
+title: "Celiac_disease_virome_analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+```
+
+
+# import metadata
+```{r}
+
+celiac_meta <- read.delim("~/Handley Lab Dropbox/16S/Celiac/metadata/celiacs_metadata.txt")
+
+# there is one patientID (PID) has a wrong label "GEMM_068_36M" which is supposed to be "GEMM_068" so let's modify it here
+celiac_meta <- celiac_meta %>%
+               mutate(PID = ifelse(PID == "GEMM_068_36M","GEMM_068",PID))
+
+View(celiac_meta)
+
+
+length(unique(celiac_meta$Name))
+# 354 (including 15 water)
+
+length(unique(celiac_meta$Collaborator.ID))
+# 339
+
+length(unique(celiac_meta$Sample.Name.External.ID))
+# 339
+
+
+unique(celiac_meta$PID) # 63 patients in total
+#  [1] "GEMM_001" "GEMM_009" "GEMM_011" "GEMM_014" "Water"    "GEMM_016" "GEMM_019" "GEMM_026" "GEMM_041" "GEMM_045" "GEMM_052" "GEMM_053" "GEMM_057" "GEMM_060"
+# [15] "GEMM_061" "GEMM_062" "GEMM_068" "GEMM_079" "GEMM_081" "GEMM_085" "GEMM_093" "GEMM_102" "GEMM_105" "GEMM_106" "GEMM_109" "GEMM_119" "GEMM_128" "GEMM_139"
+# [29] "GEMM_150" "GEMM_151" "GEMM_152" "GEMM_154" "GEMM_175" "GEMM_179" "GEMM_006" "GEMM_010" "GEMM_021" "GEMM_024" "GEMM_027" "GEMM_034" "GEMM_035" "GEMM_047"
+# [43] "GEMM_070" "GEMM_077" "GEMM_090" "GEMM_101" "GEMM_103" "GEMM_115" "GEMM_120" "GEMM_141" "GEMM_158" "GEMM_174" "GEMM_177" "GEMM_194" "GEMM_013" "GEMM_020"
+# [57] "GEMM_030" "GEMM_031" "GEMM_038" "GEMM_039" "GEMM_050" "GEMM_058" "GEMM_134" "GEMM_228"
+
+
+unique(celiac_meta %>% filter(case_control == "Case") %>% pull(PID)) # 32 patients
+#  [1] "GEMM_001" "GEMM_009" "GEMM_014" "GEMM_026" "GEMM_041" "GEMM_045" "GEMM_052" "GEMM_061" "GEMM_079" "GEMM_081" "GEMM_085" "GEMM_093" "GEMM_106" "GEMM_119"
+# [15] "GEMM_128" "GEMM_150" "GEMM_175" "GEMM_024" "GEMM_057" "GEMM_109" "GEMM_141" "GEMM_158" "GEMM_177" "GEMM_179" "GEMM_194" "GEMM_020" "GEMM_031" "GEMM_039"
+# [29] "GEMM_058" "GEMM_134" "GEMM_151" "GEMM_228"
+
+
+unique(celiac_meta %>% filter(case_control == "Control") %>% pull(PID)) # 35 patients
+# [1] "GEMM_011"     "GEMM_016"     "GEMM_019"     "GEMM_053"     "GEMM_057"     "GEMM_060"     "GEMM_062"     "GEMM_068"     "GEMM_068_36M" "GEMM_102"    
+# [11] "GEMM_105"     "GEMM_109"     "GEMM_139"     "GEMM_151"     "GEMM_152"     "GEMM_154"     "GEMM_179"     "GEMM_006"     "GEMM_010"     "GEMM_021"    
+# [21] "GEMM_027"     "GEMM_034"     "GEMM_035"     "GEMM_047"     "GEMM_070"     "GEMM_077"     "GEMM_090"     "GEMM_101"     "GEMM_103"     "GEMM_115"    
+# [31] "GEMM_120"     "GEMM_174"     "GEMM_013"     "GEMM_030"     "GEMM_038"     "GEMM_050" 
+
+
+intersect(unique(celiac_meta %>% filter(case_control == "Case") %>% pull(PID)),unique(celiac_meta %>% filter(case_control == "Control") %>% pull(PID)))
+# There are 4 patients fall into both Control and Case categories
+# [1] "GEMM_057" "GEMM_109" "GEMM_179" "GEMM_151"
+
+
+table(celiac_meta %>% filter(PID == "GEMM_057") %>% pull(case_control))
+# Case  Control 
+#   4       7 
+
+table(celiac_meta %>% filter(PID == "GEMM_109") %>% pull(case_control))
+# Case Control 
+#  2       6 
+
+table(celiac_meta %>% filter(PID == "GEMM_179") %>% pull(case_control))
+# Case Control 
+#   3     6
+
+table(celiac_meta %>% filter(PID == "GEMM_151") %>% pull(case_control))
+# Case Control 
+# 2       7 
+      
+
+unique(celiac_meta$PIDu)
+
+
+unique(celiac_meta$celiacs_group)
+#  1     2     Water 
+# 207   132    15
+
+
+table(celiac_meta %>% filter(celiacs_group == 1) %>% pull(case_control))
+# Case  Control 
+# 100     107 
+
+length(unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Case") %>% pull(Name)))
+# 100
+length(unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Control") %>% pull(Name)))
+# 107
+
+length(unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Case") %>% pull(Name)))
+# 57
+length(unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Control") %>% pull(Name)))
+# 75
+
+unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Case") %>% pull(month))
+# 12 18 24 30 36 48 60 72 84
+
+unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Control") %>% pull(month))
+# 12 18 24 30 36 48 60 72 84 54
+
+
+unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Case") %>% pull(month))
+# 12 18 24 30 36 48
+
+unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Control") %>% pull(month))
+# 12 18 24 30 36 48 60
+
+
+
+
+unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Case") %>% pull(PID))
+# 17
+#  [1] "GEMM_001" "GEMM_009" "GEMM_014" "GEMM_026" "GEMM_041" "GEMM_045" "GEMM_052" "GEMM_061" "GEMM_079" "GEMM_081" "GEMM_085" "GEMM_093" "GEMM_106" "GEMM_119"
+# [15] "GEMM_128" "GEMM_150" "GEMM_175"
+
+unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Control") %>% pull(PID))
+# 17
+#  [1] "GEMM_011" "GEMM_016" "GEMM_019" "GEMM_053" "GEMM_057" "GEMM_060" "GEMM_062" "GEMM_068" "GEMM_102" "GEMM_105" "GEMM_109" "GEMM_139" "GEMM_151" "GEMM_152"
+# [15] "GEMM_154" "GEMM_179" "GEMM_006"
+
+
+intersect(unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Case") %>% pull(PID)),unique(celiac_meta %>% filter(celiacs_group == 1) %>% filter(case_control == "Control") %>% pull(PID)))
+# no intersect in group1 case and control group
+
+unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Case") %>% pull(PID))
+# 18
+#  [1] "GEMM_024" "GEMM_057" "GEMM_109" "GEMM_141" "GEMM_158" "GEMM_175" "GEMM_177" "GEMM_179" "GEMM_194" "GEMM_020" "GEMM_031" "GEMM_039" "GEMM_041" "GEMM_045"
+# [15] "GEMM_058" "GEMM_134" "GEMM_151" "GEMM_228"
+
+
+unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Control") %>% pull(PID))
+# 20
+#  [1] "GEMM_006" "GEMM_010" "GEMM_019" "GEMM_021" "GEMM_027" "GEMM_034" "GEMM_035" "GEMM_047" "GEMM_070" "GEMM_077" "GEMM_090" "GEMM_101" "GEMM_103" "GEMM_115"
+# [15] "GEMM_120" "GEMM_174" "GEMM_013" "GEMM_030" "GEMM_038" "GEMM_050"
+
+
+intersect(unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Case") %>% pull(PID)),unique(celiac_meta %>% filter(celiacs_group == 2) %>% filter(case_control == "Control") %>% pull(PID)))
+# no intersect in group2 case and control group
+
+unique(celiac_meta$GEMM)
+#  [1] "1"     "9"     "11"    "14"    "Water" "16"    "19"    "26"    "41"    "45"    "52"    "53"    "57"    "60"    "61"    "62"    "68"    "79"    "81"   
+# [20] "85"    "93"    "102"   "105"   "106"   "109"   "119"   "128"   "139"   "150"   "151"   "152"   "154"   "175"   "179"   "6"     "10"    "21"    "24"   
+# [39] "27"    "34"    "35"    "47"    "70"    "77"    "90"    "101"   "103"   "115"   "120"   "141"   "158"   "174"   "177"   "194"   "13"    "20"    "30"   
+# [58] "31"    "38"    "39"    "50"    "58"    "134"   "228" 
+
+
+unique(celiac_meta$month)
+# 12 18 24 30 36 48 60 72 84  0 54
+
+unique(celiac_meta %>% filter(case_control == "Case") %>% pull(month))
+# 12 18 24 30 36 48 60 72 84
+
+unique(celiac_meta %>% filter(case_control == "Control") %>% pull(month))
+# 12 18 24 30 36 48 60 72 84 54
+
+table(celiac_meta$case_control)
+# "Case"    "Control" NA
+
+# Case Control 
+# 157     182
+
+
+```
+
+
+# next we will make some plots to show the samples based on their timeline
+```{r}
+
+library("readxl")
+colnames(metadata.final)
+# "~/Handley Lab Dropbox/16S/Celiac/celiacs_metadata.txt"
+celiac_meta <- read.delim("~/Handley Lab Dropbox/16S/Celiac/metadata/celiacs_metadata.txt") %>%
+               mutate(celiacs_group = ifelse(celiacs_group == "1","01",
+                                             ifelse(celiacs_group == "2","02",celiacs_group))) %>%
+               mutate("Study ID" = paste0(celiacs_group,"_",PID)) %>%
+               mutate(`Study ID` = gsub("_","-",`Study ID`))
+
+
+celiac.meta <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_temp.csv") %>%
+                rename(`Study ID` = patientID)
+
+
+celiac_meta.final <- left_join(celiac_meta,celiac.meta,by = "Study ID") %>%
+                     mutate(disease_onset_details = ifelse(case_control == "Case" & month ==Onset.Dx,"Case_onset",
+                                                           ifelse(case_control == "Case" & month !=Onset.Dx,"Case_precede",case_control))) %>%
+                     arrange(case_control)
+celiac_meta.final$month <- factor(celiac_meta.final$month,levels = c(0,12,18,24,30,36,48,54,60,72,84))
+
+
+write.csv(celiac_meta.final,"~/Handley Lab Dropbox/16S/Celiac/celiacs_metadata_final.csv")
+
+celiac_meta.final <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/celiacs_metadata_final.csv")
+
+celiac.sample.timepoints.p <- ggplot(celiac_meta.final,aes(x = month, y = reorder(Study.ID,case_control),color = disease_onset_details)) +
+  geom_point(size = 5) +
+  scale_color_manual(values = c("Control" = "#329932", "Case_onset" = "#FF0000","Case_precede" = "#f2cb53")) +
+  theme(text = element_text(size = 20,face = "bold")) +
+  labs(y = "Study ID")
+
+ggsave(celiac.sample.timepoints.p,file = "~/Handley Lab Dropbox/16S/Celiac/plot/celiac.sample.timepoints.p.pdf",width = 12,height = 18,dpi = 600)
+
+
+
+################################### Study Design plot update #################################
+
+
+
+metadata.final <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv")
+
+metadata.final$month <- factor(metadata.final$month,levels = c(0,12,18,24,30,36,48,54,60,72,84))
+
+
+celiac.sample.timepoints.p <- ggplot(metadata.final,aes(x = month, y = reorder(patientID,Dx.Status),color = disease_onset_details)) +
+  geom_point(size = 4) +
+  facet_grid(Pair ~ ., scales = "free", space = "free") +
+  scale_color_manual(values = c("Control" = "#329932", "Case_onset" = "#FF0000","Case_precede" = "#f2cb53")) +
+  theme_bw() + 
+  theme(text = element_text(size = 19,face = "bold")) +
+  labs(y = "sampleName") +
+theme(
+  strip.background = element_blank(),
+  strip.text = element_blank()
+)
+
+ggsave(celiac.sample.timepoints.p,file = "~/Handley Lab Dropbox/16S/Celiac/plot/celiac.sample.timepoints.pairwise.p.pdf",width = 12,height = 18,dpi = 600)
+
+
+
+################################### Study Design plot update (added the onset timeline column) #################################
+
+
+metadata.final <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024_with_timeline.csv")
+
+metadata.final$onset_timeline <- factor(metadata.final$onset_timeline,levels =c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-42","t0-48","t0-54","t0-60","t0-66","t0-72"))
+
+
+celiac.sample.timepoints.p <- ggplot(metadata.final,aes(x = onset_timeline, y = reorder(patientID,Dx.Status),color = disease_onset_details)) +
+  geom_point(size = 4) +
+  facet_grid(Pair ~ ., scales = "free", space = "free") +
+  scale_color_manual(values = c("Control" = "#329932", "Case_onset" = "#FF0000","Case_precede" = "#f2cb53")) +
+  theme_bw() + 
+  theme(text = element_text(size = 19,face = "bold")) +
+  labs(y = "sampleName") +
+theme(
+  strip.background = element_blank(),
+  strip.text = element_blank()
+) +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+ggsave(celiac.sample.timepoints.p,file = "~/Handley Lab Dropbox/16S/Celiac/plot/celiac.sample.onset.timeline.pairwise.p.pdf",width = 12,height = 18,dpi = 600)
+
+
+
+################################### updated metadata with combined onset timeline and numerical format #################################
+
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024_with_timeline.csv") %>%
+                  select(-`...1`) %>%
+                  mutate(onset_timeline_combined = ifelse(onset_timeline %in% c("t0-42","t0-48","t0-54","t0-60","t0-66","t0-72"),"t0-over42",onset_timeline)) %>%
+                  mutate(onset_timeline_numeric = as.numeric(
+                         gsub("t0$", "0",          # replace exact "t0" with "0"
+                          gsub("t0-", "-", onset_timeline))  # replace "t0-" with "-"
+                    )
+                    ) %>%
+                  column_to_rownames("sampleName")
+                  
+write.csv(metadata,"~/Handley Lab Dropbox/16S/Celiac/metadata/Updated_Metadata_with_Onset_Timeline.csv",quote = FALSE,row.names = TRUE)
+
+
+
+
+```

@@ -1,0 +1,3118 @@
+---
+title: "Celiac_reads_based_pairwise_timeSeries_analysis_01162025"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(readxl)
+library(broom.mixed)
+library(DESeq2)
+library(ggrepel)
+library(pheatmap)
+library(phyloseq)
+#library(pROC)
+library(lme4)
+library(survival)
+library(lmerTest)
+#library(survminer)
+
+
+```
+
+
+# import metadata and reads table
+```{r}
+
+# metadata
+metadata.final <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv") #%>%
+                  # mutate(sampleName = ifelse(sampleName %like% "_6Y",gsub("_6Y","_72M",sampleName),
+                  #                          ifelse(sampleName %like% "_7Y",gsub("_7Y","_84M",sampleName),sampleName))) %>%
+                  #  mutate(Sample.Name.External.ID = ifelse(Sample.Name.External.ID %like% "_6Y",gsub("_6Y","_72M",Sample.Name.External.ID),
+                  #                          ifelse(Sample.Name.External.ID %like% "_7Y",gsub("_7Y","_84M",Sample.Name.External.ID),Sample.Name.External.ID))) %>%
+                  #  mutate(Sample_full_name = ifelse(Sample_full_name %like% "_6Y",gsub("_6Y","_72M",Sample_full_name),
+                  #                          ifelse(Sample_full_name %like% "_7Y",gsub("_7Y","_84M",Sample_full_name),Sample_full_name)))
+
+
+# import virus of interest
+vv.foi <- as_tibble(fread("~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_viruses_strain_counts.tsv",header = TRUE)) %>%
+                  mutate(sampleName = ifelse(sampleName %like% "_6Y",gsub("_6Y","_72M",sampleName),
+                                           ifelse(sampleName %like% "_7Y",gsub("_7Y","_84M",sampleName),sampleName))) %>%
+                   mutate(sampleID = ifelse(sampleID %like% "_6Y",gsub("_6Y","_72M",sampleID),
+                                           ifelse(sampleID %like% "_7Y",gsub("_7Y","_84M",sampleID),sampleID))) %>%
+                   mutate(sampleID_mod = ifelse(sampleID_mod %like% "_6Y",gsub("_6Y","_72M",sampleID_mod),
+                                           ifelse(sampleID_mod %like% "_7Y",gsub("_7Y","_84M",sampleID_mod),sampleID_mod)))
+
+```
+
+
+# extract count table
+```{r}
+
+count.raw <-left_join(metadata.final,vv.foi,by = "sampleName")
+count.raw$count[is.na(count.raw$count)] <- 0
+count.species <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family","genus","species"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_species = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_species", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+# OTU = otu_table(count.species, taxa_are_rows = TRUE)
+# TAX = tax_table(tax_mat)
+# samples = sample_data(metadata.final.deseq)
+# 
+# ps0.virus.species <-phyloseq(OTU, samples)
+# saveRDS(ps0.virus.species,"~/Handley Lab Dropbox/16S/Celiac/ps0.virus.species.rds")
+
+
+count.genus <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family","genus"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_genus = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_genus", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+
+
+count.family <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_family = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_family", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+```
+
+
+# prepare abundance table
+```{r}
+
+# ---------------------------------Species level------------------------------------------#
+
+count.species.abundance <- count.species
+
+# merge count table and metadata table
+abundance.table.all.species <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.species.abundance),by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+# ---------------------------------genus level------------------------------------------#
+
+# create genus abundance table
+count.genus.abundance <- count.genus
+
+# merge count table and metadata table
+abundance.table.all.genus <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.genus.abundance),by = 0) %>%
+                            filter(feeding_first_year != "Unknown") %>%
+                            filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                            filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+
+
+# ---------------------------------family level------------------------------------------#
+
+
+# create genus abundance table
+count.family.abundance <- count.family
+
+# merge count table and metadata table
+abundance.table.all.family <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.family.abundance),by = 0) %>%
+                            filter(feeding_first_year != "Unknown") %>%
+                            filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                            filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+```
+
+
+# prepare PA table
+```{r}
+
+# ---------------------------------Species level------------------------------------------#
+count.species.PA <- count.species
+count.species.PA[count.species.PA != 0] <- 1
+
+
+PA.table.species.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.species.PA),by = 0) %>%
+                        # filter(feeding_first_year != "Unknown") %>%
+                        # filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        # filter(Age.at.Gluten.Introduction..months. != "Unknown") %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+
+
+dim(PA.table.species.all %>% filter(Dx.Status == "CONTROL") %>% distinct(patientID,.keep_all = TRUE))
+table(PA.table.species.all %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+ # CELIAC CONTROL 
+ #     36      36 
+
+# ---------------------------------genus level------------------------------------------#
+count.genus.PA <- count.genus
+count.genus.PA[count.genus.PA != 0] <- 1
+
+
+PA.table.genus.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.genus.PA),by = 0) %>%
+                        # filter(feeding_first_year != "Unknown") %>%
+                        # filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        # filter(Age.at.Gluten.Introduction..months. != "Unknown") %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+
+# ---------------------------------family level------------------------------------------#
+count.family.PA <- count.family
+count.family.PA[count.family.PA != 0] <- 1
+
+
+PA.table.family.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.family.PA),by = 0) %>%
+                        # filter(feeding_first_year != "Unknown") %>%
+                        # filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        # filter(Age.at.Gluten.Introduction..months. != "Unknown") %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+```
+
+
+
+# prevelance filtering (we remove the viruses that only contain less than 4 samples)
+```{r}
+
+
+PA.species.check <- PA.table.species.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Species",values_to = "PA") %>% 
+                   group_by(Species) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Species,total_PA) %>%
+                   arrange(total_PA)
+
+write.csv(PA.species.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.species.check.csv")
+
+
+
+# find viruses that exist in only 3% of the samples (230 virusese are removed and 89 viruses left)
+rare_species_0.3 <- PA.species.check %>% filter(total_PA < 9) %>% pull(Species)
+PA.table.species.all.prev <- PA.table.species.all %>% dplyr::select(-rare_species_0.3)
+
+table(PA.table.species.all.prev %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+ # CELIAC CONTROL 
+ #     36      36
+
+PA.genus.check <- PA.table.genus.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Genus",values_to = "PA") %>% 
+                   group_by(Genus) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Genus,total_PA) %>%
+                   arrange(total_PA)
+
+
+write.csv(PA.genus.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.genus.check.csv")
+
+
+# find viruses that exist in only 3% of the samples (24 virusese are removed and 55 viruses left)
+rare_genus_0.3 <- PA.genus.check %>% filter(total_PA < 9) %>% pull(Genus)
+PA.table.genus.all.prev <- PA.table.genus.all %>% dplyr::select(-rare_genus_0.3)
+
+
+PA.family.check <- PA.table.family.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Family",values_to = "PA") %>% 
+                   group_by(Family) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Family,total_PA) %>%
+                   arrange(total_PA)
+
+
+write.csv(PA.family.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.family.check.csv")
+
+
+# find viruses that exist in only 3% of the samples (24 virusese are removed and 55 viruses left)
+rare_family_0.3 <- PA.family.check %>% filter(total_PA < 9) %>% pull(Family)
+PA.table.family.all.prev <- PA.table.family.all %>% dplyr::select(-rare_family_0.3)
+
+
+
+```
+
+
+                                            ###########################################################################
+                                            #   What are the differences between case and control in each timepoint   #               
+                                            #                                                                         #
+                                            ###########################################################################
+                                            
+
+
+                                                                  ###############################
+                                                                  #  LRT on abundance of virus  #
+                                                                  ###############################
+
+
+
+################
+#    Family    #
+################
+```{r}
+
+# modify metadata table for deseq analysis
+metadata.final.deseq <- metadata.final %>%
+                        column_to_rownames("sampleName") %>%
+                        dplyr::rename("Disease_status" = "Dx.Status") %>%
+                        filter(feeding_first_year != "Unknown") %>%
+                        filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+# trim the samples in count.species table to consistent with the metadata table
+count.family.deseq <- count.family %>%
+                       dplyr::select(rownames(metadata.final.deseq))
+dim(count.family.deseq)
+# 13 298
+
+
+# make the order of rownames of metadata consistent with the colnames of count table otherwise there will be errors
+metadata.final.deseq <- metadata.final.deseq[colnames(count.family.deseq),]
+# 298  24
+
+
+# make the month variable factor
+metadata.final.deseq$month <- factor(metadata.final.deseq$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+metadata.final.deseq$Disease_status <- factor(metadata.final.deseq$Disease_status,levels = c("CONTROL","CELIAC"))
+metadata.final.deseq$Age.at.Gluten.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Gluten.Introduction..months.)
+metadata.final.deseq$Age.at.Solid.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Solid.Introduction..months.)
+
+rownames(count.family.deseq) <- gsub("/","_",rownames(count.family.deseq))
+
+
+# NOTE: since some counts are supper big (max:2286983738). And these values will become NA in the process of DESeqDataSetFromMatrix().
+# One way is to scale the entire data by 2, that is divide the entire count table by 2, and round it up.
+# reference: https://chat.stackoverflow.com/rooms/223701/discussion-between-stupidwolf-and-jack-henry
+# trim the samples in count.species table to consistent with the metadata table
+count.family.deseq.scale <- round(count.family.deseq /6)
+
+
+# design the model
+ddsTC <- DESeqDataSetFromMatrix(countData = count.family.deseq.scale + 1,
+                                colData = metadata.final.deseq,
+                                design = ~ Country + Sex + Delivery.Mode + HLA.Category + Age.at.Solid.Introduction..months. + Age.at.Solid.Introduction..months. + Disease_status + month + Disease_status:month)
+
+# analysis with Likelyhood ratio test, the reduced variables are disease_status and month
+ddsTC <- DESeq(ddsTC, test="LRT", reduced = ~ Country + Sex + Delivery.Mode + HLA.Category + Age.at.Solid.Introduction..months. + Age.at.Solid.Introduction..months. + Disease_status + month)
+
+# check the result of analysis
+resTC <- results(ddsTC)
+
+# extract the result table
+res.table <- resTC[order(resTC$padj),]
+
+# extract the significant result table
+res.table.sig <- res.table %>%
+                 data.frame(.) %>%
+                 filter(padj < 0.05)
+
+resultsNames(ddsTC)
+# "Intercept"                               "Country_USA_vs_ITALY"                    "Sex_Male_vs_Female"                      "Delivery.Mode_Vaginal_vs_C.Section"     
+# "HLA.Category_Low.No.Risk_vs_High.Risk"   "HLA.Category_Standard.Risk_vs_High.Risk" "Disease_status_CELIAC_vs_CONTROL"        "month_18_vs_12"                         
+# "month_24_vs_12"                          "month_30_vs_12"                          "month_36_vs_12"                          "month_48_vs_12"                         
+# "month_54_vs_12"                          "month_60_vs_12"                          "month_72_vs_12"                          "month_84_vs_12"                         
+# "Disease_statusCELIAC.month18"            "Disease_statusCELIAC.month24"            "Disease_statusCELIAC.month30"            "Disease_statusCELIAC.month36"           
+# "Disease_statusCELIAC.month48"            "Disease_statusCELIAC.month54"            "Disease_statusCELIAC.month60"            "Disease_statusCELIAC.month72"           
+# "Disease_statusCELIAC.month84" 
+
+
+
+for (i in resultsNames(ddsTC)[2:25]){
+  
+    res.case_control <- results(ddsTC, name=i, test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05)
+    
+    #write.csv(res.case_control,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/family/",i,"_sig_family.csv"))
+    
+    rownames(res.case_control) <- gsub("/","_",rownames(res.case_control))
+    
+    for (j in rownames(res.case_control)){
+      
+       print(j)
+        
+        padj <- res.case_control$padj
+        stats <- res.case_control$stat
+        
+        count.plot <- plotCounts(ddsTC, j,
+                   intgroup = c("month","Disease_status"), returnData = TRUE)
+     
+        count.plot$month <- factor(count.plot$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+        count.plot$Disease_status <- factor(count.plot$Disease_status,levels = c("CONTROL","CELIAC"))
+
+        p.count <- ggplot(count.plot,
+                aes(x = month, y = count, color = Disease_status, group = Disease_status)) + 
+                geom_point() + 
+                scale_color_manual(breaks = c("CONTROL","CELIAC"), 
+                       values=c("#09bc8a","#d81e5b")) + 
+                labs(caption = paste0(i,"\n",j,"\npadj: ",padj,"\nstats: ",stats)) +
+                stat_summary(fun.y=mean, geom="line") +
+                scale_y_log10() 
+  
+        fileName <- paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/family/",i,"_",j,"_count_plot.pdf")
+       # ggsave(p.count,file = fileName,width = 10,height = 4,dpi = 600)
+      
+      
+    }
+  
+  
+}
+
+
+res.case_control.list <- list()
+
+ddsResNames <- resultsNames(ddsTC)[2:25]
+
+
+for (i in (1:length(ddsResNames))){
+   
+      
+      res.case_control.list[[i]] <-  results(ddsTC, name=ddsResNames[i], test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05) %>%
+                    dplyr::select(log2FoldChange) %>% 
+                    rename("log2FoldChange" = ddsResNames[i]) %>%
+                    rownames_to_column("rowname")
+      
+
+}
+
+
+res.case_control.total <- Reduce(function(x, y) merge(x, y,by = "rowname",  all=TRUE), res.case_control.list)
+res.case_control.total[is.na(res.case_control.total)] <- 0
+res.case_control.total <- res.case_control.total %>%
+                          column_to_rownames("rowname")
+
+
+thr <- 20
+res.case_control.total[res.case_control.total < -thr] <- -thr
+res.case_control.total[res.case_control.total > thr] <- thr
+
+ggsave(pheatmap(res.case_control.total, color = hcl.colors(50, "BluYl"), length=101,
+                   cluster_col=FALSE,fontsize_row = 20,fontsize_col = 20),file="~/Handley Lab Dropbox/16S/Celiac/plot/LRT/family/sig.family.heatmap.pdf",width = 30, height = 8, dpi=600)
+
+
+```
+
+
+################
+#    Genus     #
+################
+```{r}
+
+# modify metadata table for deseq analysis
+metadata.final.deseq <- metadata.final %>%
+                        column_to_rownames("sampleName") %>%
+                        dplyr::rename("Disease_status" = "Dx.Status") %>%
+                        filter(feeding_first_year != "Unknown") %>%
+                        filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+# trim the samples in count.species table to consistent with the metadata table
+count.genus.deseq <- count.genus %>%
+                       dplyr::select(rownames(metadata.final.deseq))
+dim(count.genus.deseq)
+# 52 298
+
+
+# make the order of rownames of metadata consistent with the colnames of count table otherwise there will be errors
+metadata.final.deseq <- metadata.final.deseq[colnames(count.genus.deseq),]
+# 298  24
+
+
+# make the month variable factor
+metadata.final.deseq$month <- factor(metadata.final.deseq$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+metadata.final.deseq$Disease_status <- factor(metadata.final.deseq$Disease_status,levels = c("CONTROL","CELIAC"))
+metadata.final.deseq$Age.at.Gluten.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Gluten.Introduction..months.)
+metadata.final.deseq$Age.at.Solid.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Solid.Introduction..months.)
+
+rownames(count.genus.deseq) <- gsub("/","_",rownames(count.genus.deseq))
+
+
+# NOTE: since some counts are supper big (max:2286983738). And these values will become NA in the process of DESeqDataSetFromMatrix().
+# One way is to scale the entire data by 2, that is divide the entire count table by 2, and round it up.
+# reference: https://chat.stackoverflow.com/rooms/223701/discussion-between-stupidwolf-and-jack-henry
+# trim the samples in count.species table to consistent with the metadata table
+count.genus.deseq.scale <- round(count.genus.deseq /4)
+
+
+# design the model
+ddsTC <- DESeqDataSetFromMatrix(countData = count.genus.deseq.scale + 1,
+                                colData = metadata.final.deseq,
+                                design = ~ Country + Sex + Delivery.Mode + HLA.Category + Age.at.Solid.Introduction..months. + Age.at.Solid.Introduction..months. + Disease_status + month + Disease_status:month)
+
+# analysis with Likelyhood ratio test, the reduced variables are disease_status and month
+ddsTC <- DESeq(ddsTC, test="LRT", reduced = ~ Country + Sex + Delivery.Mode + HLA.Category + Age.at.Solid.Introduction..months. + Age.at.Solid.Introduction..months. + Disease_status + month)
+
+# check the result of analysis
+resTC <- results(ddsTC)
+
+# extract the result table
+res.table <- resTC[order(resTC$padj),]
+
+# extract the significant result table
+res.table.sig <- res.table %>%
+                 data.frame(.) %>%
+                 filter(padj < 0.05)
+
+resultsNames(ddsTC)
+# "Intercept"                               "Country_USA_vs_ITALY"                    "Sex_Male_vs_Female"                      "Delivery.Mode_Vaginal_vs_C.Section"     
+# "HLA.Category_Low.No.Risk_vs_High.Risk"   "HLA.Category_Standard.Risk_vs_High.Risk" "Disease_status_CELIAC_vs_CONTROL"        "month_18_vs_12"                         
+# "month_24_vs_12"                          "month_30_vs_12"                          "month_36_vs_12"                          "month_48_vs_12"                         
+# "month_54_vs_12"                          "month_60_vs_12"                          "month_72_vs_12"                          "month_84_vs_12"                         
+# "Disease_statusCELIAC.month18"            "Disease_statusCELIAC.month24"            "Disease_statusCELIAC.month30"            "Disease_statusCELIAC.month36"           
+# "Disease_statusCELIAC.month48"            "Disease_statusCELIAC.month54"            "Disease_statusCELIAC.month60"            "Disease_statusCELIAC.month72"           
+# "Disease_statusCELIAC.month84" 
+
+
+
+for (i in resultsNames(ddsTC)[2:25]){
+  
+    res.case_control <- results(ddsTC, name=i, test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05)
+    
+    write.csv(res.case_control,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/genus/",i,"_sig_genus.csv"))
+    
+    rownames(res.case_control) <- gsub("/","_",rownames(res.case_control))
+    
+    for (j in rownames(res.case_control)){
+      
+       print(j)
+        
+        padj <- res.case_control$padj
+        stats <- res.case_control$stat
+        
+        count.plot <- plotCounts(ddsTC, j,
+                   intgroup = c("month","Disease_status"), returnData = TRUE)
+     
+        count.plot$month <- factor(count.plot$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+        count.plot$Disease_status <- factor(count.plot$Disease_status,levels = c("CONTROL","CELIAC"))
+
+        p.count <- ggplot(count.plot,
+                aes(x = month, y = count, color = Disease_status, group = Disease_status)) + 
+                geom_point() + 
+                scale_color_manual(breaks = c("CONTROL","CELIAC"), 
+                       values=c("#09bc8a","#d81e5b")) + 
+                labs(caption = paste0(i,"\n",j,"\npadj: ",padj,"\nstats: ",stats)) +
+                stat_summary(fun.y=mean, geom="line") +
+                scale_y_log10() 
+  
+        fileName <- paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/genus/",i,"_",j,"_count_plot.pdf")
+        ggsave(p.count,file = fileName,width = 10,height = 4,dpi = 600)
+      
+      
+    }
+  
+  
+}
+
+
+res.case_control.list <- list()
+
+ddsResNames <- resultsNames(ddsTC)[2:25]
+
+
+for (i in (1:length(ddsResNames))){
+   
+      
+      res.case_control.list[[i]] <-  results(ddsTC, name=ddsResNames[i], test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05) %>%
+                    dplyr::select(log2FoldChange) %>% 
+                    rename("log2FoldChange" = ddsResNames[i]) %>%
+                    rownames_to_column("rowname")
+      
+
+}
+
+
+res.case_control.total <- Reduce(function(x, y) merge(x, y,by = "rowname",  all=TRUE), res.case_control.list)
+res.case_control.total[is.na(res.case_control.total)] <- 0
+res.case_control.total <- res.case_control.total %>%
+                          column_to_rownames("rowname")
+
+
+thr <- 20
+res.case_control.total[res.case_control.total < -thr] <- -thr
+res.case_control.total[res.case_control.total > thr] <- thr
+
+ggsave(pheatmap(res.case_control.total, color = hcl.colors(50, "BluYl"), length=101,
+                   cluster_col=FALSE,fontsize_row = 20,fontsize_col = 20),file="~/Handley Lab Dropbox/16S/Celiac/plot/LRT/genus/sig.genus.heatmap.pdf",width = 30, height = 12, dpi=600)
+
+
+```
+
+
+
+################
+#    Species   #
+################
+```{r}
+
+# modify metadata table for deseq analysis
+metadata.final.deseq <- metadata.final %>%
+                        column_to_rownames("sampleName") %>%
+                        dplyr::rename("Disease_status" = "Dx.Status") %>%
+                        filter(feeding_first_year != "Unknown") %>%
+                        filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                        filter(Age.at.Gluten.Introduction..months. != "Unknown")
+dim(metadata.final.deseq)
+# 298  24
+
+
+# trim the samples in count.species table to consistent with the metadata table
+count.species.deseq <- count.species %>%
+                       dplyr::select(rownames(metadata.final.deseq))
+
+dim(count.species.deseq)
+# 292 298
+
+
+# make the order of rownames of metadata consistent with the colnames of count table otherwise there will be errors
+metadata.final.deseq <- metadata.final.deseq[colnames(count.species.deseq),]
+# 298  24
+        
+
+# make the month variable factor
+metadata.final.deseq$month <- factor(metadata.final.deseq$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+metadata.final.deseq$Disease_status <- factor(metadata.final.deseq$Disease_status,levels = c("CONTROL","CELIAC"))
+metadata.final.deseq$Age.at.Gluten.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Gluten.Introduction..months.)
+metadata.final.deseq$Age.at.Solid.Introduction..months. <- as.numeric(metadata.final.deseq$Age.at.Solid.Introduction..months.)
+
+rownames(count.species.deseq) <- gsub("/","_",rownames(count.species.deseq))
+
+
+# NOTE: since some counts are supper big (max:2286983738). And these values will become NA in the process of DESeqDataSetFromMatrix().
+# One way is to scale the entire data by 2, that is divide the entire count table by 2, and round it up.
+# reference: https://chat.stackoverflow.com/rooms/223701/discussion-between-stupidwolf-and-jack-henry
+
+count.species.deseq.scale <- round(count.species.deseq /2)
+
+# design the model
+ddsTC <- DESeqDataSetFromMatrix(countData = count.species.deseq.scale + 1,
+                                colData = metadata.final.deseq,
+                                design = ~ Country + Sex + Delivery.Mode + HLA.Category + Disease_status + month + feeding_first_year + as.numeric(Age.at.Solid.Introduction..months.) + as.numeric(Age.at.Gluten.Introduction..months.) + Disease_status:month)  # Disease_status + month + 
+
+
+
+table(metadata.final.deseq$feeding_first_year)
+# Breast_fed       Breastmilk_and_formula                Formula 
+#        119                    124                        55
+
+table(metadata.final.deseq$Country)
+# ITALY   USA 
+#   101   197 
+
+table(metadata.final.deseq$Sex)
+# Female   Male 
+#    231     67
+
+table(metadata.final.deseq$Age.at.Solid.Introduction..months.)
+ #  4   5   6   7   8  10 
+ # 37  80 118  57   5   1 
+
+
+
+table(metadata.final.deseq$Delivery.Mode)
+# C-Section   Vaginal 
+#        84       214 
+
+
+table(metadata.final.deseq$HLA.Category)
+    # High Risk   Low/No Risk Standard Risk 
+    #        86            48           164 
+
+
+# analysis with Likelyhood ratio test, the reduced variables are disease_status and month
+ddsTC <- DESeq(ddsTC, test="LRT", reduced = ~ Country + Sex + Delivery.Mode + HLA.Category + Disease_status + month + feeding_first_year + as.numeric(Age.at.Solid.Introduction..months.) + as.numeric(Age.at.Gluten.Introduction..months.))
+
+
+
+# check the result of analysis
+resTC <- results(ddsTC)
+
+# extract the result table
+res.table <- resTC[order(resTC$padj),]
+
+# extract the significant result table
+res.table.sig <- res.table %>%
+                 data.frame(.) %>%
+                 filter(padj < 0.05)
+
+
+resultsNames(ddsTC)
+# [1] "Intercept"                                               "Country_USA_vs_ITALY"                                   
+#  [3] "Sex_Male_vs_Female"                                      "Delivery.Mode_Vaginal_vs_C.Section"                     
+#  [5] "HLA.Category_Low.No.Risk_vs_High.Risk"                   "HLA.Category_Standard.Risk_vs_High.Risk"                
+#  [7] "Disease_status_CELIAC_vs_CONTROL"                        "month_18_vs_12"                                         
+#  [9] "month_24_vs_12"                                          "month_30_vs_12"                                         
+# [11] "month_36_vs_12"                                          "month_48_vs_12"                                         
+# [13] "month_54_vs_12"                                          "month_60_vs_12"                                         
+# [15] "month_72_vs_12"                                          "month_84_vs_12"                                         
+# [17] "feeding_first_year_Breastmilk_and_formula_vs_Breast_fed" "feeding_first_year_Formula_vs_Breast_fed"               
+# [19] "as.numeric.Age.at.Solid.Introduction..months.."          "as.numeric.Age.at.Gluten.Introduction..months.."        
+# [21] "Disease_statusCELIAC.month18"                            "Disease_statusCELIAC.month24"                           
+# [23] "Disease_statusCELIAC.month30"                            "Disease_statusCELIAC.month36"                           
+# [25] "Disease_statusCELIAC.month48"                            "Disease_statusCELIAC.month54"                           
+# [27] "Disease_statusCELIAC.month60"                            "Disease_statusCELIAC.month72"                           
+# [29] "Disease_statusCELIAC.month84"          
+
+
+
+for (i in resultsNames(ddsTC)[2:29]){
+  
+    res.case_control <- results(ddsTC, name=i, test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05)
+    
+    print(dim(res.case_control))
+    
+    #write.csv(res.case_control,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/species/",i,"_sig_species.csv"))
+    
+    rownames(res.case_control) <- gsub("/","_",rownames(res.case_control))
+    
+    for (j in rownames(res.case_control)){
+        
+        df <- res.case_control %>% filter(rownames(res.case_control) == j)
+        
+        padj <- df %>% pull(padj)
+        stats <- df %>% pull(log2FoldChange)
+        
+        count.plot <- plotCounts(ddsTC, j,
+                   intgroup = c("month","Disease_status"), returnData = TRUE)
+     
+        count.plot$month <- factor(count.plot$month,levels = c("12","18","24","30","36","48","54","60","72","84"))
+        count.plot$Disease_status <- factor(count.plot$Disease_status,levels = c("CONTROL","CELIAC"))
+
+        p.count <- ggplot(count.plot,
+                aes(x = month, y = count, color = Disease_status, group = Disease_status)) + 
+                geom_jitter(width = 0.3) + 
+                scale_color_manual(breaks = c("CONTROL","CELIAC"), 
+                       values=c("#09bc8a","#d81e5b")) +  
+                labs(caption = paste0(i,"\n",j,"\npadj: ",padj,"\nstats: ",stats)) +
+                stat_summary(fun.y=mean, geom="line") +
+                scale_y_log10() 
+  
+        fileName <- paste0("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/species/",i,"_",j,"_count_plot.pdf")
+        #ggsave(p.count,file = fileName,width = 10,height = 4,dpi = 600)
+      
+      
+    }
+  
+  
+}
+
+
+res.case_control.list <- list()
+
+ddsResNames <- resultsNames(ddsTC)[2:29]
+
+
+for (i in (1:length(ddsResNames))){
+  
+     df <- results(ddsTC, name=ddsResNames[i], test="Wald") %>%
+                                      data.frame(.) %>%
+                                      filter(padj < 0.05) %>%
+                                      dplyr::select(log2FoldChange) #%>% 
+     
+     colnames(df) <- ddsResNames[i]
+     
+     df <- df %>%
+           rownames_to_column("rowname")
+   
+      
+      res.case_control.list[[i]] <-  df
+
+
+}
+
+
+
+res.case_control.total <- Reduce(function(x, y) merge(x, y,by = "rowname",  all=TRUE), res.case_control.list)
+res.case_control.total[is.na(res.case_control.total)] <- 0
+res.case_control.total <- res.case_control.total %>%
+                          column_to_rownames("rowname")
+
+thr <- 7
+res.case_control.total[res.case_control.total < -thr] <- -thr
+res.case_control.total[res.case_control.total > thr] <- thr
+
+
+ggsave(pheatmap(res.case_control.total, breaks=seq(from=-thr, to=thr, length=101),
+                   cluster_col=FALSE,fontsize_row = 25,fontsize_col = 25),file="~/Handley Lab Dropbox/16S/Celiac/plot/LRT/species/sig.species.heatmap.moreVariable.pdf",width = 40, height = 30, dpi=600)
+
+
+
+###############################
+#  below are not use for now  #
+###############################
+
+
+# extract the rellevant comparisons and viruses and remake the heatmap
+res.case_control.total.relevant <- res.case_control.total %>%
+                                   select("Disease_statusCELIAC.month18","Disease_statusCELIAC.month24","Disease_statusCELIAC.month30","Disease_statusCELIAC.month36","Disease_statusCELIAC.month48","Disease_statusCELIAC.month54","Disease_statusCELIAC.month60","Disease_statusCELIAC.month72","Disease_statusCELIAC.month84") %>%
+  filter(rownames(.) %in% c("Viruses;Pisuviricota;Pisoniviricetes;Picornavirales;Caliciviridae;unclassified Caliciviridae genus;unclassified Caliciviridae species",
+                            "Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Primate astrovirus",
+                            "Viruses;Preplasmiviricota;Tectiliviricetes;Rowavirales;Adenoviridae;Mastadenovirus;Human mastadenovirus C",
+                            "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;unclassified Anelloviridae genus;Torque teno virus",
+                            "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;unclassified Anelloviridae genus;unclassified Anelloviridae species",
+                            "Viruses;Pisuviricota;Pisoniviricetes;Picornavirales;unclassified Picornavirales family;unclassified Picornavirales genus;unclassified Picornavirales species",
+                           "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Betatorquevirus;Torque teno mini virus 8",
+                           "Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Bocaparvovirus;Primate bocaparvovirus 1",
+                           "Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Bocaparvovirus;Bocaparvovirus sp.",
+                           "Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Bocaparvovirus;Bocavirus PgBoV-1"))
+                                   
+
+
+thr <- 7
+res.case_control.total.relevant[res.case_control.total.relevant < -thr] <- -thr
+res.case_control.total.relevant[res.case_control.total.relevant > thr] <- thr
+
+
+ggsave(pheatmap(res.case_control.total.relevant, breaks=seq(from=-thr, to=thr, length=101),
+                   cluster_col=FALSE,fontsize_row = 25,fontsize_col = 25),file="~/Handley Lab Dropbox/16S/Celiac/plot/LRT/sig.species.heatmap.relevant.pdf",width = 40, height = 15, dpi=600)
+
+
+
+# boxplot for celiac vs control groups
+count.species.case_control <- count.species
+match(metadata.final[,"sampleName"], names(count.species.case_control))
+names(count.species.case_control)[match(metadata.final[,"sampleName"], names(count.species.case_control))] = metadata.final[,"Dx.Status"]
+
+
+res.case_control <- results(ddsTC, name="Disease_status_CELIAC_vs_CONTROL", test="Wald") %>%
+                    data.frame(.) %>%
+                    filter(padj < 0.05)
+
+
+count.species.case_control.sig.df <- count.species.case_control %>%
+                                     filter(rownames(.) %in% rownames(res.case_control))
+
+resultsNames(ddsTC)
+count.species.case_control.df <- count.species.case_control %>% 
+                                 mutate("Species" = rownames(.)) %>%
+                                 pivot_longer(cols = CELIAC:CONTROL,
+                                              names_to = "Disease_type", 
+                                              values_to = "count")
+
+
+
+```
+
+
+
+
+                                                              ###########################################
+                                                              # GLMER on preseces and absense of virus  #
+                                                              ###########################################
+
+
+################
+#    Family    #
+################
+```{r}
+
+family.name <- colnames(PA.table.family.all)[26:38]
+new.family.name <- gsub("/|-","_",family.name)
+colnames(PA.table.family.all)[26:38] <- new.family.name
+
+
+
+for (i in new.family.name) {
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    glm.fit <- glmer(get(i) ~ Dx.Status * month + Country + Sex + Delivery.Mode + 
+                  HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + 
+                  Age.at.Solid.Introduction..months. + (1 | patientID), 
+                  family = binomial(link = "logit"),
+                           data = PA.table.family.all)
+  
+  fit.glance <- glance(glm.fit)
+
+  fit.tidy <- tidy(glm.fit) %>%
+              add_column(r.square = fit.glance$r.squared,
+                            adj.r.square = fit.glance$adj.r.squared)
+
+  write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/genus/",i,"_glmer.csv"))
+     
+     
+     
+  glmer.stats.df <- tidy(glm.fit, conf.int = TRUE, exponentiate = TRUE) %>%
+                       filter(effect == "fixed")
+      
+  glmer.stats.df$stars <- cut(glmer.stats.df$p.value, breaks = c(-Inf, 0.0001, 0.001, 0.01, 0.05, Inf), labels = c("****","***", "**", "*", "n.s."), right = FALSE)
+      
+  glmer.stats.plot <- glmer.stats.df %>%
+        mutate(sig = paste(sprintf(estimate, fmt = '%.2f'),stars,sep=" "))
+      
+  p <- ggplot(glmer.stats.plot, aes(y = term, x = estimate, 
+                              xmin = conf.low, xmax = conf.high, color = ifelse(p.value>0.05, 'black', 'red'))) +
+        geom_text(aes(label = sig), color = ifelse(glmer.stats.plot$p.value>0.05, 'black', 'red'), vjust = -0.5, hjust = 0.51, size = 4, position = position_dodge(width = 0.5), show.legend = F) +
+        geom_pointrange(position = position_dodge(width = 0.5)) +
+        geom_vline(xintercept = 1, linetype = "dashed", color = "gray") +
+        scale_x_log10(limits = c(0.001, 10000), 
+                      breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                      labels = c("1e-03","1e-02", "1e-01", "1e+00", "1e+01", "1e+02", "1e+03")) +
+        labs(x = "Odds Ratio (log scale)", 
+             y = "", 
+             title = paste0("GLMER Model for",i))+
+        theme(legend.position = "none") +
+        scale_color_identity()
+      
+      ggsave(p,file=paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/family/",i,"_glmer_pdf.pdf"),width = 15, height = 15, dpi = 600)
+      
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+```
+
+
+
+```{r}
+
+install.packages("picante", dependencies=TRUE)
+library(picante)
+
+metadata_for_virus_bacteria <- PA.table.family.all %>% 
+                               select(c(1:25),"Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae") %>%
+                               rename("Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae" = "Astroviridae") %>%
+                               mutate(Astroviridae = ifelse(Astroviridae == 1,"Astroviridae+","Astroviridae-")) %>%
+                               column_to_rownames("Row.names")
+
+table(metadata_for_virus_bacteria$Astroviridae)
+# Astroviridae- Astroviridae+ 
+#      290            45 
+
+
+# merge with bacteria ps0
+ps0_gg2 <- readRDS("~/Handley Lab Dropbox/16S/Celiac/phage_bacteria/ps_gg2.RDS")
+
+sample_names(ps0_gg2) <- gsub("_F_fltr.fastq","",sample_names(ps0_gg2))
+
+sample_data(ps0_gg2) <- metadata_for_virus_bacteria
+
+
+# -------------------------------------Alpha diversity Astrovirus +/----------------------------------------------#
+total.alpha.table <- estimate_richness(ps0_gg2,measures =     
+                            c("Shannon","Observed","Simpson"))%>%
+                            rownames_to_column("sample.name") %>%
+                            mutate("sample.name" = gsub('\\X', '',sample.name)) %>%
+                            column_to_rownames("sample.name") %>%
+                            merge(sample_data(ps0_gg2),by = "row.names")
+
+
+
+total.Observed <- lmer(Observed ~ Astroviridae + Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = total.alpha.table)
+
+summary(total.Observed)
+# Fixed effects:
+#                                             Estimate Std. Error        df t value Pr(>|t|)    
+# (Intercept)                                  82.9222    16.4256   57.0157   5.048 4.87e-06 ***
+# AstroviridaeAstroviridae+                    -3.0648     5.4007  292.6455  -0.567  0.57082    
+# Dx.StatusCONTROL                             13.4266     7.7841   61.4183   1.725  0.08958 .  
+# month                                         0.7993     0.1214  277.6545   6.587 2.24e-10 ***
+# CountryUSA                                    2.1964     9.7115   57.3669   0.226  0.82188    
+# SexMale                                     -12.2780     7.9615   59.8549  -1.542  0.12830    
+# Age.at.Gluten.Introduction..months.11       -27.4202    20.6064   52.0422  -1.331  0.18910    
+# Age.at.Gluten.Introduction..months.12      -100.1286    32.6211   85.0706  -3.069  0.00288 ** 
+# Age.at.Gluten.Introduction..months.15       -61.0516    20.8017   41.6797  -2.935  0.00541 ** 
+# Age.at.Gluten.Introduction..months.36       -42.6467    29.1838   41.4698  -1.461  0.15147    
+# Age.at.Gluten.Introduction..months.4        -71.3639    29.8753   55.0343  -2.389  0.02036 *  
+# Age.at.Gluten.Introduction..months.5        -52.2330    23.5127   50.8741  -2.221  0.03080 *  
+# Age.at.Gluten.Introduction..months.6        -37.8903    13.2715   52.6625  -2.855  0.00614 ** 
+# Age.at.Gluten.Introduction..months.7        -35.1061    12.2189   51.4163  -2.873  0.00589 ** 
+# Age.at.Gluten.Introduction..months.8        -40.0908    14.3896   50.7152  -2.786  0.00749 ** 
+# Age.at.Gluten.Introduction..months.9        -32.9806    16.5568   51.7674  -1.992  0.05166 .  
+# Age.at.Gluten.Introduction..months.Unknown  -28.3565    24.6477   54.1841  -1.150  0.25500    
+# HLA.CategoryLow/No Risk                     -11.2886    13.0413   49.9344  -0.866  0.39085    
+# HLA.CategoryStandard Risk                   -12.0129     8.7125   55.5606  -1.379  0.17348    
+# feeding_first_yearBreastmilk_and_formula      7.7866     8.1722   51.3175   0.953  0.34515    
+# feeding_first_yearFormula                   -11.3287     9.3085   56.8709  -1.217  0.22862    
+# feeding_first_yearUnknown                    11.4852    24.2320   56.8195   0.474  0.63734    
+# Delivery.ModeVaginal                          1.0932     9.3233   62.0661   0.117  0.90703   
+
+
+
+total.Shannon <- lmer(Shannon ~ Astroviridae + Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = total.alpha.table)
+
+summary(total.Shannon)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                  2.489675   0.320721  55.952234   7.763 1.91e-10 ***
+# AstroviridaeAstroviridae+                   -0.103531   0.121989 299.748318  -0.849  0.39673    
+# Dx.StatusCONTROL                             0.379103   0.152970  60.594453   2.478  0.01600 *  
+# month                                        0.014631   0.002765 283.862988   5.291 2.43e-07 ***
+# CountryUSA                                  -0.102579   0.189724  56.283784  -0.541  0.59087    
+# SexMale                                     -0.381785   0.156024  58.067025  -2.447  0.01745 *  
+# Age.at.Gluten.Introduction..months.11       -0.014132   0.398619  49.137534  -0.035  0.97186    
+# Age.at.Gluten.Introduction..months.12       -2.110941   0.660472  97.052979  -3.196  0.00188 ** 
+# Age.at.Gluten.Introduction..months.15       -0.892787   0.392829  36.241536  -2.273  0.02907 *  
+# Age.at.Gluten.Introduction..months.36       -0.956036   0.551089  36.430449  -1.735  0.09123 .  
+# Age.at.Gluten.Introduction..months.4        -1.530509   0.581810  54.581646  -2.631  0.01106 *  
+# Age.at.Gluten.Introduction..months.5        -0.541664   0.453968  48.157478  -1.193  0.23865    
+# Age.at.Gluten.Introduction..months.6        -0.386716   0.256880  49.185836  -1.505  0.13861    
+# Age.at.Gluten.Introduction..months.7        -0.444311   0.235885  47.400844  -1.884  0.06576 .  
+# Age.at.Gluten.Introduction..months.8        -0.682072   0.277470  46.832622  -2.458  0.01772 *  
+# Age.at.Gluten.Introduction..months.9        -0.259769   0.320169  49.030768  -0.811  0.42109    
+# Age.at.Gluten.Introduction..months.Unknown  -0.193623   0.479147  53.096638  -0.404  0.68776    
+# HLA.CategoryLow/No Risk                      0.065518   0.251163  46.259890   0.261  0.79536    
+# HLA.CategoryStandard Risk                   -0.223495   0.169569  52.986932  -1.318  0.19317    
+# feeding_first_yearBreastmilk_and_formula     0.207174   0.157815  47.859384   1.313  0.19552    
+# feeding_first_yearFormula                   -0.150722   0.181577  54.647574  -0.830  0.41011    
+# feeding_first_yearUnknown                    0.172433   0.473257  56.527421   0.364  0.71695    
+# Delivery.ModeVaginal                         0.166214   0.183433  61.786846   0.906  0.36839  
+
+
+total.Simpson <- lmer(Simpson ~ Astroviridae + Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = total.alpha.table)
+
+summary(total.Simpson)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                 8.393e-01  6.104e-02  5.750e+01  13.750  < 2e-16 ***
+# AstroviridaeAstroviridae+                  -2.800e-02  2.602e-02  3.030e+02  -1.076  0.28270    
+# Dx.StatusCONTROL                            5.013e-02  2.926e-02  6.162e+01   1.713  0.09173 .  
+# month                                       1.913e-03  5.953e-04  2.907e+02   3.214  0.00146 ** 
+# CountryUSA                                 -1.999e-03  3.612e-02  5.759e+01  -0.055  0.95607    
+# SexMale                                    -5.730e-02  2.975e-02  5.816e+01  -1.926  0.05898 .  
+# Age.at.Gluten.Introduction..months.11       1.706e-02  7.507e-02  4.825e+01   0.227  0.82122    
+# Age.at.Gluten.Introduction..months.12      -3.778e-01  1.306e-01  1.153e+02  -2.893  0.00456 ** 
+# Age.at.Gluten.Introduction..months.15      -2.111e-01  7.201e-02  3.265e+01  -2.932  0.00611 ** 
+# Age.at.Gluten.Introduction..months.36      -7.248e-02  1.011e-01  3.337e+01  -0.717  0.47855    
+# Age.at.Gluten.Introduction..months.4       -1.595e-01  1.106e-01  5.727e+01  -1.442  0.15486    
+# Age.at.Gluten.Introduction..months.5       -8.958e-02  8.539e-02  4.769e+01  -1.049  0.29941    
+# Age.at.Gluten.Introduction..months.6       -3.600e-02  4.836e-02  4.782e+01  -0.744  0.46030    
+# Age.at.Gluten.Introduction..months.7       -4.091e-02  4.426e-02  4.535e+01  -0.924  0.36031    
+# Age.at.Gluten.Introduction..months.8       -1.067e-01  5.203e-02  4.496e+01  -2.051  0.04611 *  
+# Age.at.Gluten.Introduction..months.9       -1.356e-02  6.030e-02  4.846e+01  -0.225  0.82304    
+# Age.at.Gluten.Introduction..months.Unknown -6.116e-03  9.088e-02  5.489e+01  -0.067  0.94659    
+# HLA.CategoryLow/No Risk                     2.307e-02  4.705e-02  4.446e+01   0.490  0.62631    
+# HLA.CategoryStandard Risk                  -3.633e-02  3.211e-02  5.215e+01  -1.132  0.26298    
+# feeding_first_yearBreastmilk_and_formula    2.851e-02  2.964e-02  4.621e+01   0.962  0.34123    
+# feeding_first_yearFormula                  -2.743e-02  3.447e-02  5.436e+01  -0.796  0.42961    
+# feeding_first_yearUnknown                   1.717e-02  9.018e-02  5.906e+01   0.190  0.84964    
+# Delivery.ModeVaginal                       -1.849e-02  3.515e-02  6.361e+01  -0.526  0.60078 
+
+
+
+#----------------USA--------------------#
+
+ps0_gg2_USA <- ps0_gg2 %>%
+               subset_samples(Country == "USA")
+
+sample_names(ps0_gg2_USA) <- gsub("_F_fltr.fastq","",sample_names(ps0_gg2_USA))
+
+sample_data(ps0_gg2_USA) <- metadata_for_virus_bacteria
+
+
+# -------------------------------------Alpha diversity Astrovirus +/----------------------------------------------#
+USA.alpha.table <- estimate_richness(ps0_gg2_USA,measures =     
+                            c("Shannon","Observed","Simpson"))%>%
+                            rownames_to_column("sample.name") %>%
+                            mutate("sample.name" = gsub('\\X', '',sample.name)) %>%
+                            column_to_rownames("sample.name") %>%
+                            merge(sample_data(ps0_gg2_USA),by = "row.names")
+
+
+
+USA.Observed <- lmer(Observed ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = USA.alpha.table)
+
+summary(USA.Observed)
+# Fixed effects:
+#                                             Estimate Std. Error        df t value Pr(>|t|)    
+# (Intercept)                                  84.1798    40.4512   15.4824   2.081   0.0544 .  
+# AstroviridaeAstroviridae+                    -5.2046     6.6699  174.0463  -0.780   0.4363    
+# Dx.StatusCONTROL                             26.0616    16.1637   17.2983   1.612   0.1250    
+# month                                         0.7978     0.1423  167.3671   5.605 8.43e-08 ***
+# SexMale                                     -21.0914    16.6199   16.3344  -1.269   0.2222    
+# Age.at.Gluten.Introduction..months.11       -49.6493    41.1451   15.0350  -1.207   0.2462    
+# Age.at.Gluten.Introduction..months.12      -117.2620    43.0361   22.2771  -2.725   0.0123 *  
+# Age.at.Gluten.Introduction..months.15       -60.0844    29.1038   14.0750  -2.064   0.0579 .  
+# Age.at.Gluten.Introduction..months.36       -39.1654    46.1408   15.0874  -0.849   0.4092    
+# Age.at.Gluten.Introduction..months.5        -42.1518    35.3623   15.8747  -1.192   0.2508    
+# Age.at.Gluten.Introduction..months.6        -22.8291    27.5494   15.7640  -0.829   0.4197    
+# Age.at.Gluten.Introduction..months.7        -43.5090    24.0650   14.8018  -1.808   0.0910 .  
+# Age.at.Gluten.Introduction..months.8        -43.1191    26.2981   15.1274  -1.640   0.1217    
+# Age.at.Gluten.Introduction..months.9        -39.1835    28.5110   16.7369  -1.374   0.1875    
+# Age.at.Gluten.Introduction..months.Unknown  -38.6416    39.1598   16.8752  -0.987   0.3377    
+# HLA.CategoryLow/No Risk                     -23.7265    21.6777   15.7155  -1.095   0.2902    
+# HLA.CategoryStandard Risk                   -26.4169    15.3239   15.4604  -1.724   0.1047    
+# feeding_first_yearBreastmilk_and_formula     12.5611    13.7403   15.6281   0.914   0.3745    
+# feeding_first_yearFormula                   -17.2681    18.1612   16.1123  -0.951   0.3557    
+# Delivery.ModeVaginal                          6.5544    41.7714   14.6865   0.157   0.8775 
+
+
+USA.Shannon <- lmer(Shannon ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = USA.alpha.table)
+
+summary(USA.Shannon)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                  2.525906   0.798134  15.298640   3.165  0.00628 ** 
+# AstroviridaeAstroviridae+                   -0.226874   0.143007 175.428320  -1.586  0.11444    
+# Dx.StatusCONTROL                             0.515807   0.320527  17.370251   1.609  0.12559    
+# month                                        0.013287   0.003059 167.969608   4.343 2.42e-05 ***
+# SexMale                                     -0.314133   0.328720  16.236744  -0.956  0.35327    
+# Age.at.Gluten.Introduction..months.11       -0.272371   0.810676  14.762457  -0.336  0.74161    
+# Age.at.Gluten.Introduction..months.12       -2.206437   0.862559  23.423406  -2.558  0.01744 *  
+# Age.at.Gluten.Introduction..months.15       -0.919865   0.571591  13.658220  -1.609  0.13041    
+# Age.at.Gluten.Introduction..months.36       -0.696207   0.909270  14.832253  -0.766  0.45588    
+# Age.at.Gluten.Introduction..months.5        -0.420770   0.698532  15.740339  -0.602  0.55551    
+# Age.at.Gluten.Introduction..months.6        -0.054430   0.544031  15.626962  -0.100  0.92158    
+# Age.at.Gluten.Introduction..months.7        -0.513766   0.473801  14.505699  -1.084  0.29590    
+# Age.at.Gluten.Introduction..months.8        -0.566405   0.518307  14.879556  -1.093  0.29186    
+# Age.at.Gluten.Introduction..months.9        -0.180719   0.564568  16.756744  -0.320  0.75285    
+# Age.at.Gluten.Introduction..months.Unknown  -0.359800   0.775749  16.951490  -0.464  0.64868    
+# HLA.CategoryLow/No Risk                     -0.147812   0.428004  15.543894  -0.345  0.73446    
+# HLA.CategoryStandard Risk                   -0.366913   0.302318  15.235785  -1.214  0.24335    
+# feeding_first_yearBreastmilk_and_formula     0.258608   0.271204  15.407766   0.954  0.35503    
+# feeding_first_yearFormula                   -0.185271   0.358986  15.994986  -0.516  0.61285    
+# Delivery.ModeVaginal                         0.006346   0.822098  14.368363   0.008  0.99395 
+
+
+USA.Simpson <- lmer(Simpson ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = USA.alpha.table)
+
+summary(USA.Simpson)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                 8.955e-01  1.343e-01  1.619e+01   6.667  5.1e-06 ***
+# AstroviridaeAstroviridae+                  -3.384e-02  3.064e-02  1.788e+02  -1.104   0.2710    
+# Dx.StatusCONTROL                            7.305e-02  5.498e-02  1.941e+01   1.329   0.1993    
+# month                                       1.535e-03  6.626e-04  1.712e+02   2.317   0.0217 *  
+# SexMale                                    -6.101e-02  5.580e-02  1.745e+01  -1.094   0.2890    
+# Age.at.Gluten.Introduction..months.11      -2.414e-02  1.356e-01  1.520e+01  -0.178   0.8610    
+# Age.at.Gluten.Introduction..months.12      -3.910e-01  1.543e-01  3.130e+01  -2.533   0.0165 *  
+# Age.at.Gluten.Introduction..months.15      -2.153e-01  9.431e-02  1.340e+01  -2.283   0.0394 *  
+# Age.at.Gluten.Introduction..months.36      -2.308e-02  1.522e-01  1.536e+01  -0.152   0.8814    
+# Age.at.Gluten.Introduction..months.5       -6.000e-02  1.181e-01  1.684e+01  -0.508   0.6179    
+# Age.at.Gluten.Introduction..months.6        1.655e-02  9.187e-02  1.675e+01   0.180   0.8592    
+# Age.at.Gluten.Introduction..months.7       -6.103e-02  7.902e-02  1.485e+01  -0.772   0.4521    
+# Age.at.Gluten.Introduction..months.8       -5.741e-02  8.681e-02  1.545e+01  -0.661   0.5182    
+# Age.at.Gluten.Introduction..months.9        1.707e-02  9.638e-02  1.862e+01   0.177   0.8613    
+# Age.at.Gluten.Introduction..months.Unknown -3.397e-02  1.327e-01  1.920e+01  -0.256   0.8008    
+# HLA.CategoryLow/No Risk                    -3.181e-02  7.218e-02  1.644e+01  -0.441   0.6652    
+# HLA.CategoryStandard Risk                  -7.480e-02  5.080e-02  1.584e+01  -1.472   0.1605    
+# feeding_first_yearBreastmilk_and_formula    5.604e-02  4.564e-02  1.602e+01   1.228   0.2372    
+# feeding_first_yearFormula                  -3.559e-02  6.081e-02  1.714e+01  -0.585   0.5660    
+# Delivery.ModeVaginal                       -8.067e-02  1.369e-01  1.459e+01  -0.589   0.5646
+
+#----------------Italy--------------------#
+
+ps0_gg2_Italy <- ps0_gg2 %>%
+               subset_samples(Country == "ITALY")
+
+sample_names(ps0_gg2_Italy) <- gsub("_F_fltr.fastq","",sample_names(ps0_gg2_Italy))
+
+sample_data(ps0_gg2_Italy) <- metadata_for_virus_bacteria
+
+
+# -------------------------------------Alpha diversity Astrovirus +/----------------------------------------------#
+Italy.alpha.table <- estimate_richness(ps0_gg2_Italy,measures =     
+                            c("Shannon","Observed","Simpson"))%>%
+                            rownames_to_column("sample.name") %>%
+                            mutate("sample.name" = gsub('\\X', '',sample.name)) %>%
+                            column_to_rownames("sample.name") %>%
+                            merge(sample_data(ps0_gg2_Italy),by = "row.names")
+
+
+
+Italy.Observed <- lmer(Observed ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = Italy.alpha.table)
+summary(Italy.Observed)
+# Fixed effects:
+#                                            Estimate Std. Error       df t value Pr(>|t|)    
+# (Intercept)                                 65.4610    17.2898  25.4346   3.786 0.000838 ***
+# AstroviridaeAstroviridae+                   -3.6933     9.8744 106.6917  -0.374 0.709131    
+# Dx.StatusCONTROL                            11.3600     7.8779  27.2795   1.442 0.160685    
+# month                                        0.8079     0.2496 108.9423   3.237 0.001600 ** 
+# SexMale                                     -8.3126     9.2509  27.8748  -0.899 0.376575    
+# Age.at.Gluten.Introduction..months.11       -9.7228    25.5797  25.3193  -0.380 0.707042    
+# Age.at.Gluten.Introduction..months.4       -70.6107    24.5186  19.5409  -2.880 0.009408 ** 
+# Age.at.Gluten.Introduction..months.6       -47.5098    13.6941  21.2327  -3.469 0.002264 ** 
+# Age.at.Gluten.Introduction..months.7       -34.6047    13.7040  23.2473  -2.525 0.018829 *  
+# Age.at.Gluten.Introduction..months.8       -45.4652    17.6454  28.0469  -2.577 0.015531 *  
+# Age.at.Gluten.Introduction..months.9        18.5764    24.0983  17.9887   0.771 0.450797    
+# Age.at.Gluten.Introduction..months.Unknown   3.2769    35.1762  22.0625   0.093 0.926620    
+# HLA.CategoryLow/No Risk                     33.4234    28.3349  34.8102   1.180 0.246164    
+# HLA.CategoryStandard Risk                    2.5319    10.7185  27.8060   0.236 0.814993    
+# feeding_first_yearBreastmilk_and_formula     9.9015    10.0396  19.3535   0.986 0.336184    
+# feeding_first_yearFormula                   -4.9930     9.7157  21.5913  -0.514 0.612532    
+# feeding_first_yearUnknown                  -16.7278    30.0420  21.5122  -0.557 0.583402    
+# Delivery.ModeVaginal                         7.0544     7.8883  23.4903   0.894 0.380242    
+
+
+Italy.Shannon <- lmer(Shannon ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = Italy.alpha.table)
+summary(Italy.Shannon)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                  2.227252   0.396144  23.140204   5.622 9.88e-06 ***
+# AstroviridaeAstroviridae+                    0.174361   0.249374 107.902217   0.699  0.48594    
+# Dx.StatusCONTROL                             0.380659   0.181203  24.511733   2.101  0.04612 *  
+# month                                        0.020609   0.006233 104.924187   3.306  0.00129 ** 
+# SexMale                                     -0.432317   0.213171  25.714430  -2.028  0.05304 .  
+# Age.at.Gluten.Introduction..months.11        0.511367   0.586158  23.369519   0.872  0.39186    
+# Age.at.Gluten.Introduction..months.4        -1.792570   0.551866  16.939110  -3.248  0.00475 ** 
+# Age.at.Gluten.Introduction..months.6        -0.718398   0.309509  17.668336  -2.321  0.03246 *  
+# Age.at.Gluten.Introduction..months.7        -0.540946   0.311863  20.133615  -1.735  0.09810 .  
+# Age.at.Gluten.Introduction..months.8        -1.017541   0.406546  25.393278  -2.503  0.01910 *  
+# Age.at.Gluten.Introduction..months.9        -0.171325   0.538793  15.025316  -0.318  0.75488    
+# Age.at.Gluten.Introduction..months.Unknown   0.611788   0.798653  19.717666   0.766  0.45274    
+# HLA.CategoryLow/No Risk                      0.762363   0.662513  35.408368   1.151  0.25756    
+# HLA.CategoryStandard Risk                   -0.033321   0.247100  26.237648  -0.135  0.89376    
+# feeding_first_yearBreastmilk_and_formula     0.328519   0.225345  15.583402   1.458  0.16474    
+# feeding_first_yearFormula                   -0.072602   0.219636  17.333775  -0.331  0.74494    
+# feeding_first_yearUnknown                   -0.639212   0.681059  19.273698  -0.939  0.35957    
+# Delivery.ModeVaginal                         0.248023   0.179556  19.965026   1.381  0.18245
+
+
+Italy.Simpson <- lmer(Simpson ~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID), data = Italy.alpha.table)
+summary(Italy.Simpson)
+# Fixed effects:
+#                                              Estimate Std. Error         df t value Pr(>|t|)    
+# (Intercept)                                  0.770203   0.081452 109.000000   9.456 7.46e-16 ***
+# AstroviridaeAstroviridae+                    0.008239   0.054126 109.000000   0.152  0.87929    
+# Dx.StatusCONTROL                             0.070147   0.037309 109.000000   1.880  0.06276 .  
+# month                                        0.003220   0.001340 109.000000   2.402  0.01799 *  
+# SexMale                                      0.001127   0.043981 109.000000   0.026  0.97960    
+# Age.at.Gluten.Introduction..months.11        0.110621   0.120579 109.000000   0.917  0.36095    
+# Age.at.Gluten.Introduction..months.4        -0.123772   0.112183 109.000000  -1.103  0.27233    
+# Age.at.Gluten.Introduction..months.6        -0.071693   0.062979 109.000000  -1.138  0.25746    
+# Age.at.Gluten.Introduction..months.7        -0.029455   0.063786 109.000000  -0.462  0.64517    
+# Age.at.Gluten.Introduction..months.8        -0.234302   0.083828 109.000000  -2.795  0.00613 ** 
+# Age.at.Gluten.Introduction..months.9         0.026740   0.108966 109.000000   0.245  0.80661    
+# Age.at.Gluten.Introduction..months.Unknown   0.189777   0.163296 109.000000   1.162  0.24771    
+# HLA.CategoryLow/No Risk                      0.057301   0.138137 109.000000   0.415  0.67910    
+# HLA.CategoryStandard Risk                   -0.004720   0.051028 109.000000  -0.092  0.92647    
+# feeding_first_yearBreastmilk_and_formula    -0.010101   0.045604 109.000000  -0.221  0.82512    
+# feeding_first_yearFormula                   -0.028342   0.044620 109.000000  -0.635  0.52663    
+# feeding_first_yearUnknown                   -0.167812   0.139145 109.000000  -1.206  0.23042    
+# Delivery.ModeVaginal                        -0.004713   0.036696 109.000000  -0.128  0.89805    
+
+
+
+total.observe <- as.data.frame(coef(summary(total.Observed))) %>% mutate(cohort = "total",metric = "Observed") %>% rownames_to_column("Variables") 
+total.shannon <- as.data.frame(coef(summary(total.Shannon))) %>% mutate(cohort = "total",metric = "Shannon") %>% rownames_to_column("Variables") 
+total.simpson <- as.data.frame(coef(summary(total.Simpson))) %>% mutate(cohort = "total",metric = "Simpson") %>% rownames_to_column("Variables") 
+
+
+USA.observe <- as.data.frame(coef(summary(USA.Observed))) %>% mutate(cohort = "USA",metric = "Observed") %>% rownames_to_column("Variables") 
+USA.shannon <- as.data.frame(coef(summary(USA.Shannon))) %>% mutate(cohort = "USA",metric = "Shannon") %>% rownames_to_column("Variables") 
+USA.simpson <- as.data.frame(coef(summary(USA.Simpson))) %>% mutate(cohort = "USA",metric = "Simpson") %>% rownames_to_column("Variables") 
+
+
+Italy.observe <- as.data.frame(coef(summary(Italy.Observed))) %>% mutate(cohort = "Italy",metric = "Observed") %>% rownames_to_column("Variables") 
+Italy.shannon <- as.data.frame(coef(summary(Italy.Shannon))) %>% mutate(cohort = "Italy",metric = "Shannon") %>% rownames_to_column("Variables") 
+Italy.simpson <- as.data.frame(coef(summary(Italy.Simpson))) %>% mutate(cohort = "Italy",metric = "Simpson") %>% rownames_to_column("Variables") 
+
+
+Alpha <- rbind(total.observe,total.shannon,total.simpson,USA.observe,USA.shannon,USA.simpson,Italy.observe,Italy.shannon,Italy.simpson) %>%
+         filter(Variables == "AstroviridaeAstroviridae+") %>%
+         mutate(Variables = "Astroviridae+/-")
+View(Alpha)
+
+# -------------------------------------Beta diversity Astrovirus +/- ---------------------------------------------#
+
+library(MDMR)
+
+# Identify which samples are empty in this subset
+total.empties <- sample_names(ps0_gg2)[sample_sums(ps0_gg2) == 0]
+
+# Prune them (and prune zero-sum taxa just in case)
+total.ps_nonempty <- prune_samples(sample_sums(ps0_gg2) > 0, ps0_gg2)
+total.ps_nonempty <- prune_taxa(taxa_sums(total.ps_nonempty) > 0, total.ps_nonempty)
+
+
+
+# get otu table
+total.OTU <- data.frame(otu_table(total.ps_nonempty))
+
+
+# get the sample data table
+total.Sample <- data.frame(sample_data(total.ps_nonempty))
+
+
+# calculate weighted unifrac distance
+total.dist <- phyloseq::distance(total.ps_nonempty, method = "bray")
+
+
+total.beta <- mixed.mdmr(~ Astroviridae + Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID),data = total.Sample, D = total.dist)
+summary(total.beta)
+total.beta <- data.frame(total.beta)
+#                                          stat           pv p.prec df ssd.used
+# Omnibus                             32.370437 1.017679e-10  1e-13 22        1
+# (Intercept)                          2.596404 2.516388e-04  1e-14  1        1
+# Astroviridae                         0.860280 6.623883e-01  1e-14  1        1
+# Dx.Status                            1.526075 4.561103e-02  1e-14  1        1
+# month                                4.898548 4.411091e-09  1e-14  1        1
+# Country                              1.343762 1.062596e-01  1e-14  1        1
+# Sex                                  1.697621 2.007735e-02  1e-14  1        1
+# Age.at.Gluten.Introduction..months. 17.220107 9.120468e-08  1e-14 11        1
+# HLA.Category                         3.944123 2.856540e-04  1e-14  2        1
+# feeding_first_year                   4.657471 2.768936e-03  1e-14  3        1
+# Delivery.Mode                        1.247449 1.629376e-01  1e-14  1        1
+
+
+#-------------------USA------------------------#
+
+# Identify which samples are empty in this subset
+USA.empties <- sample_names(ps0_gg2_USA)[sample_sums(ps0_gg2_USA) == 0]
+
+# Prune them (and prune zero-sum taxa just in case)
+USA.ps_nonempty <- prune_samples(sample_sums(ps0_gg2_USA) > 0, ps0_gg2_USA)
+USA.ps_nonempty <- prune_taxa(taxa_sums(USA.ps_nonempty) > 0, USA.ps_nonempty)
+
+
+
+# get otu table
+USA.OTU <- data.frame(otu_table(USA.ps_nonempty))
+
+
+# get the sample data table
+USA.Sample <- data.frame(sample_data(USA.ps_nonempty))
+
+
+# calculate weighted unifrac distance
+USA.dist <- phyloseq::distance(USA.ps_nonempty, method = "bray")
+
+
+USA.beta <- mixed.mdmr(~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID),data = USA.Sample, D = USA.dist)
+summary(USA.beta)
+USA.beta <- data.frame(USA.beta)
+#                                          stat           pv p.prec df ssd.used
+# Omnibus                             28.697878 6.035707e-10  1e-13 19        1
+# (Intercept)                          1.340456 1.125144e-01  1e-14  1        1
+# Astroviridae                         1.269538 1.524719e-01  1e-14  1        1
+# Dx.Status                            1.703080 2.208245e-02  1e-14  1        1
+# month                                2.863083 1.146129e-04  1e-14  1        1
+# Sex                                  1.738441 1.878280e-02  1e-14  1        1
+# Age.at.Gluten.Introduction..months. 18.271204 1.075608e-10  1e-14 10        1
+# HLA.Category                         4.489215 4.593973e-05  1e-14  2        1
+# feeding_first_year                   4.238222 1.287385e-04  1e-14  2        1
+# Delivery.Mode                        1.816553 1.312989e-02  1e-14  1        1
+
+
+#-------------------Italy------------------------#
+
+# Identify which samples are empty in this subset
+Italy.empties <- sample_names(ps0_gg2_Italy)[sample_sums(ps0_gg2_Italy) == 0]
+
+# Prune them (and prune zero-sum taxa just in case)
+Italy.ps_nonempty <- prune_samples(sample_sums(ps0_gg2_Italy) > 0, ps0_gg2_Italy)
+Italy.ps_nonempty <- prune_taxa(taxa_sums(Italy.ps_nonempty) > 0, Italy.ps_nonempty)
+
+
+
+# get otu table
+Italy.OTU <- data.frame(otu_table(Italy.ps_nonempty))
+
+
+# get the sample data table
+Italy.Sample <- data.frame(sample_data(Italy.ps_nonempty))
+
+
+# calculate weighted unifrac distance
+Italy.dist <- phyloseq::distance(Italy.ps_nonempty, method = "bray")
+
+
+Italy.beta <- mixed.mdmr(~ Astroviridae + Dx.Status + month + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1|patientID),data = Italy.Sample, D = Italy.dist)
+summary(Italy.beta)
+Italy.beta <- data.frame(Italy.beta)
+#                                          stat           pv p.prec df ssd.used
+# Omnibus                             25.575974 3.331286e-08  1e-14 17        1
+# (Intercept)                          3.021923 1.021083e-04  1e-14  1        1
+# Astroviridae                         1.380867 1.064039e-01  1e-14  1        1
+# Dx.Status                            1.182836 2.311183e-01  1e-14  1        1
+# month                                6.528057 7.471934e-11  1e-14  1        1
+# Sex                                  1.141683 2.687869e-01  1e-14  1        1
+# Age.at.Gluten.Introduction..months. 13.686111 8.974000e-09  1e-14  7        1
+# HLA.Category                         3.058321 1.910621e-02  1e-14  2        1
+# feeding_first_year                   5.991431 5.038480e-05  1e-14  3        1
+# Delivery.Mode                        1.132454 2.778678e-01  1e-14  1        1
+
+
+
+beta <- rbind(total.beta %>% rownames_to_column("Varibles"),USA.beta %>% rownames_to_column("Varibles"),Italy.beta %>% rownames_to_column("Varibles")) %>%
+  filter(Varibles == "Astroviridae") %>%
+  mutate("metric" = "Beta")
+
+View(beta)
+
+```
+
+
+
+
+################
+#    Genus     #
+################
+```{r}
+library(GLMMadaptive)
+
+genus.name <- colnames(PA.table.genus.all)[26:77]
+new.genus.name <- gsub("/|-","_",genus.name)
+colnames(PA.table.genus.all)[26:77] <- new.genus.name
+
+
+
+for (i in new.genus.name) {
+  
+  if (sum(PA.table.genus.all[i]) == 1){
+    print(paste0(i," exists in only one sample"))
+  }else if(sum(PA.table.genus.all[i]) == 0){
+    print(paste0(i," exists in no sample"))
+  }else{
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    
+    # glm.fit <- glmer(get(i) ~ Dx.Status * month + Country + Sex + Delivery.Mode + 
+    #               HLA.Category + feeding_first_year + as.numeric(Age.at.Gluten.Introduction..months.) + 
+    #               as.numeric(Age.at.Solid.Introduction..months.) + (1 | patientID), 
+    #               family = binomial(link = "logit"),
+    #                        data = PA.table.genus.all)
+    
+    glm.fit <- glmer(get(i) ~ Dx.Status : month + Country + Sex + Delivery.Mode + 
+               HLA.Category + feeding_first_year + as.numeric(Age.at.Gluten.Introduction..months.) + 
+               as.numeric(Age.at.Solid.Introduction..months.) + (1|patientID), 
+               family = binomial(link = "logit"),
+               data = PA.table.genus.all)
+  
+  fit.glance <- glance(glm.fit)
+
+  fit.tidy <- tidy(glm.fit) %>%
+              add_column(r.square = fit.glance$r.squared,
+                            adj.r.square = fit.glance$adj.r.squared)
+
+  write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/genus/",i,"_glmer.csv"))
+     
+     
+     
+  glmer.stats.df <- tidy(glm.fit, conf.int = TRUE, exponentiate = TRUE) %>%
+                       filter(effect == "fixed")
+      
+  glmer.stats.df$stars <- cut(glmer.stats.df$p.value, breaks = c(-Inf, 0.0001, 0.001, 0.01, 0.05, Inf), labels = c("****","***", "**", "*", "n.s."), right = FALSE)
+      
+  glmer.stats.plot <- glmer.stats.df %>%
+        mutate(sig = paste(sprintf(estimate, fmt = '%.2f'),stars,sep=" "))
+      
+  p <- ggplot(glmer.stats.plot, aes(y = term, x = estimate, 
+                              xmin = conf.low, xmax = conf.high, color = ifelse(p.value>0.05, 'black', 'red'))) +
+        geom_text(aes(label = sig), color = ifelse(glmer.stats.plot$p.value>0.05, 'black', 'red'), vjust = -0.5, hjust = 0.51, size = 4, position = position_dodge(width = 0.5), show.legend = F) +
+        geom_pointrange(position = position_dodge(width = 0.5)) +
+        geom_vline(xintercept = 1, linetype = "dashed", color = "gray") +
+        scale_x_log10(limits = c(0.001, 10000), 
+                      breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                      labels = c("1e-03","1e-02", "1e-01", "1e+00", "1e+01", "1e+02", "1e+03")) +
+        labs(x = "Odds Ratio (log scale)", 
+             y = "", 
+             title = paste0("GLMER Model for",i))+
+        theme(legend.position = "none") +
+        scale_color_identity()
+      
+      ggsave(p,file=paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/genus/",i,"_glmer_pdf.pdf"),width = 15, height = 15, dpi = 600)
+      
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)|grepl("Response is constant", e$message)|grepl("pwrssUpdate did not converge in (maxit) iterations",e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+}
+
+
+df <-PA.table.genus.all %>% dplyr::select(Row.names,26:77) %>% column_to_rownames("Row.names")
+
+ggplot(PA.table.genus.all %>% dplyr::select(Row.names,26:77) %>% column_to_rownames("Row.names"),aes(x = c(26:77),y=Row.names))
+
+PA.table.genus.all$Row.names
+
+```
+
+
+
+################
+#    Species   #
+################
+```{r}
+
+species.name <- colnames(PA.table.species.all)[26:317]
+new.species.name <- gsub("/|-","_",species.name)
+colnames(PA.table.species.all)[26:317] <- new.species.name
+
+
+
+for (i in new.species.name) {
+  
+  if (sum(PA.table.species.all[i]) == 1){
+    print(paste0(i," exists in only one sample"))
+  }else if(sum(PA.table.species.all[i]) == 2){
+    print(paste0(i," exists in only two sample"))
+  }else if(sum(PA.table.species.all[i]) == 0){
+    print(paste0(i," exists in no sample"))
+  }else{
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    
+    # glm.fit <- glmer(get(i) ~ Dx.Status * month + Country + Sex + Delivery.Mode + 
+    #               HLA.Category + feeding_first_year + as.numeric(Age.at.Gluten.Introduction..months.) + 
+    #               as.numeric(Age.at.Solid.Introduction..months.) + (1 | patientID), 
+    #               family = binomial(link = "logit"),
+    #                        data = PA.table.genus.all)
+    
+    glm.fit <- glmer(get(i) ~ Dx.Status : month + Country + Sex + Delivery.Mode + 
+               HLA.Category + feeding_first_year + as.numeric(Age.at.Gluten.Introduction..months.) + 
+               as.numeric(Age.at.Solid.Introduction..months.) + (1|patientID), 
+               family = binomial(link = "logit"),
+               data = PA.table.species.all)
+    
+    print(paste0("test: ",i))
+  
+  fit.glance <- glance(glm.fit)
+    
+    print(paste0("test fit.glance: pass"))
+
+  fit.tidy <- tidy(glm.fit) %>%
+              add_column(r.square = fit.glance$r.squared,
+                            adj.r.square = fit.glance$adj.r.squared)
+   print(paste0("test fit.tidy: pass"))
+
+  write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/species/",i,"_glmer.csv"))
+     
+     
+     
+  glmer.stats.df <- tidy(glm.fit, conf.int = TRUE, exponentiate = TRUE) %>%
+                       filter(effect == "fixed")
+  
+  print(paste0("test glmer.stats.df: pass"))
+      
+  glmer.stats.df$stars <- cut(glmer.stats.df$p.value, breaks = c(-Inf, 0.0001, 0.001, 0.01, 0.05, Inf), labels = c("****","***", "**", "*", "n.s."), right = FALSE)
+      
+  
+  glmer.stats.plot <- glmer.stats.df %>%
+        mutate(sig = paste(sprintf(estimate, fmt = '%.2f'),stars,sep=" "))
+  
+  print(paste0("test glmer.stats.plot: pass"))
+      
+  p <- ggplot(glmer.stats.plot, aes(y = term, x = estimate, 
+                              xmin = conf.low, xmax = conf.high, color = ifelse(p.value>0.05, 'black', 'red'))) +
+        geom_text(aes(label = sig), color = ifelse(glmer.stats.plot$p.value>0.05, 'black', 'red'), vjust = -0.5, hjust = 0.51, size = 4, position = position_dodge(width = 0.5), show.legend = F) +
+        geom_pointrange(position = position_dodge(width = 0.5)) +
+        geom_vline(xintercept = 1, linetype = "dashed", color = "gray") +
+        scale_x_log10(limits = c(0.001, 10000), 
+                      breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                      labels = c("1e-03","1e-02", "1e-01", "1e+00", "1e+01", "1e+02", "1e+03")) +
+        labs(x = "Odds Ratio (log scale)", 
+             y = "", 
+             title = paste0("GLMER Model for",i))+
+        theme(legend.position = "none") +
+        scale_color_identity()
+  
+   print(paste0("test p: pass"))
+      
+      ggsave(p,file=paste0("~/Handley Lab Dropbox/16S/Celiac/plot/GLMER/species/",i,"_glmer.pdf"),width = 15, height = 15, dpi = 600)
+      
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)|grepl("Response is constant", e$message)|grepl("pwrssUpdate did not converge in (maxit) iterations",e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+}
+
+
+df <-PA.table.species.all %>% dplyr::select(Row.names,26:77) %>% column_to_rownames("Row.names")
+
+ggplot(PA.table.species.all %>% dplyr::select(Row.names,26:77) %>% column_to_rownames("Row.names"),aes(x = c(26:77),y=Row.names))
+
+PA.table.species.all$Row.names
+
+
+
+```
+
+
+
+
+                                                                  #########################################
+                                                                  # Cox PH moel for survival analysis     #
+                                                                  #                                       #
+                                                                  #########################################
+
+
+################
+#    Species   #
+################
+```{r}
+
+
+species.name <- colnames(PA.table.species.all.prev)[26:81]
+new.species.name <- gsub("/|-","_",species.name)
+colnames(PA.table.species.all.prev)[26:81] <- new.species.name
+PA.table.species.all.prev <- PA.table.species.all.prev %>% mutate(across(starts_with("Viruses"), ~ factor(., levels = c(0, 1))))
+
+
+PA.table.species.all.prev$Dx.Status <- as.numeric(ifelse(PA.table.species.all.prev$Dx.Status == "CONTROL",0,1))
+table(PA.table.species.all.prev %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+#  0  1 
+# 36 36 
+
+
+species.stats.list <- list()
+
+for (i in new.species.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month, Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = PA.table.species.all.prev)
+
+
+    fit.tidy <- tidy(cox.fit)
+
+   # write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/grand_final/species/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    #write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/grand_final/species/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     species.stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+species.cox.res <- bind_rows(species.stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate("taxa_species" = unlist(lapply(strsplit(taxa,";"),"[",7))) %>%
+                   mutate("taxa_genus" = unlist(lapply(strsplit(taxa,";"),"[",6))) %>%
+                   mutate("taxa_family" = unlist(lapply(strsplit(taxa,";"),"[",5))) %>%
+                   mutate("taxa_genus_species" = paste0(unlist(lapply(strsplit(taxa,";"),"[",6)),"_",unlist(lapply(strsplit(taxa,";"),"[",7)))) %>%
+                   mutate(taxa_species = gsub("_","-",taxa_species))
+
+
+write.csv(species.cox.res %>% filter(`Pr...z..` < 0.05),"~/Handley Lab Dropbox/16S/Celiac/plot/COX/grand_final/species_cox_res_p_sig.csv",sep = "\t")
+
+
+p.species.stats <- ggplot(species.cox.res,aes(x = `exp.coef.`,y=taxa_species,color = `P-Value`)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0,linetype="dotted") +
+  scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+  geom_text_repel(data = subset(species.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+  theme(axis.text.y = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 12,face = "bold")) +
+  labs(x = "exp(Coef)",y = "") +
+  theme_bw()
+
+
+ 
+ggsave(p.species.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/grand_final/species/species.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+species_to_genus <- unlist(split(species.cox.res$taxa_genus,species.cox.res$taxa_species))
+
+library(scales) 
+
+custom_trans <- trans_new(
+  name = "custom",
+  transform = function(x) {
+    # Piecewise transformation
+    ifelse(x < 0.05, x * 20,  # Map 0.00-0.05 to 0-1
+           ifelse(x < 0.25, (x - 0.05) * 5 + 1,  # Map 0.05-0.25 to 1-2
+                  (x - 0.25) * 1 + 2))  # Map 0.25+ proportionally
+  },
+  inverse = function(x) {
+    # Reverse the transformation
+    ifelse(x < 1, x / 20,  # Map 0-1 back to 0.00-0.05
+           ifelse(x < 2, (x - 1) / 5 + 0.05,  # Map 1-2 back to 0.05-0.25
+                  (x - 2) / 1 + 0.25))  # Map 2+ back to 0.25+
+  }
+)
+
+
+p.species.stats.Pvalue <- ggplot(species.cox.res %>% filter(`Pr...z..` < 0.25),aes(x = `Pr...z..`,y=reorder(taxa_species, -`Pr...z..`),color = taxa_family)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0.05,linetype="dotted") +
+  scale_color_manual(breaks = rev(unique(species.cox.res %>% filter(`Pr...z..` < 0.25) %>% pull(taxa_family))),values = c("#FF5733","#33FF57","#3357FF","#FF33A1","#FFFF33","#FF33FF","#DFFF00","#ab2be2","#FF6347","#FF8C00"), #"#33FFFF",
+                     labels = rev(unique(unique(species.cox.res %>% filter(`Pr...z..` < 0.25) %>% pull(taxa_family))))) +  #values = c("< 0.05" = "red", "> 0.05" = "black")
+  #geom_text_repel(data = subset(species.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+  theme(axis.text.y = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 12,face = "bold")) +
+  labs(x = "",y = "",color = "Family") + 
+  scale_y_discrete(labels = species_to_genus) +
+  scale_x_continuous(
+    trans = custom_trans,  # Apply the custom transformation
+    breaks = c(0.00, 0.05, 0.10, 0.15, 0.20, 0.25),  # Specify breaks
+    labels = c("0.00", "0.05", "0.10", "0.15", "0.20", "0.25")  # Specify labels
+  ) +
+  theme_bw()
+
+
+ggsave(p.species.stats.Pvalue,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/grand_final/species/species.cox.res.pValue.genusName.update.pdf",width = 8, height = 6,dpi=600)
+
+ 
+sig.species.adjust <- species.cox.res %>% 
+                    filter(`Pr...z..` < 0.05) %>%
+                    pull(taxa)
+
+ 
+ PA.table.species.all.prev <- PA.table.species.all.prev %>% mutate(across(starts_with("Viruses"), ~ as.numeric(as.character(.))))
+
+ 
+ PA.table.sig.adjust <- PA.table.species.all.prev %>%
+                  dplyr::select(patientID,Country,month,Dx.Status,disease_onset_details,all_of(sig.species.adjust)) %>%
+                  pivot_longer(cols = starts_with("Viruses"),
+                               names_to = "Species", 
+                               values_to = "Count") %>%
+                  group_by(month,Dx.Status,Species) %>%
+                  mutate(total_count = sum(Count))
+ 
+
+
+ PA.table.sig.adjust$Species <- lapply(strsplit(PA.table.sig.adjust$Species,";"),function(x) paste0(x[5],";",x[6],";",x[7]))
+
+ 
+ 
+ PA.table.sig.adjust$Dx.Status <- ifelse(PA.table.sig.adjust$Dx.Status == 0,"CONTROL","CELIAC")
+sig_Species_PA.heatmap.adjust <- ggplot(PA.table.sig.adjust, aes(x = as.character(Species), y = as.character(month), fill = total_count)) +
+  geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+  #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+  scale_fill_gradient(low="white", high="black") +
+  geom_text(aes(label = total_count), color = "white", size = 3) + 
+  facet_wrap(~Dx.Status) +
+  labs(title = "PA numbers",
+       x = "Groups", y = "Timepoints", fill = "total_PA") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+        axis.text.y = element_text(size=15,face="bold"),
+        strip.text.x = element_text(size = 15, face = "bold"))
+
+
+ggsave(sig_Species_PA.heatmap.adjust,file ="~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_prev/Species_PA.heatmap.pdf",width = 15,height = 15)
+
+
+
+# check1 <- PA.table.species.all.prev %>% dplyr::select(patientID,Dx.Status,month,`Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Gammatorquevirus;Torque teno midi virus 8`) %>%
+#   dplyr::rename("Torque_teno_midi_virus8" = "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Gammatorquevirus;Torque teno midi virus 8")
+#
+#
+# check.anello2.PA.number <- ggplot(check1,aes(x = patientID,y =as.character(month),fill = Torque_teno_midi_virus8)) +
+#   geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+#   #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+#   scale_fill_gradient(low="white", high="black") +
+#   geom_text(aes(label =Torque_teno_midi_virus8), color = "red", size = 3) +
+#   facet_wrap(~Dx.Status) +
+#   labs(title = "PA numbers",
+#        x = "Groups", y = "Timepoints", fill = "total_PA") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+#         axis.text.y = element_text(size=15,face="bold"),
+#         strip.text.x = element_text(size = 15, face = "bold"))
+
+# ggsave(check.anello2.PA.number,file = "~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_prev/anello_Torque_teno_midi_virus8_PAcheck.pdf",width = 25,height = 8,dpi = 600)
+
+
+
+```
+
+
+Count the number of patients that had co-infection with both reovirus and astrovirus
+```{r}
+
+
+colnames(PA.table.species.all.prev)[colnames(PA.table.species.all.prev) %like% "High Island virus"]
+
+# "Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species"
+# "Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus"
+# "Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus"
+
+
+co_infection <- PA.table.species.all.prev %>% mutate("Co_infection1" = ifelse(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` == 1 & `Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` == 1,TRUE,FALSE),
+                                     "Co_infection2" = ifelse(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` == 1 & `Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` == 1,TRUE,FALSE)) %>%
+                select(patientID,Co_infection1,Co_infection2)
+
+
+# double check
+
+Mamastrovirus_species_patients <- PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` ==1) %>% distinct(patientID,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species`)
+# 12
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` ==1) %>% distinct(patientID,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species`))
+
+Human_astrovirus_patients <- PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` ==1) %>% distinct(patientID,month,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`)
+# 10
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` ==1) %>% distinct(patientID,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`))
+
+High_Island_virus_patients <- PA.table.species.all.prev %>% filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` ==1) %>% distinct(patientID,Dx.Status,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`)
+# 9
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` ==1) %>% distinct(patientID,Dx.Status,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`))
+
+intersect(unique(Mamastrovirus_species_patients$patientID),unique(High_Island_virus_patients$patientID))
+# "01_GEMM_011"  USA
+
+intersect(unique(Human_astrovirus_patients$patientID),unique(High_Island_virus_patients$patientID))
+
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` ==1) %>% distinct(patientID,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`))
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` ==1) %>% distinct(patientID,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`))
+
+
+View(PA.table.species.all.prev %>% filter(Dx.Status == 1) %>% distinct(patientID,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`))
+
+
+
+# "Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species"
+# "Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus"
+# "Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus"
+
+
+table(PA.table.species.all.prev %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+
+View(PA.table.species.all.prev %>% filter(Dx.Status == 1) %>% distinct(patientID,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`))
+
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` == 1) %>% distinct(patientID,month,Dx.Status,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`))
+
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` == 1) %>% distinct(patientID,month,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`))
+
+
+View(PA.table.species.all.prev %>% filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` == 1) %>% distinct(patientID,month,Dx.Status,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species`))
+
+
+
+```
+
+
+Count the number of patients with Astrovirus and Reovirus in the US and Italy
+```{r}
+
+co_infection_country <- PA.table.species.all.prev %>% mutate("Co_infection1" = ifelse(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` == 1 & `Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` == 1,TRUE,FALSE),
+                                     "Co_infection2" = ifelse(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` == 1 & `Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` == 1,TRUE,FALSE)) %>%
+                select(patientID,Country,Co_infection1,Co_infection2)
+
+
+# USA
+Mamastrovirus_USA <- PA.table.species.all.prev %>% 
+                               filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` ==1) %>% 
+                               filter(Country == "USA") %>%
+                               distinct(patientID,Country,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species`)
+# 9
+
+Human_astrovirus_USA <- PA.table.species.all.prev %>% 
+                               filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` ==1) %>% 
+                               filter(Country == "USA") %>%
+                               distinct(patientID,Country,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`)
+
+# 5
+
+High_Island_virus_USA <- PA.table.species.all.prev %>% 
+                         filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` ==1) %>%   
+                         filter(Country == "USA") %>%
+                         distinct(patientID,Country,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`)
+
+# 4
+
+
+
+# Italy
+Mamastrovirus_Italy <- PA.table.species.all.prev %>% 
+                               filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species` ==1) %>% 
+                               filter(Country == "ITALY") %>%
+                               distinct(patientID,Country,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;Mamastrovirus;unclassified Mamastrovirus species`)
+# 3
+
+Human_astrovirus_Italy <- PA.table.species.all.prev %>% 
+                               filter(`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus` ==1) %>% 
+                               filter(Country == "ITALY") %>%
+                               distinct(patientID,Country,`Viruses;Pisuviricota;Stelpaviricetes;Stellavirales;Astroviridae;unclassified Astroviridae genus;Human astrovirus`)
+
+# 5
+
+High_Island_virus_Italy <- PA.table.species.all.prev %>% 
+                         filter(`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus` ==1) %>%   
+                         filter(Country == "ITALY") %>%
+                         distinct(patientID,`Viruses;Duplornaviricota;Resentoviricetes;Reovirales;Reoviridae;unclassified Reoviridae genus;High Island virus`)
+
+# 5
+
+
+
+
+
+```
+
+
+Remake the heatmap the same as it is above, but replace the species name with the genus name. 
+Dont do the analysis at genus level, just reannotate the axis labels at the genus level
+```{r}
+
+contigAnnotation.astro <- fread("~/Handley Lab Dropbox/16S/Celiac/plot/contigAnnotations.tsv") %>%
+                    filter(family == "Astroviridae")
+
+#"contig_49065" "contig_3567"  "contig_34440" "contig_4647"  "contig_3357"  "contig_8153"  "contig_49047" "contig_43336" "contig_3669" 
+
+
+contigAnnotation.Reovirus <- fread("~/Handley Lab Dropbox/16S/Celiac/plot/contigAnnotations.tsv") #%>%
+                    filter(family %like% "Reo")
+# none
+
+```
+
+
+################
+#    Genus     #
+################
+```{r}
+
+genus.name <- colnames(PA.table.genus.all.prev)[26:53]
+new.genus.name <- gsub("/|-","_",genus.name)
+colnames(PA.table.genus.all.prev)[26:53] <- new.genus.name
+PA.table.genus.all.prev <- PA.table.genus.all.prev %>% mutate(across(starts_with("Viruses"), ~ factor(., levels = c(0, 1))))
+
+PA.table.genus.all.prev$Dx.Status <- as.numeric(ifelse(PA.table.genus.all.prev$Dx.Status == "CONTROL",0,1))
+
+
+
+
+# check1 <- PA.table.genus.all.prev %>% dplyr::select(patientID,Dx.Status,month,`Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Betatorquevirus`) %>%
+#   dplyr::rename("Anello" = "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Betatorquevirus")
+# 
+# 
+# check.anello.PA.number <- ggplot(check1,aes(x = patientID,y =as.character(month),fill = Anello)) +
+#   geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+#   #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+#   scale_fill_gradient(low="white", high="black") +
+#   geom_text(aes(label = Anello), color = "red", size = 3) + 
+#   facet_wrap(~Dx.Status) +
+#   labs(title = "PA numbers",
+#        x = "Groups", y = "Timepoints", fill = "total_PA") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+#         axis.text.y = element_text(size=15,face="bold"),
+#         strip.text.x = element_text(size = 15, face = "bold"))
+# 
+# ggsave(check.anello.PA.number,file = "~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/anello_PAcheck.pdf",width = 25,height = 8,dpi = 600)
+
+
+genus.stats.list <- list()
+
+for (i in new.genus.name) {
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month,Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = PA.table.genus.all.prev)
+
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/",i,"_cox.csv"))
+    
+    
+     # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = cox_summary$coefficients[, 2],    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 3],                # Standard errors
+      z_value = cox_summary$coefficients[, 4],           # Z-values
+      p_value = cox_summary$coefficients[, 5],           # P-values
+      ci_lower = summary(cox.fit)$conf.int[,3],        # Lower bound of 95% CI for HR
+      ci_upper = summary(cox.fit)$conf.int[,4]         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/",i,"_cox_fill_stats.csv"))
+    
+    
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     genus.stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+genus.cox.res <- bind_rows(genus.stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"Significant","non-Significant")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"Significant","non-Significant"))
+
+
+p.genus.stats <- ggplot(genus.cox.res,aes(x = `exp.coef.`,y=taxa,color = `P-adjust-sig`)) +
+                  geom_point(size = 3) +
+                  geom_vline(xintercept = 0,linetype="dotted") +
+                  scale_color_manual(values = c("Significant" = "red", "non-Significant" = "black")) +
+                  geom_text_repel(data = subset(genus.cox.res, `P-adjust` < 0.05),aes(label = `P-adjust`)) + #, aes(label = `P-adjust`)
+                  theme(axis.text.y = element_text(size = 15, face = "bold"),
+                        axis.text.x = element_text(size = 15,face = "bold"))
+
+p.genus.stats
+
+ggsave(p.genus.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/genus.cox.adjust.res.pdf",width = 20, height = 10,dpi=600)
+
+
+ 
+sig.genus.adjust <- genus.cox.res %>% 
+                    filter(`Pr...z..` < 0.05) %>%
+                    pull(taxa)
+ 
+ 
+ PA.table.genus.all.prev <- PA.table.genus.all.prev %>% mutate(across(starts_with("Viruses"), ~ as.numeric(as.character(.))))
+ 
+ PA.table.sig.adjust <- PA.table.genus.all.prev %>%
+                  dplyr::select(patientID,Country,month,Dx.Status,disease_onset_details,all_of(sig.genus.adjust)) %>%
+                  pivot_longer(cols = starts_with("Viruses"),
+                               names_to = "Genus", 
+                               values_to = "Count") %>%
+                  group_by(month,Dx.Status,Genus) %>%
+                  mutate(total_count = sum(Count))
+ 
+
+
+ PA.table.sig.adjust$Genus <- lapply(strsplit(PA.table.sig.adjust$Genus,";"),function(x) paste0(x[5],";",x[6]))
+
+ 
+ PA.table.sig.adjust$Dx.Status <- ifelse(PA.table.sig.adjust$Dx.Status == 0,"CONTROL","CELIAC")
+ 
+sig_Genus_PA.heatmap.adjust <- ggplot(PA.table.sig.adjust, aes(x = as.character(Genus), y = as.character(month), fill = total_count)) +
+  geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+  #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+  scale_fill_gradient(low="white", high="black") +
+  geom_text(aes(label = total_count), color = "white", size = 3) + 
+  facet_wrap(~Dx.Status) +
+  labs(title = "PA numbers",
+       x = "Groups", y = "Timepoints", fill = "total_PA") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+        axis.text.y = element_text(size=15,face="bold"),
+        strip.text.x = element_text(size = 15, face = "bold"))
+
+
+ggsave(sig_Genus_PA.heatmap.adjust,file ="~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/Genus_PA.heatmap.pdf",width = 8,height = 8)
+
+
+
+
+```
+
+
+
+################
+#    Family    #
+################
+```{r}
+
+
+family.name <- colnames(PA.table.family.all)[26:38]
+new.family.name <- gsub("/|-","_",family.name)
+colnames(PA.table.family.all)[26:38] <- new.family.name
+
+
+PA.table.family.all$Dx.Status <- as.numeric(ifelse(PA.table.family.all$Dx.Status == "CONTROL",0,1))
+
+
+
+stats.list <- list()
+
+for (i in new.family.name) {
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month, Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months., data = PA.table.family.all)
+
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/",i,"_cox.csv"))
+    
+    
+     # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == "get(i)") %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+family.cox.res <- bind_rows(stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"Significant","non-Significant"))
+
+
+p.family.stats <- ggplot(family.cox.res,aes(x = `exp.coef.`,y=taxa,color = `P-Value`)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0,linetype="dotted") +
+  scale_color_manual(values = c("Significant" = "red", "non-Significant" = "black")) +
+  geom_text_repel(data = subset(family.cox.res, `P-Value` == "Significant"), aes(label = `Pr...z..`)) +
+  theme(axis.text.y = element_text(size = 10, face = "bold"),
+        axis.text.x = element_text(size = 10,face = "bold"))
+
+ 
+ggsave(p.family.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/family.cox.res.pdf",width = 15, height = 8,dpi=600)
+
+
+```
+
+
+
+
+
+
+
+
+                                                                  ############################################
+                                                                  # Cox PH moel for survival analysis        #
+                                                                  #       without feeding/solid food/gluton  #
+                                                                  ############################################
+
+
+################
+#    Species   #
+################
+```{r}
+
+
+species.name <- colnames(PA.table.species.all.prev)[26:81]
+new.species.name <- gsub("/|-","_",species.name)
+colnames(PA.table.species.all.prev)[26:81] <- new.species.name
+PA.table.species.all.prev <- PA.table.species.all.prev %>% mutate(across(starts_with("Viruses"), ~ factor(., levels = c(0, 1))))
+
+
+PA.table.species.all.prev$Dx.Status <- as.numeric(ifelse(PA.table.species.all.prev$Dx.Status == "CONTROL",0,1))
+
+
+
+
+species.stats.list <- list()
+
+for (i in new.species.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month, Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category, data = PA.table.species.all.prev)
+    # + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.
+
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_less_variable/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_less_variable/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     species.stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+ 
+species.cox.res <- bind_rows(species.stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"Significant","non-Significant")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"Significant","non-Significant"))
+
+
+p.species.stats <- ggplot(species.cox.res,aes(x = `exp.coef.`,y=taxa,color = `P-Value`)) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = 0,linetype="dotted") +
+  scale_color_manual(values = c("Significant" = "red", "non-Significant" = "black")) +
+  geom_text_repel(data = subset(species.cox.res, `Pr...z..` < 0.05),aes(label = `Pr...z..`)) + #, aes(label = `P-adjust`)
+  theme(axis.text.y = element_text(size = 15, face = "bold"),
+        axis.text.x = element_text(size = 15,face = "bold"))
+
+
+ 
+ggsave(p.species.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_less_variable/species.cox.res.pdf",width = 25, height = 15,dpi=600)
+
+
+ 
+sig.species.adjust <- species.cox.res %>% 
+                    filter(`Pr...z..` < 0.05) %>%
+                    pull(taxa)
+
+ 
+ PA.table.species.all.prev <- PA.table.species.all.prev %>% mutate(across(starts_with("Viruses"), ~ as.numeric(as.character(.))))
+
+ 
+ PA.table.sig.adjust <- PA.table.species.all.prev %>%
+                  dplyr::select(patientID,Country,month,Dx.Status,disease_onset_details,all_of(sig.species.adjust)) %>%
+                  pivot_longer(cols = starts_with("Viruses"),
+                               names_to = "Species", 
+                               values_to = "Count") %>%
+                  group_by(month,Dx.Status,Species) %>%
+                  mutate(total_count = sum(Count))
+ 
+
+
+ PA.table.sig.adjust$Species <- lapply(strsplit(PA.table.sig.adjust$Species,";"),function(x) paste0(x[5],";",x[6],";",x[7]))
+
+ 
+ 
+ PA.table.sig.adjust$Dx.Status <- ifelse(PA.table.sig.adjust$Dx.Status == 0,"CONTROL","CELIAC")
+sig_Species_PA.heatmap.adjust <- ggplot(PA.table.sig.adjust, aes(x = as.character(Species), y = as.character(month), fill = total_count)) +
+  geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+  #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+  scale_fill_gradient(low="white", high="black") +
+  geom_text(aes(label = total_count), color = "white", size = 3) + 
+  facet_wrap(~Dx.Status) +
+  labs(title = "PA numbers",
+       x = "Groups", y = "Timepoints", fill = "total_PA") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+        axis.text.y = element_text(size=15,face="bold"),
+        strip.text.x = element_text(size = 15, face = "bold"))
+
+
+ggsave(sig_Species_PA.heatmap.adjust,file ="~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_less_variable/Species_PA.heatmap.pdf",width = 15,height = 15)
+
+
+
+# check1 <- PA.table.species.all.prev %>% dplyr::select(patientID,Dx.Status,month,`Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Gammatorquevirus;Torque teno midi virus 8`) %>%
+#   dplyr::rename("Torque_teno_midi_virus8" = "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Gammatorquevirus;Torque teno midi virus 8")
+#
+#
+# check.anello2.PA.number <- ggplot(check1,aes(x = patientID,y =as.character(month),fill = Torque_teno_midi_virus8)) +
+#   geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+#   #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+#   scale_fill_gradient(low="white", high="black") +
+#   geom_text(aes(label =Torque_teno_midi_virus8), color = "red", size = 3) +
+#   facet_wrap(~Dx.Status) +
+#   labs(title = "PA numbers",
+#        x = "Groups", y = "Timepoints", fill = "total_PA") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+#         axis.text.y = element_text(size=15,face="bold"),
+#         strip.text.x = element_text(size = 15, face = "bold"))
+
+# ggsave(check.anello2.PA.number,file = "~/Handley Lab Dropbox/16S/Celiac/plot/COX/species_prev/anello_Torque_teno_midi_virus8_PAcheck.pdf",width = 25,height = 8,dpi = 600)
+
+
+
+```
+
+
+
+################
+#    Genus     #
+################
+```{r}
+
+genus.name <- colnames(PA.table.genus.all.prev)[26:53]
+new.genus.name <- gsub("/|-","_",genus.name)
+colnames(PA.table.genus.all.prev)[26:53] <- new.genus.name
+PA.table.genus.all.prev <- PA.table.genus.all.prev %>% mutate(across(starts_with("Viruses"), ~ factor(., levels = c(0, 1))))
+
+PA.table.genus.all.prev$Dx.Status <- as.numeric(ifelse(PA.table.genus.all.prev$Dx.Status == "CONTROL",0,1))
+
+
+
+# check1 <- PA.table.genus.all.prev %>% dplyr::select(patientID,Dx.Status,month,`Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Betatorquevirus`) %>%
+#   dplyr::rename("Anello" = "Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;Betatorquevirus")
+# 
+# 
+# check.anello.PA.number <- ggplot(check1,aes(x = patientID,y =as.character(month),fill = Anello)) +
+#   geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+#   #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+#   scale_fill_gradient(low="white", high="black") +
+#   geom_text(aes(label = Anello), color = "red", size = 3) + 
+#   facet_wrap(~Dx.Status) +
+#   labs(title = "PA numbers",
+#        x = "Groups", y = "Timepoints", fill = "total_PA") +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+#         axis.text.y = element_text(size=15,face="bold"),
+#         strip.text.x = element_text(size = 15, face = "bold"))
+# 
+# ggsave(check.anello.PA.number,file = "~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_prev/anello_PAcheck.pdf",width = 25,height = 8,dpi = 600)
+
+
+genus.stats.list <- list()
+
+for (i in new.genus.name) {
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month,Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = PA.table.genus.all.prev)
+    #  + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.
+
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_less_variable/",i,"_cox.csv"))
+    
+    
+     # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = cox_summary$coefficients[, 2],    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 3],                # Standard errors
+      z_value = cox_summary$coefficients[, 4],           # Z-values
+      p_value = cox_summary$coefficients[, 5],           # P-values
+      ci_lower = summary(cox.fit)$conf.int[,3],        # Lower bound of 95% CI for HR
+      ci_upper = summary(cox.fit)$conf.int[,4]         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_less_variable/",i,"_cox_fill_stats.csv"))
+    
+    
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     genus.stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+genus.cox.res <- bind_rows(genus.stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"Significant","non-Significant")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"Significant","non-Significant"))
+
+
+
+p.genus.stats <- ggplot(genus.cox.res,aes(x = `exp.coef.`,y=taxa,color = `P-Value`)) +
+                  geom_point(size = 3) +
+                  geom_vline(xintercept = 0,linetype="dotted") +
+                  scale_color_manual(values = c("Significant" = "red", "non-Significant" = "black")) +
+                  geom_text_repel(data = subset(genus.cox.res, `Pr...z..` < 0.05),aes(label = `Pr...z..`)) + #, aes(label = `P-adjust`)
+                  theme(axis.text.y = element_text(size = 15, face = "bold"),
+                        axis.text.x = element_text(size = 15,face = "bold"))
+
+ 
+ggsave(p.genus.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_less_variable/genus.cox.res.pdf",width = 20, height = 10,dpi=600)
+
+
+ 
+ sig.genus.adjust <- genus.cox.res %>% 
+                    filter(`Pr...z..` < 0.05) %>%
+                    pull(taxa)
+ 
+ 
+ PA.table.genus.all.prev <- PA.table.genus.all.prev %>% mutate(across(starts_with("Viruses"), ~ as.numeric(as.character(.))))
+ 
+ PA.table.sig.adjust <- PA.table.genus.all.prev %>%
+                  dplyr::select(patientID,Country,month,Dx.Status,disease_onset_details,all_of(sig.genus.adjust)) %>%
+                  pivot_longer(cols = starts_with("Viruses"),
+                               names_to = "Genus", 
+                               values_to = "Count") %>%
+                  group_by(month,Dx.Status,Genus) %>%
+                  mutate(total_count = sum(Count))
+ 
+
+
+ PA.table.sig.adjust$Genus <- lapply(strsplit(PA.table.sig.adjust$Genus,";"),function(x) paste0(x[5],";",x[6]))
+
+ 
+ PA.table.sig.adjust$Dx.Status <- ifelse(PA.table.sig.adjust$Dx.Status == 0,"CONTROL","CELIAC")
+ 
+sig_Genus_PA.heatmap.adjust <- ggplot(PA.table.sig.adjust, aes(x = as.character(Genus), y = as.character(month), fill = total_count)) +
+  geom_tile(color = "black", size = 0.5) +  # Adding a white border between tiles
+  #scale_fill_manual(values = c("0" = "white", "1" = "blue")) +  # Custom colors for absence and presence
+  scale_fill_gradient(low="white", high="black") +
+  geom_text(aes(label = total_count), color = "white", size = 3) + 
+  facet_wrap(~Dx.Status) +
+  labs(title = "PA numbers",
+       x = "Groups", y = "Timepoints", fill = "total_PA") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size=15,face="bold",angle = 90,hjust = 1),
+        axis.text.y = element_text(size=15,face="bold"),
+        strip.text.x = element_text(size = 15, face = "bold"))
+
+
+ggsave(sig_Genus_PA.heatmap.adjust,file ="~/Handley Lab Dropbox/16S/Celiac/plot/COX/genus_less_variable/Genus_PA.heatmap.pdf",width = 8,height = 8)
+
+
+
+
+```
+
+
+
+################
+#    Family    #
+################
+```{r}
+
+
+family.name <- colnames(PA.table.family.all)[26:38]
+new.family.name <- gsub("/|-","_",family.name)
+colnames(PA.table.family.all)[26:38] <- new.family.name
+
+
+PA.table.family.all$Dx.Status <- as.numeric(ifelse(PA.table.family.all$Dx.Status == "CONTROL",0,1))
+
+
+
+stats.list <- list()
+
+for (i in new.family.name) {
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(month, Dx.Status) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months., data = PA.table.family.all)
+
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/",i,"_cox.csv"))
+    
+    
+     # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == "get(i)") %>%
+           rownames_to_column("taxa") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+family.cox.res <- bind_rows(stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"Significant","non-Significant"))
+
+
+p.family.stats <- ggplot(family.cox.res,aes(x = `exp.coef.`,y=taxa,color = `P-Value`)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0,linetype="dotted") +
+  scale_color_manual(values = c("Significant" = "red", "non-Significant" = "black")) +
+  geom_text_repel(data = subset(family.cox.res, `P-Value` == "Significant"), aes(label = `Pr...z..`)) +
+  theme(axis.text.y = element_text(size = 10, face = "bold"),
+        axis.text.x = element_text(size = 10,face = "bold"))
+
+ 
+ggsave(p.family.stats,file="~/Handley Lab Dropbox/16S/Celiac/plot/COX/family/family.cox.res.pdf",width = 15, height = 8,dpi=600)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                              #################################################
+                                                              #   What taxa are pertantially predecing taxa   #               
+                                                              #                                               #
+                                                              #################################################
+
+For this analysis, we are using a Joint Modeling of Longitudinal and Survival Data approach. This method allows us to analyze the association between longitudinal viral abundance and time-to-diagnosis (event time).
+
+
+################
+#    Species   #
+################
+```{r}
+
+species.name <- colnames(PA.table.species.all)[26:317]
+new.species.name <- gsub("/|-","_",species.name)
+colnames(PA.table.species.all)[26:317] <- new.species.name
+
+PA.table.species.all$Dx.Status <- as.numeric(ifelse(PA.table.species.all$Dx.Status == "CONTROL",0,1))
+
+problem.list <- c("Viruses;Cossaviricota;Papovaviricetes;Sepolyvirales;Polyomaviridae;unclassified Polyomaviridae genus;unclassified Polyomaviridae species","Viruses;Cossaviricota;Papovaviricetes;Zurhausenvirales;Papillomaviridae;unclassified Papillomaviridae genus;Human papillomavirus","Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Chaphamaparvovirus;Ungulate chaphamaparvovirus 1","Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Dependoparvovirus;Adeno_associated dependoparvovirus A","Viruses;Cossaviricota;Quintoviricetes;Piccovirales;Parvoviridae;Dependoparvovirus;Adeno_associated virus")
+
+new.species.name <- new.species.name[!new.species.name %in% problem.list]
+
+for (i in new.species.name){
+  
+     if (sum(PA.table.species.all[i]) == 1){
+    print(paste0(i," exists in only one sample"))
+  }else if(sum(PA.table.species.all[i]) == 2){
+    print(paste0(i," exists in only two sample"))
+  }else if(sum(PA.table.species.all[i]) == 3){
+    print(paste0(i," exists in only three sample"))
+  }else if(sum(PA.table.species.all[i]) == 0){
+    print(paste0(i," exists in no sample"))
+  }else{
+     
+     
+     print(paste("Processing i =", i))
+
+     df.temp <- PA.table.species.all %>%
+           dplyr::select(c(i,"month","Country","Sex","Delivery.Mode","HLA.Category","feeding_first_year","Age.at.Gluten.Introduction..months.","Age.at.Solid.Introduction..months.","patientID","Dx.Status")) %>%
+           dplyr::rename("Virus" = i)
+
+     print(df.temp$Virus)
+     
+     lme_model <- lme(Virus ~ month + Dx.Status + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.,random = ~ 1 + month|patientID,control= lmeControl(maxIter = 100, msMaxIter = 100),data = df.temp) 
+     
+     
+     cox.fit <- coxph(Surv(month, Dx.Status) ~ Virus + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months. + cluster(patientID), data = df.temp,x = TRUE,model = TRUE)
+     
+     
+     joint_model <- jm(cox.fit,lme_model,time_var = "month")
+    
+     
+     Longitudinal.res <- data.frame(coef(summary(joint_fit))$Longitudinal)
+     
+     write.csv(Longitudinal.res,"~/Handley Lab Dropbox/16S/Celiac/plot/Joint/species/",i,"_Longitudinal_joint.csv")
+     
+     Event.res <- data.frame(coef(summary(joint_fit))$Event)
+     
+     write.csv(Event.res,"~/Handley Lab Dropbox/16S/Celiac/plot/Joint/species/",i,"_Events_joint.csv")
+ 
+  }
+  
+}
+
+new.species.name[new.species.name %like% "Picornaviridae"]
+new.species.name[new.species.name %like% "Astroviridae"]
+new.species.name[new.species.name %like% "Anelloviridae"]
+new.species.name[new.species.name %like% "Adenoviridae"]
+
+new.species.name.interest1 <- new.species.name[new.species.name %like% "Picornaviridae"]
+new.species.name.interest2 <- new.species.name[new.species.name %like% "Astroviridae"]
+new.species.name.interest3 <- new.species.name[new.species.name %like% "Anelloviridae"]
+new.species.name.interest4 <- new.species.name[new.species.name %like% "Adenoviridae"]
+new.species.name.interest <- c(new.species.name.interest1,new.species.name.interest2,new.species.name.interest3,new.species.name.interest4)
+
+
+
+"Viruses;Pisuviricota;Pisoniviricetes;Picornavirales;Picornaviridae;Cardiovirus;unclassified Cardiovirus species"
+
+df.temp <- PA.table.species.all %>%
+           dplyr::select(c("Viruses;Pisuviricota;Pisoniviricetes;Picornavirales;Picornaviridae;Cardiovirus;unclassified Cardiovirus species","month","Country","Sex","Delivery.Mode","HLA.Category","feeding_first_year","Age.at.Gluten.Introduction..months.","Age.at.Solid.Introduction..months.","patientID","Dx.Status")) %>%
+           dplyr::rename("Virus" = "Viruses;Pisuviricota;Pisoniviricetes;Picornavirales;Picornaviridae;Cardiovirus;unclassified Cardiovirus species")
+
+
+lme_model <- lme(Virus ~ month + Dx.Status + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.,random = ~ 1 + month|patientID,control= lmeControl(maxIter = 100, msMaxIter = 100),data = df.temp) 
+     
+     
+cox.fit <- coxph(Surv(month, Dx.Status) ~ Virus + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months. + cluster(patientID), data = df.temp,x = TRUE,model = TRUE)
+     
+     
+joint_model <- jm(cox.fit,lme_model,time_var = "month")
+traceplot(joint_model)
+
+data.frame(coef(summary(joint_model))$Longitudinal)
+
+
+summary(joint_model)$Longitudinal
+
+
+for (i in new.species.name.interest){
+  
+   if (sum(PA.table.species.all[i]) == 1){
+    print(paste0(i," exists in only one sample"))
+  }else if(sum(PA.table.species.all[i]) == 2){
+    print(paste0(i," exists in only two sample"))
+  }else if(sum(PA.table.species.all[i]) == 3){
+    print(paste0(i," exists in only three sample"))
+  }else if(sum(PA.table.species.all[i]) == 0){
+    print(paste0(i," exists in no sample"))
+  }else{
+
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+
+     df.temp <- PA.table.species.all %>%
+           dplyr::select(c(i,"month","Country","Sex","Delivery.Mode","HLA.Category","feeding_first_year","Age.at.Gluten.Introduction..months.","Age.at.Solid.Introduction..months.","patientID","Dx.Status")) %>%
+           dplyr::rename("Virus" = i)
+
+     print(df.temp$Virus)
+     
+     
+     
+     lme_model <- lme(Virus ~ month + Dx.Status + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.,random = ~ 1 + month|patientID,control= lmeControl(maxIter = 100, msMaxIter = 100),data = df.temp) 
+     
+     
+     cox.fit <- coxph(Surv(month, Dx.Status) ~ Virus + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months. + cluster(patientID), data = df.temp,x = TRUE,model = TRUE)
+     
+     
+     joint_model <- jm(cox.fit,lme_model,time_var = "month")
+     
+     survival.res <- data.frame(joint_model$statistics$P$gammas)
+
+     
+     write.csv(survival.res,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/Joint/species/",i,"_Survival_joint.csv"))
+     
+     Longitudinal.res <- data.frame(joint_model$statistics$P$betas1)
+
+     
+     write.csv(Event.res,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/Joint/species/",i,"_Longitudinal_joint.csv"))
+     
+     
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("nlminb problem, convergence error code = 1", e$message)||grepl("NA/NaN/Inf in 'y'",e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+
+}
+
+
+}
+
+
+
+
+# first we fit the mix-linear model
+library(nlme)
+
+lme_model <- lme(`Viruses;unclassified Viruses phylum;unclassified Viruses class;unclassified Viruses order;Anelloviridae;unclassified Anelloviridae genus;unclassified Anelloviridae species` ~ month + Dx.Status + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.,random = ~ 1 + month|patientID,data = glm.table.species.all) #random = ~ 1 + month| patientID
+
+
+# then we fit coxph model
+library(survival)
+
+cox.fit <- coxph(Surv(month, Dx.Status) ~ Virus + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months. + cluster(patientID), data = df.temp,x = TRUE,model = TRUE) # +cluster(patientID)
+
+
+
+# finally we build the joint model
+library(JMbayes2)
+# Fit the joint model
+joint_model <- jm(cox.fit,lme_model,time_var = "month")
+summary(joint_model)
+
+
+
+```
+
+
+
+
+##############
+#    Genus   #
+##############
+```{r}
+
+
+genus.name <- colnames(PA.table.genus.all)[26:77]
+new.genus.name <- gsub("/|-","_",genus.name)
+colnames(PA.table.genus.all)[26:77] <- new.genus.name
+
+PA.table.genus.all$Dx.Status <- as.numeric(ifelse(PA.table.genus.all$Dx.Status == "CONTROL",0,1))
+
+
+
+for (i in new.genus.name){
+  
+   if (sum(PA.table.genus.all[i]) == 1){
+    print(paste0(i," exists in only one sample"))
+  }else if(sum(PA.table.genus.all[i]) == 2){
+    print(paste0(i," exists in only two sample"))
+  }else if(sum(PA.table.genus.all[i]) == 3){
+    print(paste0(i," exists in only three sample"))
+  }else if(sum(PA.table.genus.all[i]) == 0){
+    print(paste0(i," exists in no sample"))
+  }else{
+
+  result <- tryCatch({
+    
+    print(paste("Processing i =", i))
+
+     df.temp <- PA.table.genus.all %>%
+           dplyr::select(c(i,"month","Country","Sex","Delivery.Mode","HLA.Category","feeding_first_year","Age.at.Gluten.Introduction..months.","Age.at.Solid.Introduction..months.","patientID","Dx.Status")) %>%
+           dplyr::rename("Virus" = i)
+
+     print(df.temp$Virus)
+     
+     
+     
+     lme_model <- lme(Dx.Status ~ Virus + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months.,random = ~ 1 + month|patientID,control= lmeControl(maxIter = 100, msMaxIter = 100),data = df.temp) 
+     
+     
+     cox.fit <- coxph(Surv(month, Dx.Status) ~ Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. + Age.at.Solid.Introduction..months. + cluster(patientID), data = df.temp,x = TRUE,model = TRUE)
+     
+     
+     joint_model <- jm(cox.fit,lme_model,time_var = "month")
+     
+     survival.res <- data.frame(joint_model$statistics$P$gammas)
+
+     
+     write.csv(survival.res,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/Joint/genus_update/",i,"_Survival_joint.csv"))
+     
+     Longitudinal.res <- data.frame(joint_model$statistics$P$betas1)
+
+     
+     write.csv(Longitudinal.res,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/Joint/genus_update/",i,"_Longitudinal_joint.csv"))
+     
+     
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("nlminb problem, convergence error code = 1", e$message)||grepl("NA/NaN/Inf in 'y'",e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+
+}
+
+
+}
+
+
+
+
+```
+
+
+
+###############
+#    Family   #
+###############
+```{r}
+
+
+
+```
+
+
+
+
+################
+#    Species   #
+################
+```{r}
+
+# extract the case samples
+case_sampels <- metadata.final %>%
+                filter(disease_onset_details != "Control") %>%
+                pull(sampleName)
+
+
+
+case_sampels_changeName <- metadata.final %>%
+                           filter(disease_onset_details != "Control")
+
+
+count.specis.case <- count.species %>%
+                     select(all_of(case_sampels))
+
+
+
+# find the taxa that are significantly different in case group at each timep point (higher and lower respectively)
+file.path <- "~/Handley Lab Dropbox/16S/Celiac/plot/LRT/count_plots_species/"
+
+sig.res.species.table.list <- list.files("~/Handley Lab Dropbox/16S/Celiac/plot/LRT/count_plots_species/",pattern = glob2rx("Disease_statusCELIAC.mont*csv"))
+# "Disease_statusCELIAC.month18_sig_species.csv" "Disease_statusCELIAC.month24_sig_species.csv" "Disease_statusCELIAC.month30_sig_species.csv"
+# "Disease_statusCELIAC.month36_sig_species.csv" "Disease_statusCELIAC.month48_sig_species.csv" "Disease_statusCELIAC.month54_sig_species.csv"
+# "Disease_statusCELIAC.month60_sig_species.csv" "Disease_statusCELIAC.month72_sig_species.csv" "Disease_statusCELIAC.month84_sig_species.csv"
+
+
+
+for (i in sig.res.species.table.list){
+
+     sig.taxa <- rownames(read.csv(paste0(file.path,i),row.names = "X"))
+
+     if (length(sig.taxa) == 0){
+
+       next
+
+     }else{
+       
+     file.name <-lapply(strsplit(i,"[.]"),"[",2)
+     month <-  paste0(gsub("month","",lapply(strsplit(file.name[[1]],"_"),"[",1)),"M")
+
+     
+     count.specis.case.time <- count.specis.case %>%
+                               filter(rownames(.) %in% sig.taxa) %>%
+                               select(contains(month))
+     
+
+     write.csv(count.specis.case.time,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/time_series_on_case/count_plots_species/",file.name,".csv"))
+
+
+     
+
+     #get the new column names
+     names(count.specis.case.time) <- case_sampels_changeName$disease_onset_details[match(names(count.specis.case.time), case_sampels_changeName$sampleName)]
+
+     final_res <- t(count.specis.case.time) %>%
+      data.frame(.) %>%
+      rownames_to_column("disease_group") %>%
+      mutate(disease_group = ifelse(disease_group %like% "Case_onset","Case_onset",paste0("Case_precede_",month)))%>%
+      group_by(disease_group) %>%
+      summarise_each(list(sum)) %>%
+      column_to_rownames("disease_group") %>%
+      t(.) 
+     
+
+
+     write.csv(final_res,paste0("~/Handley Lab Dropbox/16S/Celiac/plot/time_series_on_case/count_plots_species/",month,"_final_res.csv"))
+     
+    }
+
+}
+
+
+# combine restuls tables
+file.path <- "~/Handley Lab Dropbox/16S/Celiac/plot/time_series_on_case/count_plots_species/"
+
+sig.res.species.final_res.list <- list.files(file.path,pattern = "_final_res")
+#"18M_final_res.csv" "24M_final_res.csv" "30M_final_res.csv" "36M_final_res.csv" "48M_final_res.csv" "60M_final_res.csv" "84M_final_res.csv"
+
+
+for (i in (1:length(sig.res.species.final_res.list))){
+  print(i)
+  
+  final_res.list[[i]] <- read.csv(paste0(file.path,sig.res.species.final_res.list[i])) %>%
+                        rename(Case_onset = paste0("Case_onset",i))
+  
+  
+}
+
+
+
+# merge them together
+final_res.total <- Reduce(function(x, y) merge(x, y,by = "X",  all=TRUE), final_res.list)
+final_res.total[is.na(final_res.total)] <- 0
+final_res.total <- final_res.total %>%
+                   column_to_rownames("X") %>%
+                   select(contains("Case_precede"),Case_onset1) %>%
+                   rename(Case_onset1 = "Case_onset") %>%
+                   mutate(Ratio_precede = select(., Case_precede_18M:Case_precede_60M) %>% 
+                                  rowSums(na.rm = TRUE) / rowSums(.))
+
+
+write.csv(final_res.total,"~/Handley Lab Dropbox/16S/Celiac/plot/time_series_on_case/final_species_res_total_counts.csv")
+
+
+final_res.total.heatmap <- final_res.total %>% 
+                           select(-Ratio_precede) %>%
+                           rownames_to_column("Species") %>%
+                            pivot_longer(cols = Case_precede_18M:Case_onset,
+                              names_to = "time", 
+                              values_to = "count")
+
+
+final_res.total.heatmap$time <- factor(final_res.total.heatmap$time,levels = c("Case_precede_18M","Case_precede_24M","Case_precede_30M","Case_precede_36M","Case_precede_48M","Case_precede_60M","Case_onset"))
+
+
+final_res.total.p <- ggplot(final_res.total.heatmap,aes(x = time,y = Species,fill = log10(count))) +
+  geom_tile(colour = "white") +
+  #geom_text(aes(label = count), color = "white", size = 4) +
+  scale_fill_gradient2(low = "white",
+                       mid = "gray",
+                       high = "black") +
+  theme(axis.text = element_text(size = 30)) +
+  theme(axis.text.x = element_text(angle = 90))
+
+ggsave(final_res.total.p,file="~/Handley Lab Dropbox/16S/Celiac/plot/time_series_on_case/final_species_res_total_heatmap.pdf",width = 40, height = 20, dpi = 600)
+
+
+
+
+```
+                                                             

@@ -1,0 +1,238 @@
+---
+title: "Prepare_PA_table_species_all_prev_for_Dhoha"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(readxl)
+library(broom.mixed)
+library(DESeq2)
+library(ggrepel)
+library(pheatmap)
+library(phyloseq)
+library(pROC)
+library(lme4)
+library(survival)
+library(survminer)
+```
+
+
+# import metadata and reads table
+```{r}
+
+# metadata
+metadata.final <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv")
+
+# import virus of interest
+vv.foi <- as_tibble(fread("~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_viruses_strain_counts.tsv",header = TRUE)) %>%
+                  mutate(sampleName = ifelse(sampleName %like% "_6Y",gsub("_6Y","_72M",sampleName),
+                                           ifelse(sampleName %like% "_7Y",gsub("_7Y","_84M",sampleName),sampleName))) %>%
+                   mutate(sampleID = ifelse(sampleID %like% "_6Y",gsub("_6Y","_72M",sampleID),
+                                           ifelse(sampleID %like% "_7Y",gsub("_7Y","_84M",sampleID),sampleID))) %>%
+                   mutate(sampleID_mod = ifelse(sampleID_mod %like% "_6Y",gsub("_6Y","_72M",sampleID_mod),
+                                           ifelse(sampleID_mod %like% "_7Y",gsub("_7Y","_84M",sampleID_mod),sampleID_mod)))
+
+```
+
+
+# extract count table
+```{r}
+
+count.raw <-left_join(metadata.final,vv.foi,by = "sampleName")
+count.raw$count[is.na(count.raw$count)] <- 0
+count.species <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family","genus","species"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_species = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_species", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+
+count.genus <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family","genus"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_genus = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_genus", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+
+
+count.family <- count.raw %>%
+                 unite("lineage", c("kingdom", "phylum", "class", "order", "family"), sep = ";", remove = FALSE) %>%
+                 group_by(lineage) %>%
+                 mutate(sum_count_family = sum(count)) %>%
+                 ungroup() %>%
+                 reshape2::dcast(lineage ~ sampleName, value.var = "sum_count_family", fun.aggregate = sum) %>%
+                 droplevels() %>%
+                 filter(lineage != "NA;NA;NA;NA;NA") %>%
+                 column_to_rownames("lineage")
+
+
+```
+
+
+# prepare abundance table
+```{r}
+
+# ---------------------------------Species level------------------------------------------#
+
+count.species.abundance <- count.species
+
+# merge count table and metadata table
+abundance.table.all.species <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.species.abundance),by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+# ---------------------------------genus level------------------------------------------#
+
+# create genus abundance table
+count.genus.abundance <- count.genus
+
+# merge count table and metadata table
+abundance.table.all.genus <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.genus.abundance),by = 0) %>%
+                            filter(feeding_first_year != "Unknown") %>%
+                            filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                            filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+
+
+# ---------------------------------family level------------------------------------------#
+
+
+# create genus abundance table
+count.family.abundance <- count.family
+
+# merge count table and metadata table
+abundance.table.all.family <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.family.abundance),by = 0) %>%
+                            filter(feeding_first_year != "Unknown") %>%
+                            filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
+                            filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+```
+
+
+# prepare PA table
+```{r}
+
+# ---------------------------------Species level------------------------------------------#
+count.species.PA <- count.species
+count.species.PA[count.species.PA != 0] <- 1
+
+
+PA.table.species.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.species.PA),by = 0) %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+
+
+dim(PA.table.species.all %>% filter(Dx.Status == "CONTROL") %>% distinct(patientID,.keep_all = TRUE))
+table(PA.table.species.all %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+ # CELIAC CONTROL 
+ #     36      36 
+
+# ---------------------------------genus level------------------------------------------#
+count.genus.PA <- count.genus
+count.genus.PA[count.genus.PA != 0] <- 1
+
+
+PA.table.genus.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.genus.PA),by = 0) %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+
+# ---------------------------------family level------------------------------------------#
+count.family.PA <- count.family
+count.family.PA[count.family.PA != 0] <- 1
+
+
+PA.table.family.all <- merge(metadata.final %>% column_to_rownames("sampleName"),t(count.family.PA),by = 0) %>%
+                        group_by(patientID) %>%
+                        mutate(last_time_point = max(month)) %>%
+                        ungroup() %>%
+                        mutate(Onset.or.not.Dx = ifelse(Dx.Status == "CELIAC",Onset.Dx,last_time_point))
+
+```
+
+
+
+# prevelance filtering (we remove the viruses that only contain less than 4 samples)
+```{r}
+
+
+PA.species.check <- PA.table.species.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Species",values_to = "PA") %>% 
+                   group_by(Species) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Species,total_PA) %>%
+                   arrange(total_PA)
+
+write.csv(PA.species.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.species.check.csv")
+
+
+
+# find viruses that exist in only 3% of the samples (230 virusese are removed and 89 viruses left)
+rare_species_0.3 <- PA.species.check %>% filter(total_PA < 9) %>% pull(Species)
+PA.table.species.all.prev <- PA.table.species.all %>% dplyr::select(-rare_species_0.3)
+
+write.csv(PA.table.species.all.prev,"~/Downloads/1PA.table.species.all.prev.csv")
+
+table(PA.table.species.all.prev %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+ # CELIAC CONTROL 
+ #     36      36
+
+PA.genus.check <- PA.table.genus.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Genus",values_to = "PA") %>% 
+                   group_by(Genus) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Genus,total_PA) %>%
+                   arrange(total_PA)
+
+
+write.csv(PA.genus.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.genus.check.csv")
+
+
+# find viruses that exist in only 3% of the samples (24 virusese are removed and 55 viruses left)
+rare_genus_0.3 <- PA.genus.check %>% filter(total_PA < 9) %>% pull(Genus)
+PA.table.genus.all.prev <- PA.table.genus.all %>% dplyr::select(-rare_genus_0.3)
+
+
+PA.family.check <- PA.table.family.all %>% 
+                   dplyr::select(Row.names,starts_with("Viruses")) %>% 
+                   pivot_longer(cols = starts_with("Viruses"),names_to = "Family",values_to = "PA") %>% 
+                   group_by(Family) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Family,total_PA) %>%
+                   arrange(total_PA)
+
+
+write.csv(PA.family.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.family.check.csv")
+
+
+# find viruses that exist in only 3% of the samples (24 virusese are removed and 55 viruses left)
+rare_family_0.3 <- PA.family.check %>% filter(total_PA < 9) %>% pull(Family)
+PA.table.family.all.prev <- PA.table.family.all %>% dplyr::select(-rare_family_0.3)
+
+
+
+```

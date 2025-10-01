@@ -1,0 +1,2635 @@
+---
+title: "Celiac_Phage_orfs_analysis_Limma_newAssembly_timeOnset_finalModel"
+output: html_document
+date: "2025-07-25"
+editor_options: 
+  chunk_output_type: console
+---
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table);packageVersion("data.table")
+library(tidyverse);packageVersion("tidyverse")
+library(ggplot2);packageVersion("ggplot2")
+library(broom);packageVersion("broom")
+library(vroom);packageVersion("vroom")
+library(limma);packageVersion("limma")
+library(edgeR);packageVersion("edgeR")
+library(pheatmap);packageVersion("pheatmap")
+library(survival);packageVersion("survival")
+```
+
+
+
+# functions
+```{r}
+
+filter_and_save_wide_data <- function(genesCoverm, 
+                                      covered_fraction_threshold = 0.75, 
+                                      output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/orf/data_correct/total/") {
+  
+  # Set column names to match the original structure
+  colnames(genesCoverm) <- c("sampleID", "ORFID", "RPKM", "ReadCount", "Variance", "Mean", "covered_fraction", "covered_bases")
+  
+  # Apply coverage filter
+  genesCoverm2 <- genesCoverm %>%
+    mutate(
+      ReadCount_modified = ifelse(covered_fraction >= covered_fraction_threshold, ReadCount, 0),
+      Changed = ifelse(ReadCount != ReadCount_modified, 1, 0)
+    ) %>%
+    mutate(ReadCount = ReadCount_modified) %>%
+    select(-ReadCount_modified)
+  
+  # Count the number of changes
+  num_changes <- sum(genesCoverm2$Changed)
+  print(paste("Number of changes:", num_changes))
+  
+  # Convert to wide format
+  wide_rpkm_genes <- reshape2::dcast(genesCoverm2, ORFID ~ sampleID, value.var = "ReadCount")
+  colnames(wide_rpkm_genes) <- gsub("_stats", "", colnames(wide_rpkm_genes))
+  
+  # Filter out rows with all zeroes
+  filtered_wide_rpkm_genes <- wide_rpkm_genes %>%
+    filter(rowSums(across(where(is.numeric))) != 0)
+  
+  # Save the filtered wide format data
+  rds_filename_wide <- paste0("wide_rpkm_genes_", covered_fraction_threshold * 100, "Cov.rds")
+  
+  saveRDS(filtered_wide_rpkm_genes, file = file.path(output_path, rds_filename_wide))
+  
+  return(filtered_wide_rpkm_genes)
+}
+
+
+
+```
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/Updated_Metadata_with_Onset_Timeline.csv") %>%
+            select(-Sample.Name.External.ID) %>%
+            select(-Classification) %>%
+            #mutate(Onset_timepoint = ifelse(Onset.Dx < 30,"pre_30","post_30")) %>%
+            column_to_rownames("X")
+dim(metadata)
+# 335  24
+
+
+# check the data distributions for feeding types
+metadata.clean.patient <- metadata.clean %>% distinct(patientID,.keep_all = TRUE)
+table(metadata.clean.patient$Country,metadata.clean.patient$Delivery.Mode)
+  #       Vaginal C-Section
+  # ITALY      11        22
+  # USA        31         2
+
+
+
+# check US and Italy onset time difference
+metadata.check.onset <- metadata %>%
+                        group_by(patientID) %>%
+                        mutate(time_length_to_onset = max(month)) %>%
+                        distinct(patientID,Country,time_length_to_onset)
+
+patient_counts <- metadata.check.onset %>%
+                  group_by(Country) %>%
+                  summarise(n = n(), .groups = "drop")
+
+
+labels_with_n <- setNames(
+  paste0(patient_counts$Country, " (n = ", patient_counts$n, ")"),
+  patient_counts$Country
+)
+
+
+metadata.check.onset.plot <- ggplot(metadata.check.onset,aes(x = Country,y = as.numeric(time_length_to_onset))) +
+                             geom_boxplot() +
+                             geom_point(size = 3,position = position_jitter(width = 0.2), alpha = 0.6) +
+                             scale_x_discrete(labels = labels_with_n) +
+                              geom_boxplot(outlier.shape = NA, width = 0.5, alpha = 0.2) +
+                              stat_compare_means(
+                                method = "t.test",
+                                label  = "p.format",
+                                label.y = 90,
+                                label.x = 1.5
+                              ) +
+                             labs(x = "",y = "Time Length to Onset (Month)") +
+                             theme_bw()
+
+mean(metadata.check.onset %>% filter(Country == "ITALY") %>% pull(time_length_to_onset))
+
+ggsave(metadata.check.onset.plot,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/metadata_onset_time_length_boxplot_plot.png", width = 5, height = 6, dpi = 300)        
+
+
+
+
+
+metadata.check.gluten <- metadata %>%
+                        group_by(patientID) %>%
+                        distinct(patientID,Country,Age.at.Gluten.Introduction..months.)
+
+patient_counts <- metadata.check.gluten %>%
+                  group_by(Country) %>%
+                  summarise(n = n(), .groups = "drop")
+
+
+labels_with_n <- setNames(
+  paste0(patient_counts$Country, " (n = ", patient_counts$n, ")"),
+  patient_counts$Country
+)
+
+
+metadata.check.gluten.plot <- ggplot(metadata.check.gluten,aes(x = Country,y = as.numeric(Age.at.Gluten.Introduction..months.))) +
+                             geom_boxplot() +
+                             geom_point(size = 3,position = position_jitter(width = 0.2), alpha = 0.6) +
+                             scale_x_discrete(labels = labels_with_n) +
+                              geom_boxplot(outlier.shape = NA, width = 0.5, alpha = 0.2) +
+                              stat_compare_means(
+                                method = "t.test",
+                                label  = "p.format",
+                                label.y = 90,
+                                label.x = 1.5
+                              ) +
+                             labs(x = "",y = "Age of gluten food introduction (Month)") +
+                             theme_bw()
+
+mean(metadata.check.onset %>% filter(Country == "ITALY") %>% pull(time_length_to_onset))
+
+ggsave(metadata.check.onset.plot,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/metadata_onset_time_length_boxplot_plot.png", width = 5, height = 6, dpi = 300)   
+
+```
+
+
+
+# 75% mapping rate filtering and 3% prevlance filtering on total data
+```{r}
+
+orf <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/Orf_Coverm_concatenated.txt",col_names = FALSE)
+# we have 340 samples and 46594 orfs in total after phage pipeline
+
+
+filter_and_save_wide_data(orf, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/")
+# Number of changes: 185957
+
+orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+# then let's check colSums and ensure there is no sample have all 0s across orfs
+sample_all_0 <- names(colSums(orf.processed)[colSums(orf.processed) == 0])
+# "NovaSeq_N978_I13149_39572_Celiac_Leonard_Stool_01_GEMM_093_24M"       "NovaSeq_N978_I13150_39573_Celiac_Leonard_Stool_01_GEMM_093_30M"      
+# "NovaSeq_N978_I13151_39574_Celiac_Leonard_Stool_01_GEMM_093_36M"       "NovaSeq_N978_I13152_39575_Celiac_Leonard_Stool_01_GEMM_093_48M"      
+# "NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M"       "NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M"
+
+
+# let's remove the 6 0 counts samples
+orf.processed <- orf.processed %>%
+                    select(-all_of(sample_all_0))
+dim(orf.processed)
+# 46102   334
+
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+orf.processed <- orf.processed %>%
+                 select(-NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M)
+# 46102   333
+
+orf.count <- orf.processed
+
+colnames(orf.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(orf.count))
+
+colnames(orf.count) <- str_replace_all(colnames(orf.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(orf.count) <- sapply(strsplit(colnames(orf.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(orf.count) <- ifelse(colnames(orf.count) %like% "_6Y",gsub("_6Y","_72M",colnames(orf.count)),
+                                           ifelse(colnames(orf.count) %like% "_7Y",gsub("_7Y","_84M",colnames(orf.count)),colnames(orf.count)))
+
+orf.count.table_0.75 <- t(orf.count) 
+# 333 46102
+
+
+orf.abundance.table_0.75 <- merge(metadata,orf.count.table_0.75,by = 0) %>% # 329 samples left
+                              filter(feeding_first_year != "Unknown") %>%  # 312 samples left
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown") # 308 sample left
+# 308 samples x  46127 metadata+orfs
+
+all_0_contigs <- names(colSums(orf.abundance.table_0.75[25:46127])[colSums(orf.abundance.table_0.75[25:46127]) == 0])
+# 837 contigs become 0 through all samples after the 25 samples were removed from the above step
+# so we need to remove those contigs
+
+orf.abundance.table_0.75 <- orf.abundance.table_0.75 %>%
+                            select(-all_of(all_0_contigs))
+# 308 samples x 45290 metadata+orfs
+# 45265 orfs
+
+orf.abundance.table <- orf.abundance.table_0.75 %>%
+                       select(c("Row.names",26:45290)) %>%
+                       column_to_rownames("Row.names") %>% 
+                       t(.) %>%
+                       data.frame(.)
+colnames(orf.abundance.table) <- gsub("X","",colnames(orf.abundance.table))
+
+
+# check prevelence filtering
+prevalence <- rowSums(orf.abundance.table > 0) / ncol(orf.abundance.table)
+table(prevalence > 0.03)  # 5% threshold
+# FALSE  TRUE 
+# 42952  2313
+
+# Filter ORFs with prevalence > 3%
+orf.abundance.clean <- orf.abundance.table[prevalence > 0.03, ]
+      
+dim(orf.abundance.clean)
+# 2313  308 (3% prev)
+
+# check if there are any samples become 0 counts
+names(colSums(orf.abundance.clean)[colSums(orf.abundance.clean) == 0])
+  # "01_GEMM_154_30M" "02_GEMM_021_36M"
+
+# remove the two 0 counts samples
+# we will have to remove sample 02_GEMM_021_36M because it becomes 0 counts at this step
+orf.abundance.clean <- orf.abundance.clean %>%
+                       select(-c("01_GEMM_154_30M","02_GEMM_021_36M"))
+# 2313  306
+# 577 306
+
+write.csv(orf.abundance.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_orf.abundance.clean.csv",quote = FALSE,row.names = TRUE)
+
+
+metadata.clean <- orf.abundance.table_0.75[1:25] %>%
+                  filter(!Row.names %in% c("01_GEMM_154_30M","02_GEMM_021_36M")) %>%
+                  column_to_rownames("Row.names")
+# 306  24
+
+
+# write.csv(metadata.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_metadata.clean.csv",quote = FALSE,row.names = TRUE)
+
+# check if the column names of abundance table match the order of the row names of metadata table
+all(rownames(metadata.clean) == colnames(orf.abundance.clean))
+# TRUE
+
+count_matrix <- as.matrix(orf.abundance.clean[, sapply(orf.abundance.clean, is.numeric)])
+sparsity <- sum(count_matrix == 0) / length(count_matrix)
+# 0.9518756
+
+```
+
+
+
+# 75% mapping rate filtering and 3% prevlance filtering on US
+```{r}
+
+
+US.orf <- orf %>%
+             filter(X1 %like% "_01_GEMM_")
+# 208 samples x 46594 orfs
+
+
+filter_and_save_wide_data(US.orf, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/")
+# "Number of changes: 132493"
+
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+# so we will just remove it
+US_orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/wide_rpkm_genes_75Cov.rds") %>%
+                   column_to_rownames("ORFID") %>%
+                   select(-NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M)
+
+
+US_sample_all_0 <- names(colSums(US_orf.processed)[colSums(US_orf.processed) == 0])
+#"NovaSeq_N978_I13149_39572_Celiac_Leonard_Stool_01_GEMM_093_24M" "NovaSeq_N978_I13150_39573_Celiac_Leonard_Stool_01_GEMM_093_30M"
+#"NovaSeq_N978_I13151_39574_Celiac_Leonard_Stool_01_GEMM_093_36M" "NovaSeq_N978_I13152_39575_Celiac_Leonard_Stool_01_GEMM_093_48M"
+
+
+US.orf.count <- US_orf.processed %>%
+                   select(-all_of(c(US_sample_all_0))) 
+# 35430   203
+
+colnames(US.orf.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(US.orf.count))
+colnames(US.orf.count) <- str_replace_all(colnames(US.orf.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(US.orf.count) <- sapply(strsplit(colnames(US.orf.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(US.orf.count) <- ifelse(colnames(US.orf.count) %like% "_6Y",gsub("_6Y","_72M",colnames(US.orf.count)),
+                                           ifelse(colnames(US.orf.count) %like% "_7Y",gsub("_7Y","_84M",colnames(US.orf.count)),colnames(US.orf.count)))
+
+US.orf.count.table_0.75 <- t(US.orf.count) 
+# 203 35430
+
+
+US.orf.abundance.table_0.75 <- merge(metadata,US.orf.count.table_0.75,by = 0) %>% # 201 samples left
+                              filter(feeding_first_year != "Unknown") %>%  # 201 samples left
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown") # 197 sample left
+# 197 samples x  35455 metadata+orfs
+
+
+US.all_0_contigs <- names(colSums(US.orf.abundance.table_0.75[25:35455])[colSums(US.orf.abundance.table_0.75[25:35455]) == 0])
+length(US.all_0_contigs)
+# 423 contigs become 0 through all samples after the 6 samples were removed from the above step
+# so we need to remove those contigs
+
+US.orf.abundance.table_0.75 <- US.orf.abundance.table_0.75 %>%
+                            select(-all_of(US.all_0_contigs))
+# 197 samples x 35032 metadata+orfs
+# 35007 orfs
+
+US.orf.abundance.table <- US.orf.abundance.table_0.75 %>%
+                       select(c("Row.names",26:35032)) %>%
+                       column_to_rownames("Row.names") %>% 
+                       t(.) %>%
+                       data.frame(.)
+colnames(US.orf.abundance.table) <- gsub("X","",colnames(US.orf.abundance.table))
+
+
+# check prevelence filtering
+prevalence <- rowSums(US.orf.abundance.table > 0) / ncol(US.orf.abundance.table)
+table(prevalence > 0.03)  
+# FALSE  TRUE 
+# 31098  3909 
+
+# Filter ORFs with prevalence > 3%
+US.orf.abundance.table <- US.orf.abundance.table[prevalence > 0.03, ]
+      
+dim(US.orf.abundance.table)
+# 3909  197
+
+# check if there are any samples become 0 counts
+names(colSums(US.orf.abundance.table)[colSums(US.orf.abundance.table) == 0])
+# 0
+
+US.orf.abundance.clean <- US.orf.abundance.table
+# 3909  197
+
+
+US.metadata.clean <- US.orf.abundance.table_0.75[1:25] %>%
+                     mutate(Onset_timepoint = ifelse(Onset.Dx < 30,"pre_30","post_30")) %>%
+                     column_to_rownames("Row.names")
+# 197  25
+
+
+US.metadata.celiac.clean <- US.metadata.clean %>% filter(Dx.Status == "CELIAC")
+# 98 25
+
+US.orf.abundance.celiac.clean <- US.orf.abundance.table %>%
+                                 select(rownames(US.metadata.celiac.clean))
+
+# check prevelence filtering
+prevalence <- rowSums(US.orf.abundance.celiac.clean > 0) / ncol(US.orf.abundance.celiac.clean)
+table(prevalence > 0.03)
+# FALSE  TRUE 
+# 1336  2573
+
+US.orf.abundance.celiac.clean <- US.orf.abundance.celiac.clean[prevalence > 0.03, ]
+dim(US.orf.abundance.celiac.clean)
+# 2573   98
+
+US.metadata.clean.patient <- US.metadata.clean %>% distinct(patientID,Onset_timepoint)
+
+table(US.metadata.clean.patient$Onset_timepoint)
+# post_30  pre_30 
+#      31       2
+table(US.metadata.clean$Onset_timepoint)
+# post_30  pre_30 
+#     193       4
+
+
+
+# check if the column names of abundance table match the order of the row names of metadata table
+all(rownames(US.metadata.clean) == colnames(US.orf.abundance.clean))
+# TRUE
+
+# check total sparsity
+count_matrix <- as.matrix(US.orf.abundance.clean[, sapply(US.orf.abundance.clean, is.numeric)])
+sparsity <- sum(count_matrix == 0) / length(count_matrix)
+# 0.9518877
+
+```
+
+
+
+# 75% mapping rate filtering and 3% prevlance filtering on Italy
+```{r}
+
+Italy.orf <- orf %>%
+             filter(X1 %like% "_02_GEMM_")
+# 132 samples x 46594 orfs
+
+
+filter_and_save_wide_data(Italy.orf, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/")
+# "Number of changes: 53464"
+
+
+Italy_orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID") 
+dim(Italy_orf.processed)
+# 23524   132
+
+
+Italy_sample_all_0 <- names(colSums(Italy_orf.processed)[colSums(Italy_orf.processed) == 0])
+# "NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M"       "NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M"
+
+
+Italy.orf.count <- Italy_orf.processed %>%
+                   select(-all_of(Italy_sample_all_0)) 
+
+
+colnames(Italy.orf.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(Italy.orf.count))
+colnames(Italy.orf.count) <- str_replace_all(colnames(Italy.orf.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(Italy.orf.count) <- sapply(strsplit(colnames(Italy.orf.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(Italy.orf.count) <- ifelse(colnames(Italy.orf.count) %like% "_6Y",gsub("_6Y","_72M",colnames(Italy.orf.count)),
+                                           ifelse(colnames(Italy.orf.count) %like% "_7Y",gsub("_7Y","_84M",colnames(Italy.orf.count)),colnames(Italy.orf.count)))
+
+Italy.orf.count.table_0.75 <- t(Italy.orf.count) 
+# 130 23524
+
+
+Italy.orf.abundance.table_0.75 <- merge(metadata,Italy.orf.count.table_0.75,by = 0) %>% # 128 samples left
+                              filter(feeding_first_year != "Unknown") %>%  # 111 samples left
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown") # 111 sample left
+# 111 samples x  23549 metadata+orfs
+
+
+Italy.all_0_contigs <- names(colSums(Italy.orf.abundance.table_0.75[25:23549])[colSums(Italy.orf.abundance.table_0.75[25:23549]) == 0])
+# 1076 contigs become 0 through all samples after the 19 samples were removed from the above step
+# so we need to remove those contigs
+
+
+Italy.orf.abundance.table_0.75 <- Italy.orf.abundance.table_0.75 %>%
+                            select(-all_of(Italy.all_0_contigs))
+# 111 samples x 22473 metadata+orfs
+# 22448 orfs
+
+
+Italy.orf.abundance.table <- Italy.orf.abundance.table_0.75 %>%
+                       select(c("Row.names",26:22473)) %>%
+                       column_to_rownames("Row.names") %>% 
+                       t(.) %>%
+                       data.frame(.)
+colnames(Italy.orf.abundance.table) <- gsub("X","",colnames(Italy.orf.abundance.table))
+
+
+# check prevelence filtering
+prevalence <- rowSums(Italy.orf.abundance.table > 0) / ncol(Italy.orf.abundance.table)
+table(prevalence > 0.03)  # 5% threshold
+# FALSE  TRUE 
+# 19606  2842 
+
+# Filter ORFs with prevalence > 3%
+Italy.orf.abundance.clean <- Italy.orf.abundance.table[prevalence > 0.03, ]
+      
+dim(Italy.orf.abundance.clean)
+# 2842  111
+
+# check if there are any samples become 0 counts
+names(colSums(Italy.orf.abundance.clean)[colSums(Italy.orf.abundance.clean) == 0])
+# 0
+
+dim(Italy.orf.abundance.clean)
+# 2842  111
+
+Italy.metadata.clean <- Italy.orf.abundance.table_0.75[1:25] %>%
+                  mutate(Onset_timepoint = ifelse(Onset.Dx < 30,"pre_30","post_30")) %>%
+                  column_to_rownames("Row.names")
+# 111  25
+# 111  25
+
+
+Italy.metadata.celiac.clean <- Italy.metadata.clean %>% filter(Dx.Status == "CELIAC")
+# 48 25
+
+Italy.orf.abundance.celiac.clean <- Italy.orf.abundance.clean %>%
+                                 select(rownames(Italy.metadata.celiac.clean))
+# check prevelence filtering
+prevalence <- rowSums(Italy.orf.abundance.celiac.clean > 0) / ncol(Italy.orf.abundance.celiac.clean)
+table(prevalence > 0.03)
+# FALSE  TRUE 
+#  1487  1355 
+
+
+Italy.orf.abundance.celiac.clean <- Italy.orf.abundance.celiac.clean[prevalence > 0.03, ]
+# 1355   48
+
+
+Italy.metadata.clean.patient <- Italy.metadata.clean %>% distinct(patientID,Onset_timepoint)
+
+table(Italy.metadata.clean.patient$Onset_timepoint)
+# post_30  pre_30 
+#      25       8
+table(Italy.metadata.clean$Onset_timepoint)
+# post_30  pre_30 
+#      95      16 
+
+# check if the column names of abundance table match the order of the row names of metadata table
+all(rownames(Italy.metadata.clean) == colnames(Italy.orf.abundance.clean))
+# TRUE
+
+count_matrix <- as.matrix(Italy.orf.abundance.clean[, sapply(Italy.orf.abundance.clean, is.numeric)])
+sparsity <- sum(count_matrix == 0) / length(count_matrix)
+# 0.9506502
+
+```
+
+
+
+
+########################################################################## Entire dataset ###############################################################       
+
+Model 1: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_numeric assume it is linear in the model
+~ Dx.Status * onset_timeline_numeric + RunNumber + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(metadata.clean$feeding_first_year)
+# Breast_fed      Formula    Breastmilk_and_formula 
+#   119              58                 129 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   110   196 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   237   69
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 216        90
+metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(metadata.clean$Age.at.Gluten.Introduction..months.)
+ # 4  5   6  7  8   9 10 11 12 15 36 
+ # 5  11 57  91 39 33 33 10  2 16  9 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    161     145 
+
+
+
+# treat Age.at.Gluten.Introduction..months. as linear
+# linear.model.design.runNumber <- model.matrix(~ Dx.Status * onset_timeline_numeric + RunNumber + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# linear.model.fit.runNumber <- voomLmFit(orf.abundance.clean,linear.model.design.runNumber,block= metadata.clean$patientID,plot=FALSE)
+# linear.model.fit.runNumber <- eBayes(linear.model.fit.runNumber)
+
+
+linear.model.design <- model.matrix(~ Dx.Status * onset_timeline_numeric + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+linear.model.fit <- voomLmFit(orf.abundance.clean,linear.model.design,block= metadata.clean$patientID,plot=FALSE)
+linear.model.fit <- eBayes(linear.model.fit)
+
+
+# Run voom transformation manually
+voom.transformed <- voom(orf.abundance.clean, design = linear.model.design,
+                         block = metadata.clean$patientID, plot = TRUE)
+
+
+# Extract the log2-CPM matrix
+voom_logCPM <- voom.transformed$E
+
+top_var_genes <- head(order(apply(voom_logCPM, 1, var), decreasing = TRUE), 500)
+voom_top <- voom_logCPM[top_var_genes, ]
+
+p.variability.all <- pheatmap(voom_logCPM,
+         scale = "row",                # z-score per gene (optional, but helps)
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean",
+         clustering_method = "complete",
+         show_colnames = TRUE,         # show sample names
+         show_rownames = FALSE)        # hide gene names (if too many)
+
+ggsave(p.variability.all,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/p.variability.all.pdf",dpi=600,width=40,height=30)
+
+
+p.variability.top500 <- pheatmap(voom_top,
+         scale = "row",                # z-score per gene (optional, but helps)
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean",
+         clustering_method = "complete",
+         show_colnames = TRUE,         # show sample names
+         show_rownames = FALSE)        # hide gene names (if too many)
+
+ggsave(p.variability.top500,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/p.variability.top500.pdf",dpi=600,width=40,height=20)
+
+
+p.pca.total <- prcomp(t(voom_logCPM), scale. = TRUE)
+
+# Plot first two PCs
+plot(p.pca.total$x[,1:2],
+     main = "PCA of Samples",
+     xlab = paste0("PC1 (", round(summary(p.pca.total)$importance[2,1]*100, 1), "%)"),
+     ylab = paste0("PC2 (", round(summary(p.pca.total)$importance[2,2]*100, 1), "%)"),
+     pch = 19)
+
+
+
+
+
+
+## categorical vs numerical
+
+fitted_runNumber <- t(linear.model.design.runNumber %*% t(linear.model.fit.runNumber$coefficients))
+fitted_noRunNumber <- t(linear.model.design  %*% t(linear.model.fit$coefficients))
+
+
+# Step 3: Compute residual sum of squares (RSS) for each gene
+resid_runNumber <- US.orf.abundance.clean - fitted_runNumber
+resid_noRunNumber  <- US.orf.abundance.clean - fitted_noRunNumber
+
+
+rss_runNumber <- rowSums(resid_runNumber^2)
+rss_noRunNumber     <- rowSums(resid_noRunNumber^2)
+
+# Step 4: Get number of samples and parameters
+n <- ncol(US.orf.abundance.clean)
+k_cat <- ncol(linear.model.design.runNumber)
+k_num <- ncol(linear.model.design)
+
+# Step 5: Calculate AIC
+aic_runNumber <- n * log(rss_runNumber / n) + 2 * k_cat
+aic_noRunNumber     <- n * log(rss_noRunNumber / n) + 2 * k_num
+
+# Step 6: Compare AIC
+delta_aic <- aic_runNumber - aic_noRunNumber  # positive means noRunNumber model better
+table(delta_aic > 0)  # how many genes favor noRunNumber model by AIC difference > 2
+# FALSE  TRUE 
+#  351   3558
+table(delta_aic < 0) # how many genes favor runNumber model
+# FALSE  TRUE 
+#  3558   351
+table(abs(delta_aic) <= 2)  # how many are roughly equivalent
+# FALSE  TRUE 
+#  3837    72
+
+# Optional: Summarize
+summary(delta_aic)
+
+# based on the AIC scores, runNumber didn't largely improve the model prediction. So we decide to stay in the model without runNumber
+
+
+# colnames(linear.model.fit)
+#  [1] "(Intercept)"                              "Dx.StatusCONTROL"                         "onset_timeline_numeric"                  
+#  [4] "CountryUSA"                               "SexMale"                                  "Age.at.Gluten.Introduction..months."     
+#  [7] "HLA.CategoryHigh Risk"                    "HLA.CategoryLow/No Risk"                  "feeding_first_yearFormula"               
+# [10] "feeding_first_yearBreastmilk_and_formula" "Delivery.ModeC-Section"                   "Dx.StatusCONTROL:onset_timeline_numeric"
+
+model.res <- topTable(linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf)
+total.model.res <- model.res
+sig.model.res <- topTable(linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2009
+
+
+# write.csv(model.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_limma_model_res_final.csv",quote = FALSE,row.names = TRUE)
+# write.csv(sig.model.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_limma_model_Sig_res_final.csv",quote = FALSE,row.names = TRUE)
+
+# Define gene of interest
+#selected_gene <- rownames(sig.model.res)
+
+# # Subset design matrix and model coefficients for prediction
+# linear.model.design <- model.matrix(~ Dx.Status * onset_timeline_numeric + RunNumber + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+# 
+# trajectory_plot_list <- list()
+# 
+# 
+# for (i in selected_gene){
+#   
+#    # Extract observed abundance vector for gene i
+#   gene_abundance <- orf.abundance.clean[i, ]
+# 
+#   # Create metadata + model prediction + observed abundance
+#   predicted_df <- metadata.clean %>%
+#     mutate(predicted_abundance = as.numeric(linear.model.design %*% linear.model.fit$coefficients[i, ]),
+#            observed_abundance = as.numeric(gene_abundance))
+# 
+#   # Count non-zero samples and total abundance per group and time
+#   count_df <- predicted_df %>%
+#     group_by(onset_timeline_numeric, Dx.Status) %>%
+#     summarise(
+#       non_zero_n = sum(observed_abundance > 0, na.rm = TRUE),
+#       total_reads = sum(observed_abundance, na.rm = TRUE),
+#       .groups = "drop"
+#     )
+# 
+#   # Get mean predicted values per group and time
+#   plot_df_pred <- predicted_df %>%
+#   left_join(count_df, by = c("onset_timeline_numeric", "Dx.Status")) %>%
+#   group_by(onset_timeline_numeric, Dx.Status) %>%
+#   summarise(
+#     mean_pred = mean(predicted_abundance, na.rm = TRUE),
+#     non_zero_n = first(non_zero_n),      # from count_df
+#     total_reads = first(total_reads),    # from count_df
+#     .groups = "drop"
+#   ) %>%
+#   mutate(mean_pred = ifelse(non_zero_n == 0 & total_reads == 0, NA, mean_pred))
+#   
+# 
+#   # Label showing both counts
+#   plot_df_pred <- plot_df_pred %>%
+#     mutate(label_text = paste0("n=", non_zero_n, "\nreads=", round(total_reads)))
+# 
+#   # Plot with annotations for sample count and total reads
+#   p <- ggplot(plot_df_pred, aes(x = onset_timeline_numeric, y = mean_pred, color = Dx.Status)) +
+#     geom_line(size = 1.2) +
+#     geom_point(size = 2) +
+#     geom_text(aes(label = label_text), vjust = -0.5, size = 3) +
+#     labs(title = i,
+#          x = "Months before onset", y = "Predicted Abundance (logCPM)") +
+#     theme(legend.position = "none")
+# 
+#   # Store in list
+#   trajectory_plot_list[[i]] <- p
+# }
+# 
+
+# # Pick 10 plots
+# plot_subset <- trajectory_plot_list[1:500]  # or use names: trajectory_plot_list[c("gene1", "gene2", ...)]
+# # Combine into grid: 2 rows × 5 columns
+# grid_plot <- wrap_plots(plot_subset)
+# ggsave(grid_plot,file=paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Total_trajectory_batchRemoved_clean.pdf"),dpi = 600,width = 75,height=65,limitsize = FALSE)
+
+
+# hist(sig.model.res$adj.P.Val, breaks = 50) # the shape looks valid
+# hist(model.res$adj.P.Val, breaks = 50, col = "gray", main = "All Adjusted P-Values") # the shape looks valid as well
+
+###########################################################################################################################
+
+model.res <- topTable(linear.model.fit,coef="onset_timeline_numeric",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 13
+
+#################################################################################################
+
+model.res <- topTable(linear.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2206
+
+#################################################################################################
+
+model.res <- topTable(linear.model.fit,coef="CountryUSA",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="CountryUSA",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 2109
+model.res <- topTable(linear.model.fit,coef="SexMale",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 1541
+model.res <- topTable(linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+model.res <- topTable(linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+model.res <- topTable(linear.model.fit,coef="feeding_first_yearFormula",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="feeding_first_yearFormula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+model.res <- topTable(linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf)
+sig.model.res <- topTable(linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0 6
+
+```
+
+
+
+# make volcano plots and coloring by function
+```{r}
+
+
+significant_gene_function_table <- read_delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/phold_per_cds_predictions.tsv") %>%
+          select(`cds_id`,`phrog`,`function`,`product`) %>%
+          column_to_rownames("cds_id") %>%
+          merge(model.res,by = 0)
+
+
+# make volcano plots for the significant genes
+
+# Add significance categories
+significant_gene_function_table$significant <- significant_gene_function_table$adj.P.Val < 0.05
+significant_gene_function_table$highly_significant <- significant_gene_function_table$adj.P.Val < 0.001
+significant_gene_function_table$neg_log10_padj <- -log10(significant_gene_function_table$adj.P.Val)
+
+
+# FLIP THE SIGN of logFC to switch axis orientation
+significant_gene_function_table$logFC_flipped <- -significant_gene_function_table$logFC
+
+
+# Create significance labels
+significant_gene_function_table$significance_label <- "Not Significant"
+significant_gene_function_table$significance_label[significant_gene_function_table$significant] <- "Significant (adj.p < 0.05)"
+significant_gene_function_table$significance_label[significant_gene_function_table$highly_significant] <- "Highly Significant (adj.p < 0.001)"
+
+
+
+significant_gene_function_table$significance_label <- factor(significant_gene_function_table$significance_label,
+                                          levels = c("Not Significant",
+                                                    "Significant (adj.p < 0.05)",
+                                                    "Highly Significant (adj.p < 0.001)"))
+
+
+# Define colors
+colors <- c("Not Significant" = "grey70",
+           "Significant (adj.p < 0.05)" = "#E31A1C",
+           "Highly Significant (adj.p < 0.001)" = "#B2182B")
+
+# Create volcano plot
+total_dataset_volcano_plot <- ggplot(significant_gene_function_table, aes(x = logFC_flipped, y = neg_log10_padj)) +
+  geom_point(aes(color = significance_label), size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = colors, name = "Significance") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = -log10(0.001), linetype = "dashed", color = "darkred", alpha = 0.7) +
+  labs(
+    title = "Viral ORF Differential Abundance: CONTROL vs CELIAC",
+    x = "Log2 Fold Change (CONTROL vs CELIAC)",
+    y = "-Log10(Adjusted P-value)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+
+# Save plot
+ggsave(total_dataset_volcano_plot, file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_dataset_volcano_plot.png", width = 8, height = 8, dpi = 300)
+
+
+######################### color the points based on gene functions ##############################
+
+# Clean up function names and create simplified categories
+significant_gene_function_table$`function`[is.na(significant_gene_function_table$`function`)] <- "unknown function"
+significant_gene_function_table$`function`[significant_gene_function_table$`function` == ""] <- "unknown function"
+
+
+# Create simplified functional categories for better visualization
+significant_gene_function_table$func_category <- significant_gene_function_table$`function`
+significant_gene_function_table$func_category[grepl("DNA|RNA|nucleotide|replication",
+significant_gene_function_table$`function`, ignore.case = TRUE)] <- "DNA/RNA metabolism"
+significant_gene_function_table$func_category[grepl("head|packaging|capsid",
+significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Head & packaging"
+significant_gene_function_table$func_category[grepl("tail|fiber", significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Tail"
+significant_gene_function_table$func_category[grepl("lysis|holin", significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Lysis"
+significant_gene_function_table$func_category[grepl("transcription|regulation",
+significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Transcription"
+significant_gene_function_table$func_category[grepl("integration|excision|recombination",
+significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Integration/excision"
+significant_gene_function_table$func_category[grepl("connector", significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Connector"
+significant_gene_function_table$func_category[grepl("unknown|hypothetical",significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Unknown function"
+significant_gene_function_table$func_category[grepl("other", significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Other"
+
+# Count functions and keep only top categories, group rare ones as 
+"Other"
+func_counts <- table(significant_gene_function_table$func_category)
+top_functions <- names(sort(func_counts, decreasing = TRUE))[1:8]  # Keep top 8
+significant_gene_function_table$func_category[!significant_gene_function_table$func_category %in% top_functions] <- "Other/Rare"
+
+# Create color palette for functions
+func_colors <- c(
+"DNA/RNA metabolism" = "#1f77b4",
+"Head & packaging" = "#ff7f0e",
+"Tail" = "#2ca02c",
+"Unknown function" = "#7f7f7f",
+"Lysis" = "#9467bd",
+"Transcription" = "#8c564b",
+"Integration/excision" = "#e377c2",
+"Connector" = "#d62728",
+"Other" = "#bcbd22",
+"Other/Rare" = "#17becf"
+)
+
+
+significant_gene_function_table.known <- significant_gene_function_table %>% filter(func_category != "Unknown function")
+
+# Create volcano plot colored by function
+total_dataset_volcano_plot_color_by_function <- ggplot(significant_gene_function_table.known, aes(x = logFC_flipped, y = neg_log10_padj)) +
+                              geom_point(data = significant_gene_function_table.known %>% filter(adj.P.Val < 0.05), aes(color = func_category), size = 0.8, alpha = 0.7) +
+                              geom_point(data = significant_gene_function_table.known %>% filter(adj.P.Val >= 0.05),color = "gray",size = 0.8, alpha = 0.7)+ 
+                              scale_color_manual(values = func_colors, name = "Gene Function") +
+                              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color =
+                              "black", alpha = 0.5) +
+                              geom_hline(yintercept = -log10(0.001), linetype = "dashed", color =
+                              "black", alpha = 0.7) +
+                              labs(
+                                title = "Viral ORF Differential Abundance by Gene Function (Unknown functions removed)",
+                                subtitle = paste("Total:", nrow(significant_gene_function_table.known), "ORFs | Significant:",
+                              sum(significant_gene_function_table.known$significant), "ORFs (adj.p < 0.05)"),
+                                x = "Log2 Fold Change (CONTROL vs CELIAC)",
+                                y = "-Log10(Adjusted P-value)",
+                                caption = "Negative logFC = Higher in CONTROL, Lower in CELIAC"
+                              ) +
+                              theme_minimal() +
+                              theme(
+                                plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+                                plot.subtitle = element_text(size = 11, hjust = 0.5),
+                                legend.position = "right",
+                                legend.title = element_text(size = 11, face = "bold"),
+                                panel.grid.minor = element_blank()
+                              )
+
+ggsave(total_dataset_volcano_plot_color_by_function,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_dataset_volcano_plot_color_by_function_known.png", width = 10, height = 8, dpi = 300)
+
+
+function.table <- significant_gene_function_table %>% filter(adj.P.Val < 0.05) %>% select(c("Row.names","phrog","function","product"))
+write.csv(function.table,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_cohort_function_table.csv",quote = FALSE,row.names = FALSE)
+
+
+View(significant_gene_function_table %>% group_by(func_category) %>% mutate(number_of_Orfs = n()) %>% distinct(func_category,.keep_all = TRUE) %>% select(func_category,number_of_Orfs))
+
+```
+
+
+
+# heatmap was made by claude code:create_temporal_heatmap_from_tables.R
+<!-- This script takes your three input files: -->
+<!--   - total_limma_model_Sig_res_final.csv (topTable results) -->
+<!--   - total_orf.abundance.clean.csv (abundance data) -->
+<!--   - total_metadata.clean.csv (metadata) -->
+
+<!-- And generates the two heatmap files: -->
+<!--   - all_significant_orfs_temporal_heatmap_from_tables.png -->
+<!--   - top_variable_significant_orfs_heatmap_from_tables.png -->
+
+# prepare dataframe for coefficient plot
+```{r}
+
+# create the table that combines all the model results
+# Extract complete results for ALL coefficients and ALL ORFs
+
+complete_results <- data.frame()
+
+
+# Get coefficient names
+coef_names <- colnames(linear.model.fit$coefficients)
+print("Model coefficients:")
+print(coef_names)
+
+# Loop through each coefficient to get results
+for(i in 1:length(coef_names)) {
+  coef_name <- coef_names[i]
+
+  # Get topTable for this coefficient (number = Inf gets ALL ORFs)
+  coef_results <- topTable(linear.model.fit, coef = i, number = Inf, sort.by = "none")
+
+  # Add coefficient name prefix to column names (except ORF names)
+  colnames(coef_results) <- paste0(coef_name, "_", colnames(coef_results))
+
+
+  if(i == 1) {
+    # First coefficient - initialize the complete results
+    complete_results <- coef_results
+  } else {
+    # Add additional coefficients as new columns
+    complete_results <- cbind(complete_results, coef_results)
+  }
+}
+
+# Add ORF IDs as first column
+complete_results <- data.frame(
+  orf_id = rownames(complete_results),
+  complete_results,
+  stringsAsFactors = FALSE
+)
+
+colnames(complete_results) <- gsub("X.","",colnames(complete_results))
+colnames(complete_results) <- gsub("Dx.StatusCONTROL","Dx.Status(CONTROL vs CELIAC)",colnames(complete_results))
+colnames(complete_results) <- gsub("CountryUSA","Country(USA vs Italy)",colnames(complete_results))
+colnames(complete_results) <- gsub("SexMale","Sex(Male vs Female)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryHigh.Risk","HLA.Category(High.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryLow.No.Risk","HLA.Category(Low.No.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("feeding_first_yearFormula","feeding_first_year(Formula vs Breast_fed)",colnames(complete_results))
+colnames(complete_results) <- gsub("Delivery.ModeC.Section","Delivery.Mode(C.Section vs Vaginal)",colnames(complete_results))
+
+# Save to file
+write.csv(complete_results,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/Total_complete_model_results.csv",quote = FALSE,row.names = TRUE)
+
+
+
+```
+
+
+
+Model 2: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_numeric assume it is linear in the model
+~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(metadata.clean$feeding_first_year)
+# Breast_fed      Formula    Breastmilk_and_formula 
+#   119              58                 129 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   110   196 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   237   69
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 216        90
+metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(metadata.clean$Age.at.Gluten.Introduction..months.)
+ # 4  5   6  7  8   9 10 11 12 15 36 
+ # 5  11 57  91 39 33 33 10  2 16  9 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    161     145 
+metadata.clean$onset_timeline_combined <- factor(metadata.clean$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+ # t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+ # 64        30        46        27        32        29        33        46 
+
+
+categorical.model.design <- model.matrix(~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,metadata.clean)
+colnames(categorical.model.design) <- make.names(colnames(categorical.model.design))
+categorical.model.fit <- voomLmFit(orf.abundance.clean,categorical.model.design,block= metadata.clean$patientID,plot=FALSE)
+categorical.model.fit <- eBayes(categorical.model.fit)
+
+colnames(categorical.model.fit)
+#  [1] "X.Intercept."                                      "Dx.StatusCONTROL"                                 
+#  [3] "onset_timeline_combinedt0.6"                       "onset_timeline_combinedt0.12"                     
+#  [5] "onset_timeline_combinedt0.18"                      "onset_timeline_combinedt0.24"                     
+#  [7] "onset_timeline_combinedt0.30"                      "onset_timeline_combinedt0.36"                     
+#  [9] "onset_timeline_combinedt0.over42"                  "CountryUSA"                                       
+# [11] "SexMale"                                           "Age.at.Gluten.Introduction..months."              
+# [13] "HLA.CategoryHigh.Risk"                             "HLA.CategoryLow.No.Risk"                          
+# [15] "feeding_first_yearFormula"                         "feeding_first_yearBreastmilk_and_formula"         
+# [17] "Delivery.ModeC.Section"                            "Dx.StatusCONTROL.onset_timeline_combinedt0.6"     
+# [19] "Dx.StatusCONTROL.onset_timeline_combinedt0.12"     "Dx.StatusCONTROL.onset_timeline_combinedt0.18"    
+# [21] "Dx.StatusCONTROL.onset_timeline_combinedt0.24"     "Dx.StatusCONTROL.onset_timeline_combinedt0.30"    
+# [23] "Dx.StatusCONTROL.onset_timeline_combinedt0.36"     "Dx.StatusCONTROL.onset_timeline_combinedt0.over42"
+
+
+
+############# are there any baseline difference in orf abundance between celiac and control group at T0 ##############
+
+categorical.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0
+
+
+############# are there significantly different Orfs between Celiac and Control groups at each time point ###############
+
+contrast_matrix <- makeContrasts(
+    "CONTROL_vs_CELIAC_at_t0_6" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.6,
+    "CONTROL_vs_CELIAC_at_t0_12" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.12,
+    "CONTROL_vs_CELIAC_at_t0_18" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.18,
+    "CONTROL_vs_CELIAC_at_t0_24" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.24,
+    "CONTROL_vs_CELIAC_at_t0_30" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.30,
+    "CONTROL_vs_CELIAC_at_t0_36" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.36,
+    "CONTROL_vs_CELIAC_at_t0_over42" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.over42,
+    levels = categorical.model.design
+  )
+
+
+# Fit contrasts
+contrast_fit <- contrasts.fit(categorical.model.fit, contrast_matrix)
+contrast_fit <- eBayes(contrast_fit)
+
+colnames(contrast_fit)
+# [1] "CONTROL_vs_CELIAC_at_t0_6"      "CONTROL_vs_CELIAC_at_t0_12"     "CONTROL_vs_CELIAC_at_t0_18"    
+# [4] "CONTROL_vs_CELIAC_at_t0_24"     "CONTROL_vs_CELIAC_at_t0_30"     "CONTROL_vs_CELIAC_at_t0_36"    
+# [7] "CONTROL_vs_CELIAC_at_t0_over42"
+
+# extract results
+results_t0_6 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_6",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 2025 
+
+results_t0_12 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_12",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+results_t0_18 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_18",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 2050
+
+
+results_t0_24 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_24",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 1
+
+results_t0_30 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_30",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 1633
+
+results_t0_36 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_36",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+results_t0_over42 <- topTable(contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 2
+
+
+
+############# are there any orf has significantly changed group difference between each time point and T0 ###############
+
+
+categorical.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.12",number=Inf)
+categorical.total.model.res <- categorical.model.res
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 1 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 1565    6
+
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="Dx.StatusCONTROL.onset_timeline_combinedt0.over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 1898    6
+
+
+########### Are there any significantly differential abundant Orfs between each time point and T0 for Celiac group ############
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 34  6
+
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 10  6
+
+categorical.sig.model.res <- topTable(categorical.model.fit,coef="onset_timeline_combinedt0-36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(categorical.sig.model.res)
+# 0 6
+
+
+```
+
+
+
+# map orfs to contigs and get the contig annotations
+# done by claude
+
+##################################################### US ############################################################### 
+
+Model 1: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_numeric assume it is linear in the model
+~ Dx.Status * onset_timeline_numeric + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+# prepare correct variable format
+US.metadata.clean$feeding_first_year <- factor(US.metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+US.metadata.clean$HLA.Category <- factor(US.metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+US.metadata.clean$Sex <- factor(US.metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+US.metadata.clean$Delivery.Mode <- factor(US.metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+US.metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(US.metadata.clean$Age.at.Gluten.Introduction..months.)
+# #  # 4  5  6  7  8  9 10 11 12 15 36 
+# #  # 5 11 57 91 40 33 33 10  2 16  9 
+US.metadata.clean$Dx.Status <- factor(US.metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    162     145 
+
+#write.csv(US.metadata.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US.metadata.clean.csv",quote = FALSE,row.names = TRUE)
+
+
+# treat Age.at.Gluten.Introduction..months. as linear
+US.linear.model.design <- model.matrix(~ Dx.Status * onset_timeline_numeric + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,US.metadata.clean)
+US.linear.model.fit <- voomLmFit(US.orf.abundance.clean,US.linear.model.design,block= US.metadata.clean$patientID,plot=FALSE)
+US.linear.model.fit <- eBayes(US.linear.model.fit)
+
+#write.csv(US.orf.abundance.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US.orf.abundance.clean.csv",quote = FALSE,row.names = TRUE)
+
+colnames(US.linear.model.fit)
+#  [1] "(Intercept)"                              "Dx.StatusCONTROL"                         "onset_timeline_numeric"                  
+#  [4] "SexMale"                                  "Age.at.Gluten.Introduction..months."      "HLA.CategoryHigh Risk"                   
+#  [7] "HLA.CategoryLow/No Risk"                  "feeding_first_yearFormula"                "feeding_first_yearBreastmilk_and_formula"
+# [10] "Delivery.ModeC-Section"                   "Dx.StatusCONTROL:onset_timeline_numeric" 
+
+
+US.model.res <- topTable(US.linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 3176 
+
+# write.csv(US.model.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US.limma_model_res.csv",quote = FALSE,row.names = TRUE)
+
+# # Define gene of interest
+# selected_gene <- rownames(US.sig.model.res)
+# 
+# # Subset design matrix and model coefficients for prediction
+# US.linear.model.design <- model.matrix(~ Dx.Status * onset_timeline_numeric + RunNumber + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,US.metadata.clean)
+# 
+# trajectory_plot_list <- list()
+# 
+# 
+# for (i in selected_gene){
+#   
+#    # Extract observed abundance vector for gene i
+#   gene_abundance <- orf.abundance.clean[i, ]
+# 
+#   # Create metadata + model prediction + observed abundance
+#   predicted_df <- metadata.clean %>%
+#     mutate(predicted_abundance = as.numeric(linear.model.design %*% linear.model.fit$coefficients[i, ]),
+#            observed_abundance = as.numeric(gene_abundance))
+# 
+#   # Count non-zero samples and total abundance per group and time
+#   count_df <- predicted_df %>%
+#     group_by(onset_timeline_numeric, Dx.Status) %>%
+#     summarise(
+#       non_zero_n = sum(observed_abundance > 0, na.rm = TRUE),
+#       total_reads = sum(observed_abundance, na.rm = TRUE),
+#       .groups = "drop"
+#     )
+# 
+#   # Get mean predicted values per group and time
+#   plot_df_pred <- predicted_df %>%
+#   left_join(count_df, by = c("onset_timeline_numeric", "Dx.Status")) %>%
+#   group_by(onset_timeline_numeric, Dx.Status) %>%
+#   summarise(
+#     mean_pred = mean(predicted_abundance, na.rm = TRUE),
+#     non_zero_n = first(non_zero_n),      # from count_df
+#     total_reads = first(total_reads),    # from count_df
+#     .groups = "drop"
+#   ) %>%
+#   mutate(mean_pred = ifelse(non_zero_n == 0 & total_reads == 0, NA, mean_pred))
+#   
+# 
+#   # Label showing both counts
+#   plot_df_pred <- plot_df_pred %>%
+#     mutate(label_text = paste0("n=", non_zero_n, "\nreads=", round(total_reads)))
+# 
+#   # Plot with annotations for sample count and total reads
+#   p <- ggplot(plot_df_pred, aes(x = onset_timeline_numeric, y = mean_pred, color = Dx.Status)) +
+#     geom_line(size = 1.2) +
+#     geom_point(size = 2) +
+#     geom_text(aes(label = label_text), vjust = -0.5, size = 3) +
+#     labs(title = i,
+#          x = "Months before onset", y = "Predicted Abundance (logCPM)") +
+#     theme(legend.position = "none")
+# 
+#   # Store in list
+#   trajectory_plot_list[[i]] <- p
+# }
+# 
+
+# # Pick 10 plots
+# plot_subset <- trajectory_plot_list[1:500]  # or use names: trajectory_plot_list[c("gene1", "gene2", ...)]
+# # Combine into grid: 2 rows × 5 columns
+# grid_plot <- wrap_plots(plot_subset)
+# ggsave(grid_plot,file=paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Total_trajectory_batchRemoved_clean.pdf"),dpi = 600,width = 75,height=65,limitsize = FALSE)
+
+
+# hist(sig.model.res$adj.P.Val, breaks = 50) # the shape looks valid
+# hist(model.res$adj.P.Val, breaks = 50, col = "gray", main = "All Adjusted P-Values") # the shape looks valid as well
+
+###########################################################################################################################
+
+US.model.res <- topTable(US.linear.model.fit,coef="onset_timeline_numeric",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 117
+
+#################################################################################################
+
+US.model.res <- topTable(US.linear.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 3
+
+#################################################################################################
+
+US.model.res <- topTable(US.linear.model.fit,coef="SexMale",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 1
+US.model.res <- topTable(US.linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 0 6
+US.model.res <- topTable(US.linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 0 6
+US.model.res <- topTable(US.linear.model.fit,coef="feeding_first_yearFormula",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="feeding_first_yearFormula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 0 6
+US.model.res <- topTable(US.linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 0 6
+US.model.res <- topTable(US.linear.model.fit,coef="Delivery.ModeC-Section",number=Inf)
+US.sig.model.res <- topTable(US.linear.model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.sig.model.res)
+# 1623    6
+
+```
+
+
+# make volcano plots and coloring by function
+```{r}
+
+View(US.significant_gene_function_table %>% group_by(func_category) %>% mutate(number_of_Orfs = n()) %>% distinct(func_category,.keep_all = TRUE) %>% select(func_category,number_of_Orfs))
+
+
+US.significant_gene_function_table <- read_delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/phold_per_cds_predictions.tsv") %>%
+          select(`cds_id`,`phrog`,`function`,`product`) %>%
+          column_to_rownames("cds_id") %>%
+          merge(US.model.res,by = 0)
+
+
+# make volcano plots for the significant genes
+
+# Add significance categories
+US.significant_gene_function_table$significant <- US.significant_gene_function_table$adj.P.Val < 0.05
+US.significant_gene_function_table$highly_significant <- US.significant_gene_function_table$adj.P.Val < 0.001
+US.significant_gene_function_table$neg_log10_padj <- -log10(US.significant_gene_function_table$adj.P.Val)
+
+
+# FLIP THE SIGN of logFC to switch axis orientation
+US.significant_gene_function_table$logFC_flipped <- -US.significant_gene_function_table$logFC
+
+
+# Create significance labels
+US.significant_gene_function_table$significance_label <- "Not Significant"
+US.significant_gene_function_table$significance_label[US.significant_gene_function_table$significant] <- "Significant (adj.p < 0.05)"
+US.significant_gene_function_table$significance_label[US.significant_gene_function_table$highly_significant] <- "Highly Significant (adj.p < 0.001)"
+
+
+
+US.significant_gene_function_table$significance_label <- factor(US.significant_gene_function_table$significance_label,
+                                          levels = c("Not Significant",
+                                                    "Significant (adj.p < 0.05)",
+                                                    "Highly Significant (adj.p < 0.001)"))
+
+
+# Define colors
+colors <- c("Not Significant" = "grey70",
+           "Significant (adj.p < 0.05)" = "#E31A1C",
+           "Highly Significant (adj.p < 0.001)" = "#B2182B")
+
+# Create volcano plot
+US.total_dataset_volcano_plot <- ggplot(US.significant_gene_function_table, aes(x = logFC_flipped, y = neg_log10_padj)) +
+  geom_point(aes(color = significance_label), size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = colors, name = "Significance") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = -log10(0.001), linetype = "dashed", color = "darkred", alpha = 0.7) +
+  labs(
+    title = "US Viral ORF Differential Abundance: CONTROL vs CELIAC",
+    x = "Log2 Fold Change (CONTROL vs CELIAC)",
+    y = "-Log10(Adjusted P-value)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+
+# Save plot
+ggsave(US.total_dataset_volcano_plot, file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/US.total_dataset_volcano_plot.png", width = 8, height = 8, dpi = 300)
+
+
+######################### color the points based on gene functions ##############################
+
+# Clean up function names and create simplified categories
+US.significant_gene_function_table$`function`[is.na(US.significant_gene_function_table$`function`)] <- "unknown function"
+US.significant_gene_function_table$`function`[US.significant_gene_function_table$`function` == ""] <- "unknown function"
+
+
+# Create simplified functional categories for better visualization
+US.significant_gene_function_table$func_category <- US.significant_gene_function_table$`function`
+US.significant_gene_function_table$func_category[grepl("DNA|RNA|nucleotide|replication",
+US.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "DNA/RNA metabolism"
+US.significant_gene_function_table$func_category[grepl("head|packaging|capsid",
+US.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Head & packaging"
+US.significant_gene_function_table$func_category[grepl("tail|fiber", US.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Tail"
+US.significant_gene_function_table$func_category[grepl("lysis|holin", US.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Lysis"
+US.significant_gene_function_table$func_category[grepl("transcription|regulation",
+US.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Transcription"
+US.significant_gene_function_table$func_category[grepl("integration|excision|recombination",
+US.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Integration/excision"
+US.significant_gene_function_table$func_category[grepl("connector", US.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Connector"
+US.significant_gene_function_table$func_category[grepl("unknown|hypothetical",US.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Unknown function"
+US.significant_gene_function_table$func_category[grepl("other", US.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Other"
+
+# Count functions and keep only top categories, group rare ones as 
+"Other"
+func_counts <- table(US.significant_gene_function_table$func_category)
+top_functions <- names(sort(func_counts, decreasing = TRUE))[1:8]  # Keep top 8
+US.significant_gene_function_table$func_category[!US.significant_gene_function_table$func_category %in% top_functions] <- "Other/Rare"
+
+# Create color palette for functions
+func_colors <- c(
+"DNA/RNA metabolism" = "#1f77b4",
+"Head & packaging" = "#ff7f0e",
+"Tail" = "#2ca02c",
+"Unknown function" = "#7f7f7f",
+"Lysis" = "#9467bd",
+"Transcription" = "#8c564b",
+"Integration/excision" = "#e377c2",
+"Connector" = "#d62728",
+"Other" = "#bcbd22",
+"Other/Rare" = "#17becf"
+)
+
+
+US.significant_gene_function_table.known <- US.significant_gene_function_table %>% filter(func_category != "Unknown function")
+
+
+# Create volcano plot colored by function
+US.total_dataset_volcano_plot_color_by_function <- ggplot(US.significant_gene_function_table.known, aes(x = logFC_flipped, y = neg_log10_padj)) +
+                              geom_point(data = US.significant_gene_function_table.known %>% filter(adj.P.Val < 0.05), aes(color = func_category), size = 0.8, alpha = 0.7) +
+                              geom_point(data = US.significant_gene_function_table.known %>% filter(adj.P.Val >= 0.05),color = "gray",size = 0.8, alpha = 0.7)+ 
+                              scale_color_manual(values = func_colors, name = "Gene Function") +
+                              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color =
+                              "black", alpha = 0.5) +
+                              geom_hline(yintercept = -log10(0.001), linetype = "dashed", color =
+                              "black", alpha = 0.7) +
+                              labs(
+                                title = "US Viral ORF Differential Abundance by Gene Function (Unknown functions removed)",
+                                subtitle = paste("Total:", nrow(US.significant_gene_function_table.known), "ORFs | Significant:",
+                              sum(US.significant_gene_function_table.known$significant), "ORFs (adj.p < 0.05)"),
+                                x = "Log2 Fold Change (CONTROL vs CELIAC)",
+                                y = "-Log10(Adjusted P-value)",
+                                caption = "Negative logFC = Higher in CONTROL, Lower in CELIAC"
+                              ) +
+                              theme_minimal() +
+                              theme(
+                                plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+                                plot.subtitle = element_text(size = 11, hjust = 0.5),
+                                legend.position = "right",
+                                legend.title = element_text(size = 11, face = "bold"),
+                                panel.grid.minor = element_blank()
+                              )
+
+ggsave(US.total_dataset_volcano_plot_color_by_function,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US_dataset_volcano_plot_color_by_function_known.png", width = 10, height = 8, dpi = 300)
+
+
+function.table <- significant_gene_function_table %>% filter(adj.P.Val < 0.05) %>% select(c("Row.names","phrog","function","product"))
+write.csv(function.table,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_cohort_function_table.csv",quote = FALSE,row.names = FALSE)
+
+
+View(significant_gene_function_table %>% group_by(func_category) %>% mutate(number_of_Orfs = n()) %>% distinct(func_category,.keep_all = TRUE) %>% select(func_category,number_of_Orfs))
+
+```
+
+
+# prepare dataframe for coefficient plot
+```{r}
+
+# create the table that combines all the model results
+# Extract complete results for ALL coefficients and ALL ORFs
+complete_results <- data.frame()
+
+# Get coefficient names
+coef_names <- colnames(US.linear.model.fit$coefficients)
+print("Model coefficients:")
+print(coef_names)
+
+# Loop through each coefficient to get results
+for(i in 1:length(coef_names)) {
+  coef_name <- coef_names[i]
+
+  # Get topTable for this coefficient (number = Inf gets ALL ORFs)
+  coef_results <- topTable(US.linear.model.fit, coef = i, number = Inf, sort.by = "none")
+
+  # Add coefficient name prefix to column names (except ORF names)
+  colnames(coef_results) <- paste0(coef_name, "_", colnames(coef_results))
+
+  if(i == 1) {
+    # First coefficient - initialize the complete results
+    complete_results <- coef_results
+  } else {
+    # Add additional coefficients as new columns
+    complete_results <- cbind(complete_results, coef_results)
+  }
+}
+
+# Add ORF IDs as first column
+complete_results <- data.frame(
+  orf_id = rownames(complete_results),
+  complete_results,
+  stringsAsFactors = FALSE
+)
+
+colnames(complete_results) <- gsub("X.","",colnames(complete_results))
+
+
+colnames(complete_results) <- gsub("X.","",colnames(complete_results))
+colnames(complete_results) <- gsub("Dx.StatusCONTROL","Dx.Status(CONTROL vs CELIAC)",colnames(complete_results))
+colnames(complete_results) <- gsub("CountryUSA","Country(USA vs Italy)",colnames(complete_results))
+colnames(complete_results) <- gsub("SexMale","Sex(Male vs Female)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryHigh.Risk","HLA.Category(High.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryLow.No.Risk","HLA.Category(Low.No.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("feeding_first_yearFormula","feeding_first_year(Formula vs Breast_fed)",colnames(complete_results))
+colnames(complete_results) <- gsub("Delivery.ModeC.Section","Delivery.Mode(C.Section vs Vaginal)",colnames(complete_results))
+
+
+# Save to file
+write.csv(complete_results,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US_complete_model_results.csv",quote = FALSE,row.names = TRUE)
+
+```
+
+
+
+Model 2: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_combine assume it is linear in the model
+~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+
+# prepare correct variable format
+US.metadata.clean$feeding_first_year <- factor(US.metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+US.metadata.clean$HLA.Category <- factor(US.metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+US.metadata.clean$Sex <- factor(US.metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+US.metadata.clean$Delivery.Mode <- factor(US.metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+US.metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(US.metadata.clean$Age.at.Gluten.Introduction..months.)
+# #  # 4  5  6  7  8  9 10 11 12 15 36 
+# #  # 5 11 57 91 40 33 33 10  2 16  9 
+US.metadata.clean$Dx.Status <- factor(US.metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    162     145  
+US.metadata.clean$onset_timeline_combined <- factor(US.metadata.clean$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+ # t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+ # 64        30        46        27        32        29        33        46 
+
+
+US.categorical.model.design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,US.metadata.clean)
+colnames(US.categorical.model.design) <- make.names(colnames(US.categorical.model.design))
+US.categorical.model.fit <- voomLmFit(US.orf.abundance.clean,US.categorical.model.design,block= US.metadata.clean$patientID,plot=FALSE)
+US.categorical.model.fit <- eBayes(US.categorical.model.fit)
+
+colnames(US.categorical.model.fit)
+#  [1] "X.Intercept."                                      "Dx.StatusCONTROL"                                 
+#  [3] "onset_timeline_combinedt0.6"                       "onset_timeline_combinedt0.12"                     
+#  [5] "onset_timeline_combinedt0.18"                      "onset_timeline_combinedt0.24"                     
+#  [7] "onset_timeline_combinedt0.30"                      "onset_timeline_combinedt0.36"                     
+#  [9] "onset_timeline_combinedt0.over42"                  "SexMale"                                          
+# [11] "Age.at.Gluten.Introduction..months."               "HLA.CategoryHigh.Risk"                            
+# [13] "HLA.CategoryLow.No.Risk"                           "feeding_first_yearFormula"                        
+# [15] "feeding_first_yearBreastmilk_and_formula"          "Delivery.ModeC.Section"                           
+# [17] "Dx.StatusCONTROL.onset_timeline_combinedt0.6"      "Dx.StatusCONTROL.onset_timeline_combinedt0.12"    
+# [19] "Dx.StatusCONTROL.onset_timeline_combinedt0.18"     "Dx.StatusCONTROL.onset_timeline_combinedt0.24"    
+# [21] "Dx.StatusCONTROL.onset_timeline_combinedt0.30"     "Dx.StatusCONTROL.onset_timeline_combinedt0.36"    
+# [23] "Dx.StatusCONTROL.onset_timeline_combinedt0.over42"
+
+
+############# are there any baseline difference in orf abundance between celiac and control group at T0 ##############
+
+US.categorical.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0
+
+
+############# are there significantly different Orfs between Celiac and Control groups at each time point ###############
+
+US.contrast_matrix <- makeContrasts(
+    "CONTROL_vs_CELIAC_at_t0_6" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.6,
+    "CONTROL_vs_CELIAC_at_t0_12" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.12,
+    "CONTROL_vs_CELIAC_at_t0_18" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.18,
+    "CONTROL_vs_CELIAC_at_t0_24" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.24,
+    "CONTROL_vs_CELIAC_at_t0_30" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.30,
+    "CONTROL_vs_CELIAC_at_t0_36" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.36,
+    "CONTROL_vs_CELIAC_at_t0_over42" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.over42,
+    levels = US.categorical.model.design
+  )
+
+
+# Fit contrasts
+US.contrast_fit <- contrasts.fit(US.categorical.model.fit, US.contrast_matrix)
+US.contrast_fit <- eBayes(US.contrast_fit)
+
+colnames(US.contrast_fit)
+# [1] "CONTROL_vs_CELIAC_at_t0_6"      "CONTROL_vs_CELIAC_at_t0_12"     "CONTROL_vs_CELIAC_at_t0_18"    
+# [4] "CONTROL_vs_CELIAC_at_t0_24"     "CONTROL_vs_CELIAC_at_t0_30"     "CONTROL_vs_CELIAC_at_t0_36"    
+# [7] "CONTROL_vs_CELIAC_at_t0_over42"
+
+# extract results
+US.results_t0_6 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_6",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+US.results_t0_12 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_12",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+US.results_t0_18 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_18",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+US.results_t0_24 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_24",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+
+US.results_t0_30 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_30",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 23
+rownames(US.results_t0_30)
+
+US.results_t0_36 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_36",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 18
+
+US.results_t0_over42 <- topTable(US.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+
+
+############# are there any orf has significantly changed group difference between each time point and T0 ###############
+
+
+US.categorical.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-12",number=Inf)
+US.categorical.total.model.res <- US.categorical.model.res
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 610 6
+View(US.categorical.sig.model.res)
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 2623    6
+
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 2270    6
+
+
+###############################################
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 3374 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 3493  6
+
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 2869 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0  6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+```
+
+
+check the t0-24, t0-30, and t0-36 abundance
+```{r}
+
+
+US.metadata.clean.24.30.36 <- US.metadata.clean %>%
+                               filter(onset_timeline_combined %in% c("t0-24","t0-30","t0-36"))
+US.24.30.36.id <- rownames(US.metadata.clean.24.30.36)
+dim(US.metadata.clean.24.30.36)
+# 73 25
+
+
+# extract the count
+US.orf.abundance.clean.24.30.36 <- US.orf.abundance.clean %>%
+                                   select(all_of(US.24.30.36.id))
+dim(US.orf.abundance.clean.24.30.36)
+# 3909   73
+
+
+US.meta.abundance.24.30.36 <- merge(US.metadata.clean.24.30.36,t(US.orf.abundance.clean.24.30.36),by = 0)
+
+
+US.meta.abundance.24 <- US.meta.abundance.24.30.36 %>%
+                        filter(onset_timeline_combined == "t0-24") 
+
+US.abundance.24 <- US.meta.abundance.24[]
+
+
+
+
+US.meta.abundance.30 <- US.meta.abundance.24.30.36 %>%
+                        filter(onset_timeline_combined == "t0-30")
+
+
+
+
+US.meta.abundance.36 <- US.meta.abundance.24.30.36 %>%
+                        filter(onset_timeline_combined == "t0-36")
+
+
+
+
+
+
+```
+
+
+
+# pre-30 vs post-30
+```{r}
+
+# prepare correct variable format
+US.metadata.celiac.clean$feeding_first_year <- factor(US.metadata.celiac.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+US.metadata.celiac.clean$HLA.Category <- factor(US.metadata.celiac.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+US.metadata.celiac.clean$Sex <- factor(US.metadata.celiac.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+US.metadata.celiac.clean$Delivery.Mode <- factor(US.metadata.celiac.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+US.metadata.celiac.clean$Age.at.Gluten.Introduction..months. <- as.numeric(US.metadata.celiac.clean$Age.at.Gluten.Introduction..months.)
+# #  # 4  5  6  7  8  9 10 11 12 15 36 
+# #  # 5 11 57 91 40 33 33 10  2 16  9 
+US.metadata.celiac.clean$Onset_timepoint <- factor(US.metadata.celiac.clean$Onset_timepoint,levels = c("pre_30","post_30"))
+# pre_30 post_30
+
+
+US.Celiac.categorical.model.design <- model.matrix(~ Onset_timepoint + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,US.metadata.celiac.clean)
+US.Celiac.categorical.model.fit <- voomLmFit(US.orf.abundance.celiac.clean,US.Celiac.categorical.model.design,block= US.metadata.celiac.clean$patientID,plot=FALSE)
+US.Celiac.categorical.model.fit <- eBayes(US.Celiac.categorical.model.fit)
+
+colnames(US.Celiac.categorical.model.fit)
+# [1] "(Intercept)"                              "Onset_timepointpost_30"                   "SexMale"                                 
+# [4] "Age.at.Gluten.Introduction..months."      "HLA.CategoryHigh Risk"                    "HLA.CategoryLow/No Risk"                 
+# [7] "feeding_first_yearFormula"                "feeding_first_yearBreastmilk_and_formula"
+
+
+US.Celiac.categorical.sig.model.res <- topTable(US.Celiac.categorical.model.fit,coef="Onset_timepointpost_30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.Celiac.categorical.sig.model.res %>% filter(logFC > 0))
+# 2290    6
+
+
+View(US.Celiac.categorical.sig.model.res$logFC)
+
+
+```
+
+
+
+```{r}
+
+Italy.significant_gene_function_table <- read_delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/phold_per_cds_predictions.tsv") %>%
+          select(`cds_id`,`phrog`,`function`,`product`) %>%
+          column_to_rownames("cds_id") %>%
+          merge(Italy.sig.model.res,by = 0)
+
+
+# make volcano plots for the significant genes
+
+# Add significance categories
+Italy.significant_gene_function_table$significant <- Italy.significant_gene_function_table$adj.P.Val < 0.05
+Italy.significant_gene_function_table$highly_significant <- Italy.significant_gene_function_table$adj.P.Val < 0.001
+Italy.significant_gene_function_table$neg_log10_padj <- -log10(Italy.significant_gene_function_table$adj.P.Val)
+
+
+# FLIP THE SIGN of logFC to switch axis orientation
+Italy.significant_gene_function_table$logFC_flipped <- -Italy.significant_gene_function_table$logFC
+
+
+# Create significance labels
+Italy.significant_gene_function_table$significance_label <- "Not Significant"
+Italy.significant_gene_function_table$significance_label[Italy.significant_gene_function_table$significant] <- "Significant (adj.p < 0.05)"
+Italy.significant_gene_function_table$significance_label[Italy.significant_gene_function_table$highly_significant] <- "Highly Significant (adj.p < 0.001)"
+
+
+
+Italy.significant_gene_function_table$significance_label <- factor(Italy.significant_gene_function_table$significance_label,
+                                          levels = c("Not Significant",
+                                                    "Significant (adj.p < 0.05)",
+                                                    "Highly Significant (adj.p < 0.001)"))
+
+
+# Define colors
+colors <- c("Not Significant" = "grey70",
+           "Significant (adj.p < 0.05)" = "#E31A1C",
+           "Highly Significant (adj.p < 0.001)" = "#B2182B")
+
+# Create volcano plot
+Italy.total_dataset_volcano_plot <- ggplot(Italy.significant_gene_function_table, aes(x = logFC_flipped, y = neg_log10_padj)) +
+  geom_point(aes(color = significance_label), size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = colors, name = "Significance") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = -log10(0.001), linetype = "dashed", color = "darkred", alpha = 0.7) +
+  labs(
+    title = "US Viral ORF Differential Abundance: CONTROL vs CELIAC",
+    x = "Log2 Fold Change (CONTROL vs CELIAC)",
+    y = "-Log10(Adjusted P-value)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+
+# Save plot
+ggsave(Italy.total_dataset_volcano_plot, file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy.total_dataset_volcano_plot.png", width = 8, height = 8, dpi = 300)
+
+
+######################### color the points based on gene functions ##############################
+
+# Clean up function names and create simplified categories
+Italy.significant_gene_function_table$`function`[is.na(Italy.significant_gene_function_table$`function`)] <- "unknown function"
+Italy.significant_gene_function_table$`function`[Italy.significant_gene_function_table$`function` == ""] <- "unknown function"
+
+
+# Create simplified functional categories for better visualization
+Italy.significant_gene_function_table$func_category <- Italy.significant_gene_function_table$`function`
+Italy.significant_gene_function_table$func_category[grepl("DNA|RNA|nucleotide|replication",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "DNA/RNA metabolism"
+Italy.significant_gene_function_table$func_category[grepl("head|packaging|capsid",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Head & packaging"
+Italy.significant_gene_function_table$func_category[grepl("tail|fiber", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Tail"
+Italy.significant_gene_function_table$func_category[grepl("lysis|holin", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Lysis"
+Italy.significant_gene_function_table$func_category[grepl("transcription|regulation",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Transcription"
+Italy.significant_gene_function_table$func_category[grepl("integration|excision|recombination",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Integration/excision"
+Italy.significant_gene_function_table$func_category[grepl("connector", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Connector"
+Italy.significant_gene_function_table$func_category[grepl("unknown|hypothetical",Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Unknown function"
+Italy.significant_gene_function_table$func_category[grepl("other", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Other"
+
+# Count functions and keep only top categories, group rare ones as 
+"Other"
+func_counts <- table(Italy.significant_gene_function_table$func_category)
+top_functions <- names(sort(func_counts, decreasing = TRUE))[1:8]  # Keep top 8
+Italy.significant_gene_function_table$func_category[!Italy.significant_gene_function_table$func_category %in% top_functions] <- "Other/Rare"
+
+# Create color palette for functions
+func_colors <- c(
+"DNA/RNA metabolism" = "#1f77b4",
+"Head & packaging" = "#ff7f0e",
+"Tail" = "#2ca02c",
+"Unknown function" = "#7f7f7f",
+"Lysis" = "#9467bd",
+"Transcription" = "#8c564b",
+"Integration/excision" = "#e377c2",
+"Connector" = "#d62728",
+"Other" = "#bcbd22",
+"Other/Rare" = "#17becf"
+)
+
+
+Italy.significant_gene_function_table.known <- Italy.significant_gene_function_table %>% filter(func_category != "Unknown function")
+# 0
+
+# Create volcano plot colored by function
+Italy.total_dataset_volcano_plot_color_by_function <- ggplot(Italy.significant_gene_function_table.known, aes(x = logFC_flipped, y = neg_log10_padj)) +
+                              geom_point(data = Italy.significant_gene_function_table.known %>% filter(adj.P.Val < 0.05), aes(color = func_category), size = 0.8, alpha = 0.7) +
+                              geom_point(data = Italy.significant_gene_function_table.known %>% filter(adj.P.Val >= 0.05),color = "gray",size = 0.8, alpha = 0.7)+ 
+                              scale_color_manual(values = func_colors, name = "Gene Function") +
+                              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color =
+                              "black", alpha = 0.5) +
+                              geom_hline(yintercept = -log10(0.001), linetype = "dashed", color =
+                              "black", alpha = 0.7) +
+                              labs(
+                                title = "US Viral ORF Differential Abundance by Gene Function (Unknown functions removed)",
+                                subtitle = paste("Italy:", nrow(Italy.significant_gene_function_table.known), "ORFs | Significant:",
+                              sum(Italy.significant_gene_function_table.known$significant), "ORFs (adj.p < 0.05)"),
+                                x = "Log2 Fold Change (CONTROL vs CELIAC)",
+                                y = "-Log10(Adjusted P-value)",
+                                caption = "Negative logFC = Higher in CONTROL, Lower in CELIAC"
+                              ) +
+                              theme_minimal() +
+                              theme(
+                                plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+                                plot.subtitle = element_text(size = 11, hjust = 0.5),
+                                legend.position = "right",
+                                legend.title = element_text(size = 11, face = "bold"),
+                                panel.grid.minor = element_blank()
+                              )
+
+ggsave(Italy.total_dataset_volcano_plot_color_by_function,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy_dataset_volcano_plot_color_by_function_known.png", width = 10, height = 8, dpi = 300)
+
+
+function.table <- Italy.significant_gene_function_table %>% filter(adj.P.Val < 0.05) %>% select(c("Row.names","phrog","function","product"))
+write.csv(function.table,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy_cohort_function_table.csv",quote = FALSE,row.names = FALSE)
+
+
+View(Italy.significant_gene_function_table %>% group_by(func_category) %>% mutate(number_of_Orfs = n()) %>% distinct(func_category,.keep_all = TRUE) %>% select(func_category,number_of_Orfs))
+
+
+
+
+
+```
+
+
+########################################################################## Italy ############################################################### 
+
+Model 1: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_numeric assume it is linear in the model
+~ Dx.Status * onset_timeline_numeric + RunNumber + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+# prepare correct variable format
+Italy.metadata.clean$feeding_first_year <- factor(Italy.metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+Italy.metadata.clean$HLA.Category <- factor(Italy.metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+Italy.metadata.clean$Sex <- factor(Italy.metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+Italy.metadata.clean$Delivery.Mode <- factor(Italy.metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+Italy.metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.metadata.clean$Age.at.Gluten.Introduction..months.)
+# 4  5  6  7  8  9 10 11 12 15 36 
+# 5 11 57 91 40 33 33 10  2 16  9 
+Italy.metadata.clean$Dx.Status <- factor(Italy.metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    162     145 
+
+# write.csv(Italy.metadata.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy.metadata.clean.csv",quote = FALSE,row.names = TRUE)
+# 
+# 
+# write.csv(Italy.orf.abundance.clean,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy.orf.abundance.clean.csv",quote = FALSE,row.names = TRUE)
+
+
+
+# treat Age.at.Gluten.Introduction..months. as linear
+Italy.linear.model.design <- model.matrix(~ Dx.Status * onset_timeline_numeric + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,Italy.metadata.clean)
+Italy.linear.model.fit <- voomLmFit(Italy.orf.abundance.clean,Italy.linear.model.design,block= Italy.metadata.clean$patientID,plot=FALSE)
+Italy.linear.model.fit <- eBayes(Italy.linear.model.fit)
+
+colnames(Italy.linear.model.fit)
+#  [1] "(Intercept)"                              "Dx.StatusCONTROL"                         "onset_timeline_numeric"                  
+#  [4] "SexMale"                                  "Age.at.Gluten.Introduction..months."      "HLA.CategoryHigh Risk"                   
+#  [7] "HLA.CategoryLow/No Risk"                  "feeding_first_yearFormula"                "feeding_first_yearBreastmilk_and_formula"
+# [10] "Delivery.ModeC-Section"                   "Dx.StatusCONTROL:onset_timeline_numeric" 
+
+
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="Dx.StatusCONTROL:onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 2
+
+
+# write.csv(Italy.model.res,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy.limma_model_res.csv",quote = FALSE,row.names = TRUE)
+
+#################################################################################################
+
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="onset_timeline_numeric",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="onset_timeline_numeric",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 43
+
+#################################################################################################
+
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 1933
+
+#################################################################################################
+
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="SexMale",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="SexMale",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 0
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="HLA.CategoryHigh Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 0 6
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="HLA.CategoryLow/No Risk",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 0 6
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="feeding_first_yearFormula",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="feeding_first_yearFormula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 0 6
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="feeding_first_yearBreastmilk_and_formula",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 0 6
+Italy.model.res <- topTable(Italy.linear.model.fit,coef="Delivery.ModeC-Section",number=Inf)
+Italy.sig.model.res <- topTable(Italy.linear.model.fit,coef="Delivery.ModeC-Section",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.sig.model.res)
+# 1609  6
+
+```
+
+
+# make volcano plots and coloring by function
+```{r}
+
+Italy.significant_gene_function_table <- read_delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/phold_per_cds_predictions.tsv") %>%
+          select(`cds_id`,`phrog`,`function`,`product`) %>%
+          column_to_rownames("cds_id") %>%
+          merge(Italy.sig.model.res,by = 0)
+
+
+# make volcano plots for the significant genes
+
+# Add significance categories
+Italy.significant_gene_function_table$significant <- Italy.significant_gene_function_table$adj.P.Val < 0.05
+Italy.significant_gene_function_table$highly_significant <- Italy.significant_gene_function_table$adj.P.Val < 0.001
+Italy.significant_gene_function_table$neg_log10_padj <- -log10(Italy.significant_gene_function_table$adj.P.Val)
+
+
+# FLIP THE SIGN of logFC to switch axis orientation
+Italy.significant_gene_function_table$logFC_flipped <- -Italy.significant_gene_function_table$logFC
+
+
+# Create significance labels
+Italy.significant_gene_function_table$significance_label <- "Not Significant"
+Italy.significant_gene_function_table$significance_label[Italy.significant_gene_function_table$significant] <- "Significant (adj.p < 0.05)"
+Italy.significant_gene_function_table$significance_label[Italy.significant_gene_function_table$highly_significant] <- "Highly Significant (adj.p < 0.001)"
+
+
+
+Italy.significant_gene_function_table$significance_label <- factor(Italy.significant_gene_function_table$significance_label,
+                                          levels = c("Not Significant",
+                                                    "Significant (adj.p < 0.05)",
+                                                    "Highly Significant (adj.p < 0.001)"))
+
+
+# Define colors
+colors <- c("Not Significant" = "grey70",
+           "Significant (adj.p < 0.05)" = "#E31A1C",
+           "Highly Significant (adj.p < 0.001)" = "#B2182B")
+
+# Create volcano plot
+Italy.total_dataset_volcano_plot <- ggplot(Italy.significant_gene_function_table, aes(x = logFC_flipped, y = neg_log10_padj)) +
+  geom_point(aes(color = significance_label), size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = colors, name = "Significance") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red", alpha = 0.7) +
+  geom_hline(yintercept = -log10(0.001), linetype = "dashed", color = "darkred", alpha = 0.7) +
+  labs(
+    title = "US Viral ORF Differential Abundance: CONTROL vs CELIAC",
+    x = "Log2 Fold Change (CONTROL vs CELIAC)",
+    y = "-Log10(Adjusted P-value)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+
+# Save plot
+ggsave(Italy.total_dataset_volcano_plot, file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy.total_dataset_volcano_plot.png", width = 8, height = 8, dpi = 300)
+
+
+######################### color the points based on gene functions ##############################
+
+# Clean up function names and create simplified categories
+Italy.significant_gene_function_table$`function`[is.na(Italy.significant_gene_function_table$`function`)] <- "unknown function"
+Italy.significant_gene_function_table$`function`[Italy.significant_gene_function_table$`function` == ""] <- "unknown function"
+
+
+# Create simplified functional categories for better visualization
+Italy.significant_gene_function_table$func_category <- Italy.significant_gene_function_table$`function`
+Italy.significant_gene_function_table$func_category[grepl("DNA|RNA|nucleotide|replication",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "DNA/RNA metabolism"
+Italy.significant_gene_function_table$func_category[grepl("head|packaging|capsid",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Head & packaging"
+Italy.significant_gene_function_table$func_category[grepl("tail|fiber", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Tail"
+Italy.significant_gene_function_table$func_category[grepl("lysis|holin", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Lysis"
+Italy.significant_gene_function_table$func_category[grepl("transcription|regulation",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Transcription"
+Italy.significant_gene_function_table$func_category[grepl("integration|excision|recombination",
+Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Integration/excision"
+Italy.significant_gene_function_table$func_category[grepl("connector", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Connector"
+Italy.significant_gene_function_table$func_category[grepl("unknown|hypothetical",Italy.significant_gene_function_table$`function`, ignore.case = TRUE)] <- "Unknown function"
+Italy.significant_gene_function_table$func_category[grepl("other", Italy.significant_gene_function_table$`function`,ignore.case = TRUE)] <- "Other"
+
+# Count functions and keep only top categories, group rare ones as 
+"Other"
+func_counts <- table(Italy.significant_gene_function_table$func_category)
+top_functions <- names(sort(func_counts, decreasing = TRUE))[1:8]  # Keep top 8
+Italy.significant_gene_function_table$func_category[!Italy.significant_gene_function_table$func_category %in% top_functions] <- "Other/Rare"
+
+# Create color palette for functions
+func_colors <- c(
+"DNA/RNA metabolism" = "#1f77b4",
+"Head & packaging" = "#ff7f0e",
+"Tail" = "#2ca02c",
+"Unknown function" = "#7f7f7f",
+"Lysis" = "#9467bd",
+"Transcription" = "#8c564b",
+"Integration/excision" = "#e377c2",
+"Connector" = "#d62728",
+"Other" = "#bcbd22",
+"Other/Rare" = "#17becf"
+)
+
+
+Italy.significant_gene_function_table.known <- Italy.significant_gene_function_table %>% filter(func_category != "Unknown function")
+# 0
+
+# Create volcano plot colored by function
+Italy.total_dataset_volcano_plot_color_by_function <- ggplot(Italy.significant_gene_function_table.known, aes(x = logFC_flipped, y = neg_log10_padj)) +
+                              geom_point(data = Italy.significant_gene_function_table.known %>% filter(adj.P.Val < 0.05), aes(color = func_category), size = 0.8, alpha = 0.7) +
+                              geom_point(data = Italy.significant_gene_function_table.known %>% filter(adj.P.Val >= 0.05),color = "gray",size = 0.8, alpha = 0.7)+ 
+                              scale_color_manual(values = func_colors, name = "Gene Function") +
+                              geom_hline(yintercept = -log10(0.05), linetype = "dashed", color =
+                              "black", alpha = 0.5) +
+                              geom_hline(yintercept = -log10(0.001), linetype = "dashed", color =
+                              "black", alpha = 0.7) +
+                              labs(
+                                title = "US Viral ORF Differential Abundance by Gene Function (Unknown functions removed)",
+                                subtitle = paste("Italy:", nrow(Italy.significant_gene_function_table.known), "ORFs | Significant:",
+                              sum(Italy.significant_gene_function_table.known$significant), "ORFs (adj.p < 0.05)"),
+                                x = "Log2 Fold Change (CONTROL vs CELIAC)",
+                                y = "-Log10(Adjusted P-value)",
+                                caption = "Negative logFC = Higher in CONTROL, Lower in CELIAC"
+                              ) +
+                              theme_minimal() +
+                              theme(
+                                plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+                                plot.subtitle = element_text(size = 11, hjust = 0.5),
+                                legend.position = "right",
+                                legend.title = element_text(size = 11, face = "bold"),
+                                panel.grid.minor = element_blank()
+                              )
+
+ggsave(Italy.total_dataset_volcano_plot_color_by_function,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy_dataset_volcano_plot_color_by_function_known.png", width = 10, height = 8, dpi = 300)
+
+
+function.table <- Italy.significant_gene_function_table %>% filter(adj.P.Val < 0.05) %>% select(c("Row.names","phrog","function","product"))
+write.csv(function.table,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy_cohort_function_table.csv",quote = FALSE,row.names = FALSE)
+
+
+View(Italy.significant_gene_function_table %>% group_by(func_category) %>% mutate(number_of_Orfs = n()) %>% distinct(func_category,.keep_all = TRUE) %>% select(func_category,number_of_Orfs))
+
+```
+
+
+# prepare dataframe for coefficient plot
+```{r}
+
+# create the table that combines all the model results
+# Extract complete results for ALL coefficients and ALL ORFs
+
+complete_results <- data.frame()
+
+# Get coefficient names
+coef_names <- colnames(Italy.linear.model.fit$coefficients)
+print("Model coefficients:")
+print(coef_names)
+
+# Loop through each coefficient to get results
+for(i in 1:length(coef_names)) {
+  coef_name <- coef_names[i]
+
+  # Get topTable for this coefficient (number = Inf gets ALL ORFs)
+  coef_results <- topTable(Italy.linear.model.fit, coef = i, number = Inf, sort.by = "none")
+
+  # Add coefficient name prefix to column names (except ORF names)
+  colnames(coef_results) <- paste0(coef_name, "_", colnames(coef_results))
+
+  if(i == 1) {
+    # First coefficient - initialize the complete results
+    complete_results <- coef_results
+  } else {
+    # Add additional coefficients as new columns
+    complete_results <- cbind(complete_results, coef_results)
+  }
+}
+
+# Add ORF IDs as first column
+complete_results <- data.frame(
+  orf_id = rownames(complete_results),
+  complete_results,
+  stringsAsFactors = FALSE
+)
+
+colnames(complete_results) <- gsub("X.","",colnames(complete_results))
+
+
+colnames(complete_results) <- gsub("X.","",colnames(complete_results))
+colnames(complete_results) <- gsub("Dx.StatusCONTROL","Dx.Status(CONTROL vs CELIAC)",colnames(complete_results))
+colnames(complete_results) <- gsub("CountryUSA","Country(USA vs Italy)",colnames(complete_results))
+colnames(complete_results) <- gsub("SexMale","Sex(Male vs Female)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryHigh.Risk","HLA.Category(High.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("HLA.CategoryLow.No.Risk","HLA.Category(Low.No.Risk vs Standard Risk)",colnames(complete_results))
+colnames(complete_results) <- gsub("feeding_first_yearFormula","feeding_first_year(Formula vs Breast_fed)",colnames(complete_results))
+colnames(complete_results) <- gsub("Delivery.ModeC.Section","Delivery.Mode(C.Section vs Vaginal)",colnames(complete_results))
+
+
+# Save to file
+write.csv(complete_results,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/Italy_complete_model_results.csv",quote = FALSE,row.names = TRUE)
+
+```
+
+
+Model 2: treat onset_timeline as a numerical variable: create a numeric format of onset_timeline and make it onset_timeline_combine assume it is linear in the model
+~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode, block = patientID
+```{r}
+
+
+# prepare correct variable format
+Italy.metadata.clean$feeding_first_year <- factor(Italy.metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+Italy.metadata.clean$HLA.Category <- factor(Italy.metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+Italy.metadata.clean$Sex <- factor(Italy.metadata.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+Italy.metadata.clean$Delivery.Mode <- factor(Italy.metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+Italy.metadata.clean$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.metadata.clean$Age.at.Gluten.Introduction..months.)
+# #  # 4  5  6  7  8  9 10 11 12 15 36 
+# #  # 5 11 57 91 40 33 33 10  2 16  9 
+Italy.metadata.clean$Dx.Status <- factor(Italy.metadata.clean$Dx.Status,levels = c("CELIAC","CONTROL"))
+# CONTROL  CELIAC 
+#    162     145  
+Italy.metadata.clean$onset_timeline_combined <- factor(Italy.metadata.clean$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+ # t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+ # 64        30        46        27        32        29        33        46 
+
+
+Italy.categorical.model.design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode,Italy.metadata.clean)
+colnames(Italy.categorical.model.design) <- make.names(colnames(Italy.categorical.model.design))
+Italy.categorical.model.fit <- voomLmFit(Italy.orf.abundance.clean,Italy.categorical.model.design,block= Italy.metadata.clean$patientID,plot=FALSE)
+Italy.categorical.model.fit <- eBayes(Italy.categorical.model.fit)
+
+colnames(Italy.categorical.model.fit)
+#  [1] "X.Intercept."                                      "Dx.StatusCONTROL"                                 
+#  [3] "onset_timeline_combinedt0.6"                       "onset_timeline_combinedt0.12"                     
+#  [5] "onset_timeline_combinedt0.18"                      "onset_timeline_combinedt0.24"                     
+#  [7] "onset_timeline_combinedt0.30"                      "onset_timeline_combinedt0.36"                     
+#  [9] "onset_timeline_combinedt0.over42"                  "SexMale"                                          
+# [11] "Age.at.Gluten.Introduction..months."               "HLA.CategoryHigh.Risk"                            
+# [13] "HLA.CategoryLow.No.Risk"                           "feeding_first_yearFormula"                        
+# [15] "feeding_first_yearBreastmilk_and_formula"          "Delivery.ModeC.Section"                           
+# [17] "Dx.StatusCONTROL.onset_timeline_combinedt0.6"      "Dx.StatusCONTROL.onset_timeline_combinedt0.12"    
+# [19] "Dx.StatusCONTROL.onset_timeline_combinedt0.18"     "Dx.StatusCONTROL.onset_timeline_combinedt0.24"    
+# [21] "Dx.StatusCONTROL.onset_timeline_combinedt0.30"     "Dx.StatusCONTROL.onset_timeline_combinedt0.36"    
+# [23] "Dx.StatusCONTROL.onset_timeline_combinedt0.over42"
+
+
+
+############# are there any baseline difference in orf abundance between celiac and control group at T0 ##############
+
+Italy.categorical.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf)
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0
+
+############# are there significantly different Orfs between Celiac and Control groups at each time point ###############
+
+Italy.contrast_matrix <- makeContrasts(
+    "CONTROL_vs_CELIAC_at_t0_6" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.6,
+    "CONTROL_vs_CELIAC_at_t0_12" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.12,
+    "CONTROL_vs_CELIAC_at_t0_18" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.18,
+    "CONTROL_vs_CELIAC_at_t0_24" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.24,
+    "CONTROL_vs_CELIAC_at_t0_30" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.30,
+    "CONTROL_vs_CELIAC_at_t0_36" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.36,
+    "CONTROL_vs_CELIAC_at_t0_over42" = Dx.StatusCONTROL + Dx.StatusCONTROL.onset_timeline_combinedt0.over42,
+    levels = Italy.categorical.model.design
+  )
+
+
+# Fit contrasts
+Italy.contrast_fit <- contrasts.fit(Italy.categorical.model.fit, Italy.contrast_matrix)
+Italy.contrast_fit <- eBayes(Italy.contrast_fit)
+
+colnames(Italy.contrast_fit)
+# [1] "CONTROL_vs_CELIAC_at_t0_6"      "CONTROL_vs_CELIAC_at_t0_12"     "CONTROL_vs_CELIAC_at_t0_18"    
+# [4] "CONTROL_vs_CELIAC_at_t0_24"     "CONTROL_vs_CELIAC_at_t0_30"     "CONTROL_vs_CELIAC_at_t0_36"    
+# [7] "CONTROL_vs_CELIAC_at_t0_over42"
+
+# extract results
+Italy.results_t0_6 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_6",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+Italy.results_t0_12 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_12",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+Italy.results_t0_18 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_18",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+Italy.results_t0_24 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_24",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 2570
+
+
+Italy.results_t0_30 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_30",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 2387
+
+
+Italy.results_t0_36 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_36",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+Italy.results_t0_over42 <- topTable(Italy.contrast_fit, coef = "CONTROL_vs_CELIAC_at_t0_over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+# 0
+
+
+
+############# are there any orf has significantly changed group difference between each time point and T0 ###############
+
+
+
+
+Italy.categorical.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-12",number=Inf)
+Italy.categorical.total.model.res <- Italy.categorical.model.res
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0 6
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0 6
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0 6
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 2743 6
+
+View(Italy.categorical.sig.model.res)
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 2167 6
+View(Italy.categorical.sig.model.res)
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0    6
+
+
+Italy.categorical.sig.model.res <- topTable(Italy.categorical.model.fit,coef="Dx.StatusCONTROL:onset_timeline_combinedt0-over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.categorical.sig.model.res)
+# 0  6
+
+
+###############################################
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-6",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 3374  6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-12",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 3493  6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-18",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 2869  6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-24",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0  6
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-36",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+
+US.categorical.sig.model.res <- topTable(US.categorical.model.fit,coef="onset_timeline_combinedt0-over42",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(US.categorical.sig.model.res)
+# 0 6
+
+```
+
+
+# pre-30 vs post-30
+```{r}
+
+# prepare correct variable format
+Italy.metadata.celiac.clean$feeding_first_year <- factor(Italy.metadata.celiac.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed      Formula   Breastmilk_and_formula 
+#    120             58              129 
+Italy.metadata.celiac.clean$HLA.Category <- factor(Italy.metadata.celiac.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      169            94            44
+Italy.metadata.celiac.clean$Sex <- factor(Italy.metadata.celiac.clean$Sex,levels = c("Female","Male"))
+# Female  Male 
+#   238   69
+Italy.metadata.celiac.clean$Delivery.Mode <- factor(Italy.metadata.celiac.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal C-Section 
+# 217        90
+Italy.metadata.celiac.clean$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.metadata.celiac.clean$Age.at.Gluten.Introduction..months.)
+# #  # 4  5  6  7  8  9 10 11 12 15 36 
+# #  # 5 11 57 91 40 33 33 10  2 16  9 
+Italy.metadata.celiac.clean$Onset_timepoint <- factor(Italy.metadata.celiac.clean$Onset_timepoint,levels = c("pre_30","post_30"))
+# pre_30 post_30
+
+
+Italy.Celiac.categorical.model.design <- model.matrix(~ Onset_timepoint + Sex + Age.at.Gluten.Introduction..months. + feeding_first_year + Delivery.Mode,Italy.metadata.celiac.clean)
+Italy.Celiac.categorical.model.fit <- voomLmFit(Italy.orf.abundance.celiac.clean,Italy.Celiac.categorical.model.design,block= Italy.metadata.celiac.clean$patientID,plot=FALSE)
+Italy.Celiac.categorical.model.fit <- eBayes(Italy.Celiac.categorical.model.fit)
+
+colnames(Italy.Celiac.categorical.model.fit)
+# [1] "(Intercept)"                              "Onset_timepointpost_30"                   "SexMale"                                 
+# [4] "Age.at.Gluten.Introduction..months."      "feeding_first_yearFormula"                "feeding_first_yearBreastmilk_and_formula"
+# [7] "Delivery.ModeC-Section" 
+
+
+Italy.Celiac.categorical.sig.model.res <- topTable(Italy.Celiac.categorical.model.fit,coef="Onset_timepointpost_30",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(Italy.Celiac.categorical.sig.model.res)
+# 0   6
+
+
+```
+
+
+
+
+# make the prediction plot for all variables together
+```{r}
+
+
+
+# Load the complete model results
+total_results <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_complete_model_results.csv")
+us_results <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/US_complete_model_results.csv")
+italy_results <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/italy_complete_model_results.csv")
+
+# Function to process results for plotting
+process_cohort_data <- function(results, cohort_name) {
+  # Get coefficient columns (logFC) and their corresponding adj.P.Val columns
+  coef_cols <- grep("_logFC$", colnames(results), value = TRUE)
+  pval_cols <- gsub("_logFC$", "_adj.P.Val", coef_cols)
+
+    # Create long format data
+    plot_data <- data.frame()
+
+    for(i in 1:length(coef_cols)) {
+      coef_col <- coef_cols[i]
+      pval_col <- pval_cols[i]
+      variable_name <- gsub("_logFC$", "", coef_col)
+
+      # Skip intercept
+      if(variable_name == "Intercept.") next 
+
+      temp_data <- data.frame(
+        cohort = cohort_name,
+        variable = variable_name,
+        coefficient = -results[[coef_col]],
+        adj_p_val = results[[pval_col]],
+        significant = results[[pval_col]] < 0.05
+      )
+
+      plot_data <- rbind(plot_data, temp_data)
+    }
+
+    return(plot_data)
+}
+
+
+
+# Process all three cohorts
+total_data <- process_cohort_data(total_results, "Total")
+us_data <- process_cohort_data(us_results, "US")
+italy_data <- process_cohort_data(italy_results, "Italy")
+
+
+# Combine all data
+all_data <- rbind(total_data, us_data, italy_data)
+
+# Create the plot with visible boxes and annotations
+create_coef_plot <- function(data, cohort_name) {
+  # Calculate significance counts for annotations
+  sig_counts <- data %>%
+    group_by(variable) %>%
+    summarise(
+      n_significant = sum(significant, na.rm = TRUE),
+      n_total = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      annotation = paste0("Sig: ", n_significant, "/", n_total),
+      max_coef = max(data$coefficient, na.rm = TRUE)
+    )
+
+    p <- ggplot(data, aes(x = coefficient, y = variable)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "black", alpha = 0.7) +
+
+      # Add points first (background layer)
+      geom_point(aes(color = significant), alpha = 0.4, size = 0.6,
+                 position = position_jitter(height = 0.25, width = 0)) +
+
+      # Add boxplots on top (foreground layer)
+      geom_boxplot(alpha = 0.7, outlier.shape = NA,
+                   fill = "white", color = "black", linewidth = 0.8) +
+
+      # Add significance count annotations
+      geom_text(data = sig_counts,
+                aes(x = max_coef * 1.1, y = variable, label = annotation),
+                hjust = 0, vjust = 0.5, size = 3, color = "darkblue") +
+
+      scale_color_manual(values = c("FALSE" = "gray60", "TRUE" = "red"),
+                         labels = c("Non-significant", "Significant (adj.p < 0.05)"),
+                         name = "Significance") +
+      labs(title = paste("Coefficient Distribution -", cohort_name, "Cohort"),
+           x = "Coefficient Value (logFC)",
+           y = "Model Variables") +
+      #theme_minimal() +
+      theme(axis.text = element_text(size = 12,face = "bold"),
+            plot.title = element_text(face = "bold"),
+            axis.title.x = element_text(face = "bold"),
+            axis.title.y = element_text(face = "bold"),
+            legend.position = "bottom",
+            plot.margin = margin(5.5, 50, 5.5, 5.5, "pt")) +  # Extra right margin for annotations
+      # Expand x-axis to make room for annotations
+      scale_x_continuous(expand = expansion(mult = c(0.05, 0.2)))
+
+    return(p)
+  }
+
+# Create individual plots
+total_plot <- create_coef_plot(total_data, "Total")
+us_plot <- create_coef_plot(us_data, "US")
+italy_plot <- create_coef_plot(italy_data, "Italy")
+
+
+# Or combine all three
+combined_plot <- grid.arrange(total_plot, us_plot, italy_plot, nrow = 3)
+
+# Save plots
+ggsave("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/total_coefficient_plot.png", total_plot, width = 12, height = 8)
+ggsave("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/US/final_results/us_coefficient_plot.png", us_plot, width = 12, height = 8)
+ggsave("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/Italy/final_results/italy_coefficient_plot.png", italy_plot, width = 12, height = 8)
+ggsave("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/final_results/combined_coefficient_plot.png", combined_plot, width = 12, height = 18)
+
+
+```
+
+
+
+
+
+
+

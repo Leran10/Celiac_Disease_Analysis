@@ -1,0 +1,1010 @@
+---
+title: "Celiac_phage_analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(vroom)
+#library("limma");packageVersion("limma")
+#library("edgeR");packageVersion("edgeR")
+library(pheatmap)
+library(tableone)
+library(survival)
+library(survminer)
+
+```
+
+# functions
+```{r}
+filter_and_save_wide_data <- function(genesCoverm, 
+                                      covered_fraction_threshold = 0.75, 
+                                      output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/") {
+  
+  # Set column names to match the original structure
+  colnames(genesCoverm) <- c("sampleID", "ORFID", "RPKM", "ReadCount", "Variance", "Mean", "covered_fraction", "covered_bases")
+  
+  # Apply coverage filter
+  genesCoverm2 <- genesCoverm %>%
+    mutate(
+      ReadCount_modified = ifelse(covered_fraction >= covered_fraction_threshold, ReadCount, 0),
+      Changed = ifelse(ReadCount != ReadCount_modified, 1, 0)
+    ) %>%
+    mutate(ReadCount = ReadCount_modified) %>%
+    select(-ReadCount_modified)
+  
+  # Count the number of changes
+  num_changes <- sum(genesCoverm2$Changed)
+  print(paste("Number of changes:", num_changes))
+  
+  # Convert to wide format
+  wide_rpkm_genes <- reshape2::dcast(genesCoverm2, ORFID ~ sampleID, value.var = "ReadCount")
+  colnames(wide_rpkm_genes) <- gsub("_stats", "", colnames(wide_rpkm_genes))
+  
+  # Filter out rows with all zeroes
+  filtered_wide_rpkm_genes <- wide_rpkm_genes %>%
+    filter(rowSums(across(where(is.numeric))) != 0)
+  
+  # Save the filtered wide format data
+  rds_filename_wide <- paste0("wide_rpkm_genes_", covered_fraction_threshold * 100, "Cov.rds")
+  
+  saveRDS(filtered_wide_rpkm_genes, file = file.path(output_path, rds_filename_wide))
+  
+  return(filtered_wide_rpkm_genes)
+}
+
+
+
+```
+
+
+
+# load orf count table
+```{r}
+
+orf <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/Coverm_concatenated_orf.txt",col_names = FALSE)
+
+
+filter_and_save_wide_data(orf, 
+                          covered_fraction_threshold = 0.75, 
+                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/")
+
+
+orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+# check colSums
+colSums(orf.processed)[colSums(orf.processed) == 0]
+      # NovaSeq_N978_I13149_39572_Celiac_Leonard_Stool_01_GEMM_093_24M       NovaSeq_N978_I13150_39573_Celiac_Leonard_Stool_01_GEMM_093_30M 
+      #                                                              0                                                                    0 
+      # NovaSeq_N978_I13151_39574_Celiac_Leonard_Stool_01_GEMM_093_36M       NovaSeq_N978_I13152_39575_Celiac_Leonard_Stool_01_GEMM_093_48M 
+      #                                                              0                                                                    0 
+      # NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M 
+      #                                                              0                                                                    0 
+
+
+# here we found two duplicated samples:
+# "NovaSeq_N978_I13164_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats" and  "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M_stats"
+# after checking with my note, the N983 01_GEMM_106_12M sample should actually be water
+# so we will just remove it
+orf.count <- orf.processed %>%
+            select(-c("NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M"))
+
+colnames(orf.count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(orf.count))
+colnames(orf.count) <- str_replace_all(colnames(orf.count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(orf.count) <- sapply(strsplit(colnames(orf.count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(orf.count) <- ifelse(colnames(orf.count) %like% "_6Y",gsub("_6Y","_72M",colnames(orf.count)),
+                                           ifelse(colnames(orf.count) %like% "_7Y",gsub("_7Y","_84M",colnames(orf.count)),colnames(orf.count)))
+
+orf.count.table <- t(orf.count) 
+
+
+```
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/metadata_final_update_11262024.csv") %>%
+            column_to_rownames("sampleName")
+
+USA <- rownames(metadata)[rownames(metadata) %like% "01_"]
+write.table(USA,"~/Handley Lab Dropbox/16S/Celiac/metadata/USA_samples.txt",row.names = FALSE,col.names = FALSE,quote = FALSE)
+Italy <- rownames(metadata)[rownames(metadata) %like% "02_"]
+write.table(Italy,"~/Handley Lab Dropbox/16S/Celiac/metadata/Italy_samples.txt",row.names = FALSE,col.names = FALSE,quote = FALSE)
+```
+
+
+# prepare abundance table
+```{r}
+
+# ---------------------------------Contig level------------------------------------------#
+orf.abundance.table <- merge(metadata,orf.count.table,by = 0) %>%
+                              filter(feeding_first_year != "Unknown") %>%
+                              filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+
+```
+
+
+# prepare PA table
+```{r}
+
+# ---------------------------------Contig level------------------------------------------#
+
+orf.PA.table <- orf.abundance.table %>%
+  mutate(across(26:43429, ~ as.integer(. != 0)))
+
+
+table(orf.PA.table %>%  distinct(patientID,.keep_all = TRUE) %>% pull(Dx.Status))
+ # CELIAC CONTROL 
+ #     32      34
+
+
+dim(orf.PA.table)
+# 314 43429
+
+```
+
+
+# prevelance filtering (we remove the viruses that only contain in less than 9 samples, because 314 * 0.03 = 9.45)
+```{r}
+
+
+PA.orf.check <- orf.PA.table %>% 
+                   dplyr::select(Row.names,starts_with("virus_")) %>% 
+                   pivot_longer(cols = starts_with("virus_"),names_to = "Orf",values_to = "PA") %>% 
+                   group_by(Orf) %>% 
+                   mutate(total_PA = sum(PA)) %>%
+                   distinct(Orf,total_PA) %>%
+                   arrange(-total_PA)
+
+
+write.csv(PA.orf.check,"~/Handley Lab Dropbox/16S/Celiac/plot/check_tables/PA.orf.check.csv")
+
+
+# find viruses that exist in only 3% of the samples (2154 orfs left)
+rare_contig_0.03 <- PA.orf.check %>% filter(total_PA >=9) %>% pull(Orf)
+
+
+# prevelence filtering on PA table 
+orf.PA.table.prevFiltered <- orf.PA.table %>% dplyr::select(c(1:25,all_of(rare_contig_0.03)))
+dim(orf.PA.table.prevFiltered)
+# 314 2179
+
+
+# prevelence filtering on count table
+orf.abundance.table.prevFiltered <- orf.abundance.table %>% dplyr::select(c(1:25,all_of(rare_contig_0.03)))
+dim(orf.abundance.table.prevFiltered)
+# 314 2179
+
+```
+
+
+# check metadata correlation
+```{r}
+
+
+#1. Check Pairwise Correlations Between Variables
+
+str(metadata)
+# Select numeric variables from metadata
+numeric_vars <- metadata %>% 
+  select(-X) %>%
+  mutate(Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)) %>%
+  select(where(is.numeric))  # e.g., month, Age.at.Gluten.Introduction..months.
+
+# Calculate correlation matrix
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Visualize with a heatmap
+library(corrplot)
+corrplot(cor_matrix, method = "circle", type = "upper")
+
+# Threshold: Correlations > |0.7| indicate strong collinearity.
+
+
+# 2. Check Categorical Variables with Chi-Square Tests
+
+# Example: Check association between Dx.Status and Country
+table(metadata.clean.0counts.filtered$Dx.Status, metadata.clean.0counts.filtered$Country)
+
+# Chi-square test of independence
+chisq.test(
+  metadata.clean.0counts.filtered$Dx.Status, 
+  metadata.clean.0counts.filtered$Country
+)
+
+# Significant p-value (p < 0.05) suggests confounding.
+
+
+
+# 3. Variance Inflation Factor (VIF)
+orf_matrix <- as.matrix(orf.PA.table.0counts.filtered)
+class(orf_matrix)  # Should return "matrix" "array"
+
+# Verify all values are 0 or 1
+table(orf_matrix)  # Should only show 0s and 1s
+
+response <- as.numeric(orf_matrix[1, ])
+
+# Check structure
+str(response)  # Should be num [1:N] 0 1 0 0 1 ...
+
+# Remove intercept from design matrix (already done in your code)
+design_data <- as.data.frame(model.design[, -1])
+
+# Fit the model
+tmp_model <- lm(response ~ ., data = design_data)
+
+# Calculate VIF
+library(car)
+vif(tmp_model)
+print(vif(tmp_model))
+
+# Interpretation:
+# VIF < 5: No concerning collinearity.
+# VIF ≥ 5: Variable is confounded with others.
+# VIF ≥ 10: Severe collinearity (remove the variable).
+
+
+
+```
+
+
+analysis design
+
+Q1: what virus/phage/phage_Orfs are significantly different between case and control group?
+
+1.We extract the onset sample from celiac group and their paired control samples for this analysis.
+2.Give the nature of orf data which is not super sparse as virus data, we can use the abundance instead of presense and absense for the model.
+3.We use both non-prevelance filtered data and prevelance filtered data.
+4.To consider the paired-sample feature, and clustered data structure (each patient contributed multiple samples), our model design is as below:
+  ~ Disease_type + pair_ID + Country + Sex + HLA + deliver_mode + feeding_type + gluten_food, blocking=patientID
+5. Some points to pay attention: gluten food has some levels that are with very few data points (< 5). If we can prove the orf level and gluten food taking age has a linear relation, we can treat gluten food as a contenious variable, but we cannot use a very straightforward way to prove that, so we will still treat it as categorical, but in this way we need to keep in mind that, those levels with few data points may add noise to the model which could lead to overfitting, also, the stats output of those levels may not accurate.So be cautious when interpret the results.
+
+
+
+
+                                                                                    ################################
+                                                                                    # Limma model on filtered data #
+                                                                                    ################################
+
+Abundance model: 
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+metadata.clean <- orf.abundance.table.prevFiltered[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+
+# 62 25
+
+orf.abundance.clean <- orf.abundance.table.prevFiltered %>%
+                           select(c("Row.names",26:2179)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.abundance.clean) <- gsub("X","",colnames(orf.abundance.clean))
+# 2154   62
+
+# we now add 1 to each of the cell of the ord count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+orf.abundance.clean <- orf.abundance.clean + 1
+
+View(orf.abundance.clean)
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+
+model.design <- model.matrix(~ Dx.Status + Pair + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean) #+ Age.at.Gluten.Introduction..months. + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year
+model.fit <- voomLmFit(orf.abundance.clean,model.design,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=2154) #coef="Dx.StatusCELIAC",
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=2154) %>% filter(adj.P.Val < 0.05) # coef="Dx.StatusCELIAC",
+dim(sig.model.res)
+
+# 0
+
+
+```
+
+
+Abundance model (a more complicated model) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- orf.abundance.table.prevFiltered[1:25] %>%
+                  column_to_rownames("Row.names")
+
+# 314  25
+
+orf.abundance.clean <- orf.abundance.table.prevFiltered %>%
+                           select(c("Row.names",26:2179)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.abundance.clean) <- gsub("X","",colnames(orf.abundance.clean))
+# 2154   314
+
+
+# we now add 1 to each of the cell of the orf count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+orf.abundance.clean <- orf.abundance.clean + 1
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+model.fit <- voomLmFit(orf.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=2154)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=2154) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+```
+
+
+Abundance model (a more complicated model) 
+~ Dx.Status + month + Country + Sex + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months. block = patientID
+```{r}
+
+# prepare clean metadata
+metadata.clean <- orf.abundance.table[1:25] %>%
+                  column_to_rownames("Row.names")
+
+# 314  25
+
+orf.abundance.clean <- orf.abundance.table %>%
+                           select(c("Row.names",26:43429)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.abundance.clean) <- gsub("X","",colnames(orf.abundance.clean))
+# 43404   314
+
+
+# we now add 1 to each of the cell of the orf count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+orf.abundance.clean <- orf.abundance.clean + 1
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed     Formula     Breastmilk_and_formula 
+#   121            59                    134 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#      172            94            48
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#   113   201 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    241    73
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+#  Vaginal   C-Section 
+#     222        92
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 5 11 61 94 40 33 33 10  2 16  9
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#     164   150 
+
+
+model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean)
+model.fit <- voomLmFit(orf.abundance.clean,model.design,block= metadata.clean$patientID,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf)
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05)
+dim(sig.model.res)
+# 0
+
+```
+
+
+
+
+
+
+                                                                                    ####################################
+                                                                                    # Limma model on non-filtered data #
+                                                                                    ####################################
+Abundance model: 
+~ Dx.Status + Pair + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+```{r}
+
+# prepare clean metadata
+metadata.clean <- orf.abundance.table[1:25] %>%
+                  mutate(case_control_month = paste0(Pair,"_",month)) %>%
+                  filter(disease_onset_details == "Case_onset" | (disease_onset_details == "Control" & case_control_month %in% .$case_control_month[.$disease_onset_details == "Case_onset"])) %>%
+  filter(Pair != "1_041") %>%
+                  column_to_rownames("Row.names")
+
+# here we found that Control sample 1_GEMM_045 got removed due to the "Unknown" value in gluten food column. So we have to also remove its onset_case sample which is Pair "1_041"
+# We now have 31 pairs of onset_case and control samples
+
+# 62 25
+
+
+orf.abundance.clean <- orf.abundance.table %>%
+                           select(c("Row.names",26:43429)) %>%
+                           filter(Row.names %in% rownames(metadata.clean)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.abundance.clean) <- gsub("X","",colnames(orf.abundance.clean))
+# 43404    62
+
+# we now add 1 to each of the cell of the ord count table to prevent error in limma model. We have two samples that have all 0 through all the orfs. But we don't want to remove them.
+orf.abundance.clean <- orf.abundance.clean + 1
+
+
+# prepare correct variable format
+metadata.clean$feeding_first_year <- factor(metadata.clean$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+# Breast_fed       Formula       Breastmilk_and_formula 
+#  22                16                     24 
+metadata.clean$HLA.Category <- factor(metadata.clean$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+# Standard Risk     High Risk   Low/No Risk 
+#        35            20             7 
+metadata.clean$Country <- factor(metadata.clean$Country,levels = c("ITALY","USA"))
+# ITALY   USA 
+#    30    32 
+metadata.clean$Sex <- factor(metadata.clean$Sex,levels = c("Female","Male"))
+# Female   Male 
+#    44     18 
+metadata.clean$Delivery.Mode <- factor(metadata.clean$Delivery.Mode,levels = c("Vaginal","C-Section"))
+# Vaginal   C-Section 
+#    38        24 
+metadata.clean$Age.at.Gluten.Introduction..months. <- factor(metadata.clean$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 1  1 13 22  8  6  5  2  1  2  1 
+metadata.clean$Dx.Status <- factor(metadata.clean$Dx.Status,levels = c("CONTROL","CELIAC"))
+# CONTROL  CELIAC 
+#    31      31 
+metadata.clean$Pair <- factor(metadata.clean$Pair)
+# 1_001 1_009 1_014 1_026 1_052 1_061 1_079 1_081 1_085 1_093 1_106 1_119 1_128 1_150 1_151 1_175 2_020 2_021 2_024 2_031 2_041 2_045 2_058 2_134 2_141 2_151 2_158 2_177 2_179 2_194 2_228 
+#     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2     2    2
+
+
+model.design <- model.matrix(~ Dx.Status + Pair + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year,metadata.clean) #+ Age.at.Gluten.Introduction..months. + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year
+model.fit <- voomLmFit(orf.abundance.clean,model.design,plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) #coef="Dx.StatusCELIAC",
+sig.model.res <- topTable(model.fit,coef="Dx.StatusCELIAC",number=Inf) %>% filter(adj.P.Val < 0.05) # coef="Dx.StatusCELIAC",
+dim(sig.model.res)
+# 0
+
+
+```
+
+
+# We got 0 DE orfs in this analysis. 
+# searched on-line, this post may explains: https://support.bioconductor.org/p/9144131/
+
+
+# check data (to be done)
+https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html
+```{r}
+v <- voom(orf.abundance.clean, model.design, plot=TRUE)
+raw_pvals <- model.fit$p.value[, "Dx.StatusCELIAC"]
+hist(raw_pvals, breaks=100, main="Raw P-values")  # Should show enrichment near 0
+
+
+# Check effect sizes (logFC)
+logFCs <- model.fit$coefficients[, "Dx.StatusCELIAC"]
+summary(logFCs)  # Median absolute logFC > 0.5 is typical for real signals
+
+
+# Look at top genes WITHOUT p-value adjustment
+top_unadjusted <- topTable(model.fit, coef="Dx.StatusCELIAC", number=20, sort.by="P", adjust.method="none")
+
+# Check if raw p-values are small but killed by FDR
+head(top_unadjusted)
+
+v <- voom(orf.abundance.clean, model.design, plot=TRUE)  # Should show smooth curve
+
+plotMDS(v, col=ifelse(metadata.clean$Dx.Status=="CELIAC", "red", "blue"))
+
+```
+
+
+
+We then use presence and absence (binary info) to build Limma model. this would tell us if the turning on/off of a gene associated with celiac case/control disease
+
+PA model: 
+~ Dx.Status + month + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.
+block=patientID
+```{r}
+
+# prepare clean metadata and count table
+metadata.clean <- orf.PA.table[1:25] %>%
+                  column_to_rownames("Row.names")
+# 314  25
+
+
+orf.PA.table.clean <- orf.PA.table %>%
+                           select(c("Row.names",26:43429)) %>%
+                           column_to_rownames("Row.names") %>% 
+                           t(.) %>%
+                           data.frame(.)
+colnames(orf.PA.table.clean) <- gsub("X","",colnames(orf.PA.table.clean))
+
+dim(orf.PA.table.clean)
+# 43404  314
+
+
+# now we need to check if there are any samples have 0 counts (AKA. calculate the library size), if so we should remove those samples to prevent error in limma model.Because voom requires log-transformed counts log(library size), but log(0) = -Inf hence will cause the voom/voomLmFit error (offsets must be finite values).
+
+# Step 1: Identify zero-size samples
+zero_samples <- colnames(orf.PA.table.clean)[colSums(orf.PA.table.clean) == 0]
+
+# Step 2: Remove from counts and metadata
+orf.PA.table.0counts.filtered <- orf.PA.table.clean[, !(colnames(orf.PA.table.clean) %in% zero_samples), drop = FALSE]
+metadata.clean.0counts.filtered <- metadata.clean[!(rownames(metadata.clean) %in% zero_samples), ]
+dim(orf.PA.table.0counts.filtered)
+# 43404   308
+
+
+# Step 3: Verify
+summary(colSums(orf.PA.table.0counts.filtered))  # Min should now be >= 1
+   # Min.  1st Qu.  Median    Mean  3rd Qu.    Max. 
+   # 1.0   141.8   397.0    483.5   717.0    2578.0 
+
+
+
+# prepare correct variable format
+metadata.clean.0counts.filtered$feeding_first_year <- factor(metadata.clean.0counts.filtered$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+metadata.clean.0counts.filtered$HLA.Category <- factor(metadata.clean.0counts.filtered$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+metadata.clean.0counts.filtered$Country <- factor(metadata.clean.0counts.filtered$Country,levels = c("ITALY","USA"))
+metadata.clean.0counts.filtered$Sex <- factor(metadata.clean.0counts.filtered$Sex,levels = c("Female","Male"))
+metadata.clean.0counts.filtered$Delivery.Mode <- factor(metadata.clean.0counts.filtered$Delivery.Mode,levels = c("Vaginal","C-Section"))
+metadata.clean.0counts.filtered$Age.at.Gluten.Introduction..months. <- factor(metadata.clean.0counts.filtered$Age.at.Gluten.Introduction..months.,levels = c("4","5","6","7","8","9","10","11","12","15","36"))
+metadata.clean.0counts.filtered$month <- factor(metadata.clean.0counts.filtered$month,levels = c(12,18,24,30,36,48,54,60,72,84))
+metadata.clean.0counts.filtered$Dx.Status <- factor(metadata.clean.0counts.filtered$Dx.Status,levels = c("CONTROL","CELIAC"))
+
+
+#model.design <- model.matrix(~ Dx.Status + month + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months.,metadata.clean.0counts.filtered)
+model.design <- model.matrix(~ Country,metadata.clean.0counts.filtered)
+model.fit <- voomLmFit(orf.PA.table.0counts.filtered, model.design, block=metadata.clean.0counts.filtered$patientID, plot=FALSE)
+model.fit <- eBayes(model.fit)
+model.fit$coefficients
+model.res <- topTable(model.fit,number=2154) # coef="Dx.StatusCELIAC",
+sig.model.res <- topTable(model.fit, number=5000) %>% filter(adj.P.Val < 0.05) #coef="Dx.StatusCELIAC",
+dim(sig.model.res)
+# 0
+
+View(sig.model.res)
+
+
+```
+
+
+
+
+
+Q2: I dentify viruses that could be the preceding markers of celiac disease
+1. For this analysis, we only extract the precede samples from disease group,
+2.Give the nature of orf data which is not super sparse as virus data, we can use the abundance instead of presense and absense for the model.
+3.since this analysis need to be done for each orf individually, we first apply it on the filtered data, which contains 2154 orfs.
+4.We calculate the time-to-event variable, and use it as the outcome variable in the model. The predictor would be each orf, and the confounder variables:
+  coxph(surv(month-to-onset) ~ orf1_count + Sex + Country + HLA+ deliver_mode + feeding_type + gluten + (1|patient_ID))
+5. Some points to pay attention: gluten food has some levels that are with very few data points (< 5). If we can prove the orf level and gluten food taking age has a linear relation, we can treat gluten food as a contenious variable, but we cannot use a very straightforward way to prove that, so we will still treat it as categorical, but in this way we need to keep in mind that, those levels with few data points may add noise to the model which could lead to overfitting, also, the stats output of those levels may not accurate.So be cautious when interpret the results.
+
+
+                                                                                               #########################################
+                                                                                               #   Cox PH moel for survival analysis   #
+                                                                                               #              filtered data            #
+                                                                                               #########################################
+                                                                                               
+```{r}
+
+
+orf.abundance.table.cox <- orf.abundance.table.prevFiltered %>%
+                           filter(disease_onset_details == "Case_precede") %>%
+                           mutate(time_to_onset = as.numeric(Onset.Dx) - month) %>%
+                           mutate(event = 1) %>%
+                           select(c(1:25,2180,2181,everything()))
+
+# 118 samples
+
+orf.name <- colnames(orf.abundance.table.cox)[28:2181]
+
+orf.stats.list <- list()
+for (i in orf.name) {
+  result <- tryCatch({
+    
+    
+    print(paste("Processing i =", i))
+    # Example code that may cause the specific error
+    cox.fit <- coxph(Surv(time_to_onset, event) ~ get(i) + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year + Age.at.Gluten.Introduction..months., data = orf.abundance.table.cox)
+
+    fit.tidy <- tidy(cox.fit)
+
+    write.csv(fit.tidy,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/COX_Orf/",i,"_cox.csv"))
+    
+    
+    
+    # Get the summary of the Cox model
+    cox_summary <- summary(cox.fit)
+    
+    # Extract the coefficients, standard errors, z-values, and p-values
+    model_df <- data.frame(
+      term = rownames(cox_summary$coefficients),         # The names of the coefficients (terms)
+      coef = cox_summary$coefficients[, 1],              # Coefficients (estimates)
+      exp_coef = exp(cox_summary$coefficients[, 1]),    # Hazard ratios (exp(coef))
+      se = cox_summary$coefficients[, 2],                # Standard errors
+      z_value = cox_summary$coefficients[, 3],           # Z-values
+      p_value = cox_summary$coefficients[, 4],           # P-values
+      ci_lower = exp(cox_summary$conf.int[, 3]),        # Lower bound of 95% CI for HR
+      ci_upper = exp(cox_summary$conf.int[, 4])         # Upper bound of 95% CI for HR
+    )
+    
+    
+    write.csv(model_df,paste0("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/COX_Orf/",i,"_cox_fill_stats.csv"))
+     
+     print("test1")
+     
+     
+     df <- data.frame(summary(cox.fit)$coefficients) %>%
+           filter(row.names(.) == rownames(data.frame(summary(cox.fit)$coefficients))[1]) %>%
+           rownames_to_column("orf") %>% 
+           mutate(taxa = i)
+     
+     print(dim(df))
+     
+     orf.stats.list[[i]] <- df
+
+      print("test2")
+       
+       NULL  # Return a value if no error occurs
+  }, error = function(e) {
+    # Check if the error message matches the specific condition
+    if (grepl("Downdated VtV is not positive definite", e$message)||grepl("Response is constant", e$message)) {
+      message(paste("Caught specific error at iteration", i, "- skipping to next iteration"))
+      return(NULL)  # Return NULL to indicate the error occurred and skip the current iteration
+    }
+    stop(e)  # Rethrow the error if it doesn't match the condition
+  })
+  
+  # If result is NULL, skip to the next iteration
+  if (is.null(result)) {
+    next  # Skip to the next iteration if the specific error occurred
+  }
+}
+
+
+ 
+orf.cox.res <- bind_rows(orf.stats.list) %>%
+                   mutate(`P-Value` = ifelse(`Pr...z..` < 0.05,"< 0.05","> 0.05")) %>%
+                   mutate(`P-adjust` = p.adjust(`Pr...z..`)) %>%
+                   mutate(`P-adjust-sig` = ifelse(`P-adjust` < 0.05,"< 0.05","> 0.05"))
+
+
+
+
+write.csv(orf.cox.res %>% filter(`Pr...z..` < 0.05),"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/COX_Orf/orf_cox_res_p_sig.csv",sep = "\t")
+
+
+  p.orf.stats <- ggplot(orf.cox.res,aes(x = `exp.coef.`,y=orf,color = `P-Value`)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 0,linetype="dotted") +
+  scale_color_manual(values = c("< 0.05" = "red", "> 0.05" = "black")) +
+  #geom_text_repel(data = subset(orf.cox.res, `Pr...z..` < 0.05),aes(label = format(round(`Pr...z..`,3),nsmall = 2)),show.legend = FALSE) + #, aes(label = `P-adjust`)
+  theme(axis.text.y = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 12,face = "bold")) +
+  labs(x = "exp(Coef)",y = "") +
+  theme_bw()
+
+
+ 
+ggsave(p.orf.stats,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/COX_Orf/orf.cox.res.pdf",width = 10, height = 15,dpi=600)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                    ####################################
+                                                                                    #           model diagnose         #
+                                                                                    ####################################
+
+
+check model issues
+```{r}
+
+###############################################################################
+# 1.We first Calculate correlation matrix of predictors (excluding intercept) # 
+###############################################################################
+
+# Low correlations (|r| < 0.5):Predictors are independent enough for stable regression estimates.
+# Moderate correlations (0.5 ≤ |r| ≤ 0.7): Some shared variance, but likely acceptable unless you see model instability (e.g., flipped coefficients when adding/removing terms).
+# No pairs of variables are highly collinear (no need to drop/recode any).
+
+cor_matrix <- cor(model.design[, -1])  
+
+cor.heatmap.p <- pheatmap(
+  cor_matrix,
+  color = colorRampPalette(c("blue", "white", "red"))(100),  # Blue-white-red gradient
+  cluster_rows = TRUE,  # Cluster rows
+  cluster_cols = TRUE,  # Cluster columns
+  display_numbers = TRUE,  # Show correlation values
+  number_format = "%.2f",  # Round to 2 decimal places
+  main = "Predictor Correlation Heatmap"
+)
+
+ggsave(cor.heatmap.p,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Orf/model_issue_check/cor.heatmap.p.pdf",width = 12,height = 12, dpi = 600)
+
+#---------------------------------------------------------#
+# Results: no collinearity found in any pair of variables #
+#---------------------------------------------------------#
+
+
+
+
+
+#########################################################
+# 2.  Next we check the number of samples per predictor #
+#########################################################
+
+# With many covariates, power drops. Rule of thumb: ≥10 samples per predictor
+
+nrow(metadata.clean.0counts.filtered) / ncol(model.design) 
+# 10.92875
+
+#------------------------------------------------------#
+# Results: the number of samples per predictor is > 10 #
+#------------------------------------------------------#
+
+
+
+
+###################################################
+# 3. check if there is Balanced Confounding issue #
+###################################################
+# If disease.status is evenly distributed across other variables (e.g., equal cases/controls per country), the adjusted effect may shrink.
+
+# step1:
+# For categorical predictors
+table(metadata.clean.0counts.filtered$Dx.Status, metadata.clean.0counts.filtered$Country)
+
+  #         ITALY USA
+  # CONTROL    63  97
+  # CELIAC     48  98
+
+table(metadata.clean.0counts.filtered$Dx.Status, metadata.clean.0counts.filtered$Sex)
+
+  #         Female Male
+  # CONTROL    121   39
+  # CELIAC     116   30
+
+# step2:
+# Chi-square test
+chisq.test(matrix(c(63, 97, 48, 98), nrow = 2))
+
+# Pearson's Chi-squared test with Yates' continuity correction
+# X-squared = 1.1276, df = 1, p-value = 0.2883
+
+# p-value = 0.26 (> 0.05): No statistically significant imbalance.
+# However, the trend in ITALY (43.2% CELIAC vs. USA’s 50.3%) might still introduce practical confounding.
+
+
+chisq.test(matrix(c(121, 39, 116, 30), nrow = 2))
+# Pearson's Chi-squared test with Yates' continuity correction
+# X-squared = 0.43983, df = 1, p-value = 0.5072
+# so, very slight imbalance
+
+
+# step3:
+# Create a dummy variable for country (e.g., USA=1, ITALY=0)
+metadata.temp <-  metadata.clean.0counts.filtered
+metadata.temp$usa <- ifelse(metadata.temp$Country == "USA", 1, 0)
+
+# Calculate SMD for country between CELIAC/CONTROL
+smd <- abs(mean(metadata.temp$usa[metadata.temp$Dx.Status == "CELIAC"]) - 
+             mean(metadata.temp$usa[metadata.temp$Dx.Status == "CONTROL"])) / 
+      sqrt((sd(metadata.temp$usa[metadata.temp$Dx.Status == "CELIAC"])^2 + 
+            sd(metadata.temp$usa[metadata.temp$Dx.Status == "CONTROL"])^2)/2)
+
+# Interpretation: SMD = 0.13 (if > 0.1, indicates mild imbalance).
+
+metadata.temp$male <- ifelse(metadata.temp$Sex == "Male", 1, 0)
+
+# Calculate SMD for country between CELIAC/CONTROL
+smd <- abs(mean(metadata.temp$usa[metadata.temp$Sex == "Male"]) - 
+             mean(metadata.temp$usa[metadata.temp$Sex == "Female"])) / 
+      sqrt((sd(metadata.temp$usa[metadata.temp$Sex == "Male"])^2 + 
+            sd(metadata.temp$usa[metadata.temp$Sex == "Female"])^2)/2)
+
+# Interpretation: SMD < 0.1 (negligible).
+
+
+#--------------------------------------------------------------------------------------------------------------------#
+# Results:                     
+#   
+# If adjust for country:
+# The effect of disease.status might shift slightly because the USA has more CELIAC samples proportionally.
+# 
+# If ignore country:
+# The estimated effect of disease.status could be biased if country influences both disease and gene expression.
+#
+# Conclusion: Include country in your model to control for potential confounding, even if the imbalance is mild.For
+#             Sex, it's probably can be removed from the model is there is no gender-related gene expression.
+#---------------------------------------------------------------------------------------------------------------------#
+
+
+```
+
+
+check model issues 2
+```{r}
+
+##################################
+# 1. Check Sample Size per Level #
+##################################
+#Rule of Thumb: Each level should have ≥5 samples (preferably ≥10) to avoid overfitting.
+
+table(metadata.clean.0counts.filtered$feeding_first_year)
+# Breast_fed     Formula      Breastmilk_and_formula 
+#        120       58                    128 
+
+table(metadata.clean.0counts.filtered$HLA.Category)
+# Standard Risk     High Risk   Low/No Risk 
+#      168            94            44 
+
+table(metadata.clean.0counts.filtered$Delivery.Mode)
+  # Vaginal    C-Section 
+  #     215        91 
+
+table(metadata.clean.0counts.filtered$Age.at.Gluten.Introduction..months.)
+ # 4  5  6  7  8  9  10 11  12 15 36 
+ # 5  11 57 91 39 33 33 10  2  16  9 
+
+
+table(metadata.clean.0counts.filtered$month)
+# 12 18 24 30 36 48 54 60 72 84 
+# 64 62 47 43 34 32  2 14  4  4
+
+#--------------------------------------------------------------------------------------------------#
+# Results: month and gluten age might be problemetic because some levels have too few data points  #
+#--------------------------------------------------------------------------------------------------#
+
+
+```
+
+
+After model issue diagnose, I decide to use a simplified model that only contain valid variables: 
+~ Dx.Status + Country + Sex + Delivery.Mode + HLA.Category + feeding_first_year
+```{r}
+
+
+
+
+
+```
+
+
+
+
+# make plot
+```{r}
+
+contig.annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/results/final_prediction_summary.tsv") %>%
+                     rename("Contig_id" = "Accession")
+
+contig.annotation.sig <- contig.annotation %>%
+                         filter(Contig_id %in% rownames(sig.model.res))
+
+View(contig.annotation.sig)
+
+model.res.annotation <- left_join(model.res,contig.annotation,by = "Contig_id")
+model.res.annotation.sig <- model.res.annotation %>%
+                            filter(Contig_id %in% rownames(sig.model.res)) %>%
+                            select(Contig_id,everything())
+
+
+write.csv(model.res.annotation.sig,"~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/results/sig.contigs.info.csv")
+
+
+p <- ggplot(model.res.annotation,aes(x = logFC,y = -log10(adj.P.Val),label = Lineage)) + 
+           geom_point(data = subset(model.res.annotation,model.res.annotation$adj.P.Val >= 0.05),
+                               color = "grey",size = 2,show.legend = FALSE) +
+                geom_point(data = subset(model.res.annotation,model.res.annotation$adj.P.Val < 0.05 & model.res.annotation$logFC < 0),aes(color = Host),show.legend = TRUE) +
+             geom_point(data = subset(model.res.annotation,model.res.annotation$adj.P.Val < 0.05 & model.res.annotation$logFC > 0),aes(color = Host),show.legend = TRUE) + 
+#geom_text_repel(data = subset(model.res.annotation,model.res.annotation$adj.P.Val < 0.05),aes(label = Contig_id),show.legend = FALSE) +
+geom_hline(yintercept = -log10(0.05),linetype='dashed', col = 'black') +
+geom_vline(xintercept = 0,linetype='dashed', col = 'black') +
+theme(axis.text = element_text(size = 12,face = "bold"),
+    axis.title = element_text(size = 12,face = "bold")) #+
+  theme(legend.position = "top") #+
+                theme_classic(base_size = 14) +
+                theme(
+                  #text = element_text(family = "helvetica"),
+                  plot.title = element_text(size = 16, face = "bold"),
+                  axis.text = element_text(size = 14),
+                  axis.title = element_text(size = 16),
+                  legend.position = "right",
+                  legend.title = element_text(size = 16),
+                  legend.text = element_text(size = 10),
+                  strip.background = element_rect(colour="#1C4954", fill="white"),
+                  strip.text.x = element_text(face = "bold.italic", size = 14),  
+                  panel.grid.major.x = element_blank(),
+                  axis.text.x = element_text(size=14, angle=45, hjust=1), 
+                  axis.text.y = element_text(size = 14),  
+                  axis.title.y = element_text(size = 16)  
+                ) 
+
+ggsave(p,filename="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_output/Coverm/Contig/results/p_Host.pdf",width = 10,height=10,dpi = 600)
+
+```
