@@ -79,13 +79,13 @@ metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/Updated_Metadata
 # prepare orf count table with 75% mapping filtering
 ```{r}
 
-orf <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data/Orf_Coverm_concatenated.txt",col_names = FALSE)
+# orf <- vroom("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data/Orf_Coverm_concatenated.txt",col_names = FALSE)
 # we have 340 samples and 48247 orfs in total after phage pipeline
 
 
-filter_and_save_wide_data(orf, 
-                          covered_fraction_threshold = 0.75, 
-                          output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data/")
+# filter_and_save_wide_data(orf, 
+#                           covered_fraction_threshold = 0.75, 
+#                           output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data/")
 # Number of changes: 193659
 
 orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data/wide_rpkm_genes_75Cov.rds") %>%
