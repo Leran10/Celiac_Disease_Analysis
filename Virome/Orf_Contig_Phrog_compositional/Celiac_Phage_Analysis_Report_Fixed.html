@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celiac Disease Phage Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+        
+        .nav-menu {
+            list-style: none;
+        }
+        
+        .nav-menu li {
+            margin-bottom: 8px;
+        }
+        
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+        }
+        
+        .nav-menu a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+        
+        .nav-submenu {
+            margin-left: 20px;
+            margin-top: 5px;
+        }
+        
+        .nav-submenu a {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            margin-left: 300px;
+            padding: 40px;
+            flex: 1;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #555;
+            margin: 25px 0 15px 0;
+            font-size: 1.4em;
+        }
+        
+        .figure {
+            margin: 25px 0;
+            text-align: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .figure embed {
+            width: 100%;
+            height: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .figure-caption {
+            margin-top: 15px;
+            font-style: italic;
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        
+        .interpretation {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #1e88e5;
+            margin: 20px 0;
+        }
+        
+        .interpretation h4 {
+            color: #1565c0;
+            margin-bottom: 10px;
+        }
+        
+        .key-findings {
+            background: #f1f8e9;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+            margin: 20px 0;
+        }
+        
+        .key-findings h4 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+        
+        .warning h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .metric-box {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px;
+            text-align: center;
+            min-width: 150px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .metric-box h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .metric-box p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #6c757d;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>📊 Navigation</h2>
+            <ul class="nav-menu">
+                <li><a href="#executive-summary">📋 Executive Summary</a></li>
+                <li><a href="#methods">🔬 Methods & Design</a></li>
+                <li><a href="#data-processing">📁 Data Processing</a></li>
+                <li><a href="#results-overview">📈 Results Overview</a></li>
+                <li><a href="#pa-analysis">🎯 PA Analysis</a></li>
+                <li><a href="#abundance-analysis">📊 Abundance Analysis</a></li>
+                <li><a href="#effect-sizes">⚡ Effect Sizes</a></li>
+                <li><a href="#diversity-analysis">🌿 Diversity Analysis</a></li>
+                <li><a href="#summary-viz">📋 Summary Visualizations</a></li>
+                <li><a href="#conclusions">💡 Conclusions</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header">
+                <h1>Celiac Disease Phage Analysis</h1>
+                <p>Comprehensive Presence/Absence and Abundance Modeling Report</p>
+            </div>
+
+            <section id="executive-summary" class="section">
+                <h2>📋 Executive Summary</h2>
+                <p>This report presents a comprehensive analysis of phage presence/absence (PA) and abundance patterns in celiac disease patients compared to controls across multiple timepoints.</p>
+                
+                <div class="key-findings">
+                    <h4>🎯 Key Findings</h4>
+                    <ul>
+                        <li><strong>Model Success:</strong> Out of 109 total genes, only 16 genes (14.7%) showed sufficient statistical power for reliable inference</li>
+                        <li><strong>Timepoint Effects:</strong> Significant gene-specific effects identified at multiple timepoints before celiac diagnosis</li>
+                        <li><strong>Cohort Differences:</strong> US cohort showed the most significant results, Italy cohort had minimal findings</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <div class="metric-box">
+                        <h3>109</h3>
+                        <p>Total Genes<br>Analyzed</p>
+                    </div>
+                    <div class="metric-box">
+                        <h3>16</h3>
+                        <p>Genes with<br>Valid Results</p>
+                    </div>
+                    <div class="metric-box">
+                        <h3>3</h3>
+                        <p>Cohorts<br>Studied</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="methods" class="section">
+                <h2>🔬 Methods</h2>
+                
+                <h3>Model Formula Used</h3>
+                <div class="code-block">
+~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+  HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+                </div>
+
+                <div class="interpretation">
+                    <h4>🔑 Key Features</h4>
+                    <ul>
+                        <li><strong>Primary Effect:</strong> Dx.Status (CELIAC vs CONTROL)</li>
+                        <li><strong>Timepoint Interaction:</strong> Dx.Status * onset_timeline_combined</li>
+                        <li><strong>Covariates:</strong> Demographics, genetics, early life factors</li>
+                        <li><strong>Random Effects:</strong> Patient-specific intercepts</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="data-processing" class="section">
+                <h2>📁 Data Processing</h2>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cohort</th>
+                            <th>Genes</th>
+                            <th>Samples</th>
+                            <th>PA Threshold</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total</td>
+                            <td>109</td>
+                            <td>243</td>
+                            <td>≥1 CPM</td>
+                        </tr>
+                        <tr>
+                            <td>US</td>
+                            <td>150</td>
+                            <td>175</td>
+                            <td>≥1 CPM</td>
+                        </tr>
+                        <tr>
+                            <td>Italy</td>
+                            <td>125</td>
+                            <td>83</td>
+                            <td>≥1 CPM</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="results-overview" class="section">
+                <h2>📈 Results Overview</h2>
+                
+                <div class="figure">
+                    <embed src="report_figures/analysis_summary_barplot.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 1:</strong> Model results summary by cohort and model type.
+                    </div>
+                </div>
+
+                <div class="warning">
+                    <h4>⚠️ Understanding NAs in Results</h4>
+                    <p>Many results show NAs due to:</p>
+                    <ul>
+                        <li><strong>Sparse Data:</strong> Many genes show very few presence events</li>
+                        <li><strong>Perfect Separation:</strong> Some genes only present in one group</li>
+                        <li><strong>Convergence Issues:</strong> Complex mixed-effects models require sufficient data</li>
+                    </ul>
+                    <p><strong>Key Point:</strong> The 16 genes with valid results represent the most robust findings.</p>
+                </div>
+            </section>
+
+            <section id="pa-analysis" class="section">
+                <h2>🎯 Presence/Absence Analysis</h2>
+
+                <h3>Total Cohort PA Results</h3>
+                <div class="figure">
+                    <embed src="report_figures/total_PA_model1_glmmTMB_logit_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 2:</strong> Total cohort PA heatmap. Red = higher presence in CELIAC, blue = lower presence.
+                    </div>
+                </div>
+
+                <h3>US Cohort PA Results</h3>
+                <div class="figure">
+                    <embed src="report_figures/US_PA_model1_glmmTMB_logit_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 3:</strong> US cohort PA heatmap. Shows more genes with significant timepoint effects.
+                    </div>
+                </div>
+
+                <h3>Combined PA Analysis</h3>
+                <div class="figure">
+                    <embed src="report_figures/combined_PA_all_cohorts_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 4:</strong> Combined PA analysis across all cohorts.
+                    </div>
+                </div>
+            </section>
+
+            <section id="abundance-analysis" class="section">
+                <h2>📊 Abundance Analysis</h2>
+
+                <h3>Total Cohort Abundance</h3>
+                <div class="figure">
+                    <embed src="report_figures/total_abundance_model1_nbinom_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 5:</strong> Total cohort abundance heatmap. Shows log fold changes across timepoints.
+                    </div>
+                </div>
+
+                <h3>US Cohort Abundance</h3>
+                <div class="figure">
+                    <embed src="report_figures/US_abundance_model1_nbinom_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 6:</strong> US cohort abundance heatmap with extended temporal coverage.
+                    </div>
+                </div>
+            </section>
+
+            <section id="effect-sizes" class="section">
+                <h2>⚡ Effect Size Analysis</h2>
+
+                <div class="figure">
+                    <embed src="report_figures/total_PA_model1_glmmTMB_logit_effect_sizes.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 7:</strong> PA model effect sizes - log odds ratios vs significance.
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <embed src="report_figures/total_abundance_model1_nbinom_effect_sizes.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 8:</strong> Abundance model effect sizes across timepoints.
+                    </div>
+                </div>
+            </section>
+
+            <section id="diversity-analysis" class="section">
+                <h2>🌿 Diversity Analysis</h2>
+
+                <div class="figure">
+                    <embed src="report_figures/shannon_diversity_by_diagnosis.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 9:</strong> Shannon diversity comparison between CELIAC and CONTROL groups.
+                    </div>
+                </div>
+
+                <div class="figure">
+                    <embed src="report_figures/shannon_diversity_by_timepoint.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 10:</strong> Shannon diversity patterns across timepoints and diagnosis groups.
+                    </div>
+                </div>
+            </section>
+
+            <section id="summary-viz" class="section">
+                <h2>📋 Summary Visualizations</h2>
+
+                <div class="figure">
+                    <embed src="report_figures/significant_genes_summary_compact_heatmap.pdf" type="application/pdf">
+                    <div class="figure-caption">
+                        <strong>Figure 11:</strong> Summary of significant gene counts by timepoint and model.
+                    </div>
+                </div>
+            </section>
+
+            <section id="conclusions" class="section">
+                <h2>💡 Conclusions</h2>
+
+                <div class="key-findings">
+                    <h4>🔍 Key Findings</h4>
+                    <ul>
+                        <li><strong>Statistical Robustness:</strong> 16 genes showed sufficient power for reliable inference</li>
+                        <li><strong>Temporal Patterns:</strong> Significant effects detected months before celiac diagnosis</li>
+                        <li><strong>Cohort Differences:</strong> US cohort showed most extensive results</li>
+                        <li><strong>Clinical Relevance:</strong> Potential early biomarkers identified</li>
+                    </ul>
+                </div>
+
+                <div class="interpretation">
+                    <h4>🔮 Future Directions</h4>
+                    <ol>
+                        <li><strong>Validation Studies:</strong> Independent cohort validation</li>
+                        <li><strong>Mechanistic Studies:</strong> Functional characterization</li>
+                        <li><strong>Clinical Translation:</strong> Biomarker development</li>
+                    </ol>
+                </div>
+            </section>
+
+            <div style="text-align: center; margin: 50px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
+                <p><strong>Report Generated:</strong> October 3, 2025</p>
+                <p><strong>Analysis Pipeline:</strong> Complete celiac phage PA/abundance analysis</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Highlight current section
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.section');
+            const navLinks = document.querySelectorAll('.nav-menu a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= (sectionTop - 200)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.style.background = '';
+                if (link.getAttribute('href') === '#' + current) {
+                    link.style.background = 'rgba(255,255,255,0.3)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

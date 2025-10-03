@@ -43,7 +43,7 @@ total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.
 table(total.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
  # 4  5  6  7  8  9 10 11 12 15 36 
  # 4  9 46 64 32 27 29  7  1 15  9
-total.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(total.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CELIAC","CONTROL"))
+total.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(total.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
 table(total.contig.metadata.clean_0.75_0.03$Dx.Status)
  # CELIAC CONTROL 
  #    114    129 
@@ -60,34 +60,50 @@ table(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined)
 ```{r create clean abundance tables for three cohorts}
 
 # total cohort
-total.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.abundance.clean_0.75_0.03.csv") %>%
+total.contig.abundance.clean_0.75_0.03 <- read.csv("../Contig/data/total/total.contig.abundance.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 colnames(total.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(total.contig.abundance.clean_0.75_0.03))
 
-total.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/total/total.contig.metadata.clean_0.75_0.03.csv") %>%
+total.contig.metadata.clean_0.75_0.03 <- read.csv("../Contig/data/total/total.contig.metadata.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 
 
 
 # US cohort
-US.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.abundance.clean_0.75_0.03.csv") %>%
+US.contig.abundance.clean_0.75_0.03 <- read.csv("../Contig/data/US/US.contig.abundance.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 colnames(US.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(US.contig.abundance.clean_0.75_0.03))
 
 
-US.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/US/US.contig.metadata.clean_0.75_0.03.csv") %>%
+US.contig.metadata.clean_0.75_0.03 <- read.csv("../Contig/data/US/US.contig.metadata.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 
+# Set factor levels for US cohort to match total cohort
+US.contig.metadata.clean_0.75_0.03$feeding_first_year <- factor(US.contig.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+US.contig.metadata.clean_0.75_0.03$HLA.Category <- factor(US.contig.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+US.contig.metadata.clean_0.75_0.03$Sex <- factor(US.contig.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+US.contig.metadata.clean_0.75_0.03$Delivery.Mode <- factor(US.contig.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+US.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(US.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+US.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(US.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+US.contig.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(US.contig.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
 
 # Italy cohort
-Italy.contig.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.abundance.clean_0.75_0.03.csv") %>%
+Italy.contig.abundance.clean_0.75_0.03 <- read.csv("../Contig/data/Italy/Italy.contig.abundance.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 colnames(Italy.contig.abundance.clean_0.75_0.03) <- gsub("X","",colnames(Italy.contig.abundance.clean_0.75_0.03))
 
 
-Italy.contig.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Contig/data/Italy/Italy.contig.metadata.clean_0.75_0.03.csv") %>%
+Italy.contig.metadata.clean_0.75_0.03 <- read.csv("../Contig/data/Italy/Italy.contig.metadata.clean_0.75_0.03.csv") %>%
                                           column_to_rownames("X")
 
+# Set factor levels for Italy cohort to match total cohort
+Italy.contig.metadata.clean_0.75_0.03$feeding_first_year <- factor(Italy.contig.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+Italy.contig.metadata.clean_0.75_0.03$HLA.Category <- factor(Italy.contig.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+Italy.contig.metadata.clean_0.75_0.03$Sex <- factor(Italy.contig.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+Italy.contig.metadata.clean_0.75_0.03$Delivery.Mode <- factor(Italy.contig.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+Italy.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.contig.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+Italy.contig.metadata.clean_0.75_0.03$Dx.Status <- factor(Italy.contig.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+Italy.contig.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(Italy.contig.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
 
 ```
 
@@ -297,21 +313,195 @@ When: Default choice for pooled-over-time models with within-patient correlation
 Why: True random intercept (and optional random slope), fast, flexible links.
 Pros: Handles complex fixed effects; supports cloglog link (family = binomial("cloglog")) if events are very rare.
 Cons: Can struggle with extreme sparsity/separation—try GEE or Bayesian if convergence issues persist.
-```{r}
 
-PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+## Total cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_total}
+library(glmmTMB)
+library(broom.mixed)
 
+# Create long-format data for total cohort
+total_pa_long <- total.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(total.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
 
+# Fit model for each contig
+total_glmmTMB_logit_results <- total_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_glmmTMB_logit_results, "total_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_US}
+# Create long-format data for US cohort
+US_pa_long <- US.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(US.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+# Fit model for each contig
+US_glmmTMB_logit_results <- US_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmmTMB_logit_results, "US_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_Italy}
+# Create long-format data for Italy cohort
+Italy_pa_long <- Italy.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(Italy.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+# Fit model for each contig
+Italy_glmmTMB_logit_results <- Italy_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmmTMB_logit_results, "Italy_PA_glmmTMB_logit_results.csv", row.names = FALSE)
 ```
 
 
-# PA model - glmmTM (Mixed-effects logistic) - cloglog link
+# PA model - glmmTMB (Mixed-effects logistic) - cloglog link
 When: Events are very rare (asymmetric). Sometimes converges better than logit.
-```{r}
 
-glmmTMB(PA ~ Dx.Status * onset_timeline_combined + covars + (1|patientID),
-        family = binomial(link="cloglog"), data=df_gene)
+## Total cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_total}
+# Fit model for each contig using total cohort data
+total_glmmTMB_cloglog_results <- total_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_glmmTMB_cloglog_results, "total_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_US}
+# Fit model for each contig using US cohort data
+US_glmmTMB_cloglog_results <- US_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmmTMB_cloglog_results, "US_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_Italy}
+# Fit model for each contig using Italy cohort data
+Italy_glmmTMB_cloglog_results <- Italy_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmmTMB_cloglog_results, "Italy_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
 ```
 
 
@@ -344,20 +534,91 @@ When: You want a second mixed-model engine (very standard).
 Why: Solid optimizer, good diagnostics; similar results to glmmTMB on many datasets.
 Pros: Widely used; good default.
 Cons: No alternative links beyond logit; no zero-inflation (not needed for binary anyway).
-```{r}
 
+## Total cohort - glmer
+```{r PA_glmer_total}
 library(lme4)
 
-fit_glmer <- glmer(
-  PA ~ Dx.Status * time_to_onset +
-       Country + Sex + Delivery.Mode + feeding_method +
-       (1 | patientID),
-  family = binomial(link = "logit"),
-  data   = df,
-  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
-)
-summary(fit_glmer)
+# Fit model for each contig using total cohort data
+total_glmer_results <- total_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_glmer_results, "total_PA_glmer_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmer
+```{r PA_glmer_US}
+# Fit model for each contig using US cohort data
+US_glmer_results <- US_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmer_results, "US_PA_glmer_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmer
+```{r PA_glmer_Italy}
+# Fit model for each contig using Italy cohort data
+Italy_glmer_results <- Italy_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmer_results, "Italy_PA_glmer_results.csv", row.names = FALSE)
 ```
 
 
@@ -366,15 +627,88 @@ When: Repeated measures (patientID), convergence issues with random effects, wan
 Pros: Fewer failures than GLMM; interprets as average effect.
 Pros: Robust sandwich SEs; simple to fit.
 Cons: No subject-specific effects (interpretation is population-average); no random slopes.
-```{r}
 
+## Total cohort - GEE
+```{r PA_GEE_total}
 library(geepack)
-fit <- geeglm(PA ~ Dx.Status * onset_timeline_combined + Country + Sex + Age +
-                HLA.Category + feeding_first_year + Delivery.Mode,
-              id = patientID, family = binomial, corstr = "exchangeable", data = df_gene)
-summary(fit)
 
+# Fit model for each contig using total cohort data
+total_gee_results <- total_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_gee_results, "total_PA_GEE_results.csv", row.names = FALSE)
+```
+
+## US cohort - GEE
+```{r PA_GEE_US}
+# Fit model for each contig using US cohort data
+US_gee_results <- US_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_gee_results, "US_PA_GEE_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - GEE
+```{r PA_GEE_Italy}
+# Fit model for each contig using Italy cohort data
+Italy_gee_results <- Italy_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_gee_results, "Italy_PA_GEE_results.csv", row.names = FALSE)
 ```
 
 
@@ -383,77 +717,411 @@ When: Ultra-sparse, separation, or you want partial pooling with priors (more st
 Why: Priors stabilize estimates; rich inference (CIs/ORs); handles complex structures.
 Pros: Very stable with sparsity; full posteriors; can change link (e.g., cloglog).
 Cons: Slower; requires MCMC checks (R̂, ESS, pp-checks).
-```{r}
 
+## Total cohort - Bayesian brms
+```{r PA_brms_total}
 library(brms)
 
-bfit <- brm(
-  PA ~ Dx.Status * time_to_onset +
-       Country + Sex + Delivery.Mode + feeding_method +
-       (1 | patientID),
-  family = bernoulli(link = "logit"),
-  data   = df,
-  prior = c(
-    set_prior("normal(0, 1)", class = "b"),     # fixed effects
-    set_prior("exponential(2)", class = "sd")   # random-effect SDs
-  ),
-  cores = 4, chains = 4, iter = 2000
-)
-summary(bfit)
+# Fit model for each contig using total cohort data
+total_brms_results <- total_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_brms_results, "total_PA_brms_results.csv", row.names = FALSE)
+```
 
+## US cohort - Bayesian brms
+```{r PA_brms_US}
+# Fit model for each contig using US cohort data
+US_brms_results <- US_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_brms_results, "US_PA_brms_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Bayesian brms
+```{r PA_brms_Italy}
+# Fit model for each contig using Italy cohort data
+Italy_brms_results <- Italy_pa_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_brms_results, "Italy_PA_brms_results.csv", row.names = FALSE)
 ```
 
 
 # A) Count GLMMs (per-contig), with random effects
 
 # abundance model - Negative Binomial GLMM — workhorse
-```{r}
 
-library(edgeR); library(glmmTMB)
+## Total cohort - Negative Binomial GLMM
+```{r abundance_NB_total}
+library(edgeR)
+library(glmmTMB)
 
-# prep
-y <- DGEList(counts); y <- calcNormFactors(y, method="TMMwsp")
-lib_eff <- with(y$samples, lib.size * norm.factors)
-df <- cbind(meta[ colnames(y), ], 
-            count = as.integer(y$counts["GENE_ID", ]), 
-            offset = log(lib_eff[ colnames(y) ]))
+# Prepare DGEList and normalization for total cohort
+total.y <- DGEList(counts = total.contig.abundance.clean_0.75_0.03, samples = total.contig.metadata.clean_0.75_0.03)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+total.lib_eff <- with(total.y$samples, lib.size * norm.factors)
 
-# NB2 (variance ~ μ + μ^2)
-fit_nb <- glmmTMB(
-  count ~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method +
-          (1 | patientID) + offset(offset),
-  family = nbinom2, data = df
-)
-summary(fit_nb)
+# Create long-format data for abundance modeling
+total_abundance_long <- total.contig.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(total.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(total.lib_eff[sample_id]))
 
+# Fit NB model for each contig
+total_nb_results <- total_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_nb_results, "total_abundance_NB_results.csv", row.names = FALSE)
+```
 
+## US cohort - Negative Binomial GLMM
+```{r abundance_NB_US}
+# Prepare DGEList and normalization for US cohort
+US.y <- DGEList(counts = US.contig.abundance.clean_0.75_0.03, samples = US.contig.metadata.clean_0.75_0.03)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+US.lib_eff <- with(US.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+US_abundance_long <- US.contig.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(US.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(US.lib_eff[sample_id]))
+
+# Fit NB model for each contig
+US_nb_results <- US_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_nb_results, "US_abundance_NB_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Negative Binomial GLMM
+```{r abundance_NB_Italy}
+# Prepare DGEList and normalization for Italy cohort
+Italy.y <- DGEList(counts = Italy.contig.abundance.clean_0.75_0.03, samples = Italy.contig.metadata.clean_0.75_0.03)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+Italy.lib_eff <- with(Italy.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+Italy_abundance_long <- Italy.contig.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("contig_id") %>%
+  pivot_longer(cols = -contig_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(Italy.contig.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(Italy.lib_eff[sample_id]))
+
+# Fit NB model for each contig
+Italy_nb_results <- Italy_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_nb_results, "Italy_abundance_NB_results.csv", row.names = FALSE)
 ```
 
 
 # abundance model - Hurdle Negative Binomial GLMM — excess zeros, two-part
-```{r}
 
-fit_hurdle <- glmmTMB(
-  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
-  ziformula = ~ Dx.Status * time + covars + (1 | patientID),  # zero (hurdle) part
-  family = truncated_nbinom2, data = df
-)
+## Total cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_total}
+# Fit Hurdle NB model for each contig using total cohort data
+total_hurdle_results <- total_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_hurdle_results, "total_abundance_hurdle_results.csv", row.names = FALSE)
+```
+
+## US cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_US}
+# Fit Hurdle NB model for each contig using US cohort data
+US_hurdle_results <- US_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_hurdle_results, "US_abundance_hurdle_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_Italy}
+# Fit Hurdle NB model for each contig using Italy cohort data
+Italy_hurdle_results <- Italy_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_hurdle_results, "Italy_abundance_hurdle_results.csv", row.names = FALSE)
 ```
 
 
 # abundance model - Zero-Inflated NB GLMM — structural zeros
-```{r}
 
-fit_zinb <- glmmTMB(
-  count ~ Dx.Status * time + covars + (1 | patientID) + offset(offset),
-  ziformula = ~ Dx.Status * time + covars + (1 | patientID),
-  family = nbinom2, data = df
-)
+## Total cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_total}
+# Fit Zero-Inflated NB model for each contig using total cohort data
+total_zinb_results <- total_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
 
+# Save results
+write.csv(total_zinb_results, "total_abundance_ZINB_results.csv", row.names = FALSE)
+```
 
+## US cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_US}
+# Fit Zero-Inflated NB model for each contig using US cohort data
+US_zinb_results <- US_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_zinb_results, "US_abundance_ZINB_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_Italy}
+# Fit Zero-Inflated NB model for each contig using Italy cohort data
+Italy_zinb_results <- Italy_abundance_long %>%
+  group_by(contig_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(contig_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_zinb_results, "Italy_abundance_ZINB_results.csv", row.names = FALSE)
 ```
 
 
@@ -498,18 +1166,1385 @@ bfit_nb <- brm(
 # B) Voom / Linear Mixed Models on log-counts (rate scale)
 
 # abundance model - limma-voom + duplicateCorrelation — fast, empirical Bayes
-```{r}
 
-library(limma); library(edgeR)
-y <- DGEList(counts); y <- calcNormFactors(y, "TMMwsp")
-design <- model.matrix(~ Dx.Status * time + Country + Sex + Delivery.Mode + feeding_method, data=meta)
-v <- voom(y, design, plot=FALSE)
-corfit <- duplicateCorrelation(v, design, block = meta$patientID)
-v2 <- voom(y, design, plot=FALSE, block=meta$patientID, correlation=corfit$consensus)
-fit <- lmFit(v2, design, block=meta$patientID, correlation=corfit$consensus)
-fit <- eBayes(fit); topTable(fit, coef="Dx.StatusCELIAC:time_t0_6")
+## Total cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_total}
+library(limma)
+library(edgeR)
+
+# Prepare design matrix for total cohort
+total_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                            HLA.Category + feeding_first_year + Delivery.Mode, 
+                            data = total.contig.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+total_v <- voom(total.y, total_design, plot = FALSE)
+
+# Calculate duplicate correlation
+total_corfit <- duplicateCorrelation(total_v, total_design, block = total.contig.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+total_v2 <- voom(total.y, total_design, plot = FALSE, 
+                 block = total.contig.metadata.clean_0.75_0.03$patientID, 
+                 correlation = total_corfit$consensus)
+
+# Fit linear model
+total_voom_fit <- lmFit(total_v2, total_design, 
+                       block = total.contig.metadata.clean_0.75_0.03$patientID, 
+                       correlation = total_corfit$consensus)
+total_voom_fit <- eBayes(total_voom_fit)
+
+# Extract results for all coefficients
+total_voom_results <- topTable(total_voom_fit, number = Inf) %>%
+  rownames_to_column("contig_id") %>%
+  mutate(cohort = "total")
+
+# Save results
+write.csv(total_voom_results, "total_abundance_voom_results.csv", row.names = FALSE)
+```
+
+## US cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_US}
+# Prepare design matrix for US cohort
+US_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                         HLA.Category + feeding_first_year + Delivery.Mode, 
+                         data = US.contig.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+US_v <- voom(US.y, US_design, plot = FALSE)
+
+# Calculate duplicate correlation
+US_corfit <- duplicateCorrelation(US_v, US_design, block = US.contig.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+US_v2 <- voom(US.y, US_design, plot = FALSE, 
+              block = US.contig.metadata.clean_0.75_0.03$patientID, 
+              correlation = US_corfit$consensus)
+
+# Fit linear model
+US_voom_fit <- lmFit(US_v2, US_design, 
+                     block = US.contig.metadata.clean_0.75_0.03$patientID, 
+                     correlation = US_corfit$consensus)
+US_voom_fit <- eBayes(US_voom_fit)
+
+# Extract results for all coefficients
+US_voom_results <- topTable(US_voom_fit, number = Inf) %>%
+  rownames_to_column("contig_id") %>%
+  mutate(cohort = "US")
+
+# Save results
+write.csv(US_voom_results, "US_abundance_voom_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_Italy}
+# Prepare design matrix for Italy cohort
+Italy_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                            HLA.Category + feeding_first_year + Delivery.Mode, 
+                            data = Italy.contig.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+Italy_v <- voom(Italy.y, Italy_design, plot = FALSE)
+
+# Calculate duplicate correlation
+Italy_corfit <- duplicateCorrelation(Italy_v, Italy_design, block = Italy.contig.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+Italy_v2 <- voom(Italy.y, Italy_design, plot = FALSE, 
+                 block = Italy.contig.metadata.clean_0.75_0.03$patientID, 
+                 correlation = Italy_corfit$consensus)
+
+# Fit linear model
+Italy_voom_fit <- lmFit(Italy_v2, Italy_design, 
+                       block = Italy.contig.metadata.clean_0.75_0.03$patientID, 
+                       correlation = Italy_corfit$consensus)
+Italy_voom_fit <- eBayes(Italy_voom_fit)
+
+# Extract results for all coefficients
+Italy_voom_results <- topTable(Italy_voom_fit, number = Inf) %>%
+  rownames_to_column("contig_id") %>%
+  mutate(cohort = "Italy")
+
+# Save results
+write.csv(Italy_voom_results, "../Orf_Contig_Phrog_compositional/results/Italy_abundance_voom_results.csv", row.names = FALSE)
+```
 
 
+# Timepoint-Specific Differential Abundance Analysis
+
+## Extract Differential Abundance at Each Timepoint from All Models
+
+```{r timepoint_differential_analysis}
+library(dplyr)
+
+# Function to extract timepoint-specific results from model outputs
+extract_timepoint_results <- function(model_results, model_name, cohort_name, analysis_type) {
+  
+  # Define timepoint patterns to look for in the results
+  timepoint_patterns <- c(
+    "Dx.StatusCELIAC$", # Main effect (reference timepoint, usually t0)
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-6",
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-12", 
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-18",
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-24",
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-30",
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-36",
+    "Dx.StatusCELIAC:onset_timeline_combinedt0-over42"
+  )
+  
+  timepoint_names <- c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")
+  
+  timepoint_results <- list()
+  
+  for(i in 1:length(timepoint_patterns)) {
+    pattern <- timepoint_patterns[i]
+    timepoint <- timepoint_names[i]
+    
+    # Extract results for this timepoint
+    timepoint_data <- model_results %>%
+      filter(grepl(pattern, term)) %>%
+      mutate(
+        timepoint = timepoint,
+        model = model_name,
+        cohort = cohort_name,
+        analysis_type = analysis_type,
+        significant = if("p.value" %in% names(.)) p.value < 0.05 else 
+                     if("adj.P.Val" %in% names(.)) adj.P.Val < 0.05 else FALSE
+      )
+    
+    if(nrow(timepoint_data) > 0) {
+      timepoint_results[[timepoint]] <- timepoint_data
+    }
+  }
+  
+  # Combine all timepoints
+  if(length(timepoint_results) > 0) {
+    combined_results <- do.call(rbind, timepoint_results)
+    return(combined_results)
+  } else {
+    return(NULL)
+  }
+}
+
+# Function to create summary statistics for each timepoint
+create_timepoint_summary <- function(timepoint_results) {
+  if(is.null(timepoint_results) || nrow(timepoint_results) == 0) {
+    return(NULL)
+  }
+  
+  summary_stats <- timepoint_results %>%
+    group_by(cohort, model, analysis_type, timepoint) %>%
+    summarise(
+      total_contigs_tested = n(),
+      significant_contigs = sum(significant, na.rm = TRUE),
+      prop_significant = significant_contigs / total_contigs_tested,
+      
+      # Effect size summaries
+      mean_estimate = if("estimate" %in% names(.)) mean(estimate, na.rm = TRUE) else
+                     if("logFC" %in% names(.)) mean(logFC, na.rm = TRUE) else NA,
+      median_estimate = if("estimate" %in% names(.)) median(estimate, na.rm = TRUE) else
+                       if("logFC" %in% names(.)) median(logFC, na.rm = TRUE) else NA,
+      
+      # P-value summaries  
+      mean_pvalue = if("p.value" %in% names(.)) mean(p.value, na.rm = TRUE) else
+                   if("P.Value" %in% names(.)) mean(P.Value, na.rm = TRUE) else
+                   if("adj.P.Val" %in% names(.)) mean(adj.P.Val, na.rm = TRUE) else NA,
+      
+      .groups = 'drop'
+    )
+  
+  return(summary_stats)
+}
+```
+
+### PA Models - Timepoint-specific Results
+
+```{r PA_timepoint_results}
+# Extract timepoint results for all PA models
+
+# Total cohort PA models
+if(exists("total_glmmTMB_logit_results")) {
+  total_PA_glmmTMB_logit_timepoints <- extract_timepoint_results(
+    total_glmmTMB_logit_results, "glmmTMB_logit", "total", "PA"
+  )
+  if(!is.null(total_PA_glmmTMB_logit_timepoints)) {
+    write.csv(total_PA_glmmTMB_logit_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_PA_glmmTMB_logit_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_glmmTMB_cloglog_results")) {
+  total_PA_glmmTMB_cloglog_timepoints <- extract_timepoint_results(
+    total_glmmTMB_cloglog_results, "glmmTMB_cloglog", "total", "PA"
+  )
+  if(!is.null(total_PA_glmmTMB_cloglog_timepoints)) {
+    write.csv(total_PA_glmmTMB_cloglog_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_PA_glmmTMB_cloglog_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_glmer_results")) {
+  total_PA_glmer_timepoints <- extract_timepoint_results(
+    total_glmer_results, "glmer", "total", "PA"
+  )
+  if(!is.null(total_PA_glmer_timepoints)) {
+    write.csv(total_PA_glmer_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_PA_glmer_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_gee_results")) {
+  total_PA_gee_timepoints <- extract_timepoint_results(
+    total_gee_results, "GEE", "total", "PA"
+  )
+  if(!is.null(total_PA_gee_timepoints)) {
+    write.csv(total_PA_gee_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_PA_GEE_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_brms_results")) {
+  total_PA_brms_timepoints <- extract_timepoint_results(
+    total_brms_results, "brms", "total", "PA"
+  )
+  if(!is.null(total_PA_brms_timepoints)) {
+    write.csv(total_PA_brms_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_PA_brms_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+# US cohort PA models
+if(exists("US_glmmTMB_logit_results")) {
+  US_PA_glmmTMB_logit_timepoints <- extract_timepoint_results(
+    US_glmmTMB_logit_results, "glmmTMB_logit", "US", "PA"
+  )
+  if(!is.null(US_PA_glmmTMB_logit_timepoints)) {
+    write.csv(US_PA_glmmTMB_logit_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_PA_glmmTMB_logit_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_glmmTMB_cloglog_results")) {
+  US_PA_glmmTMB_cloglog_timepoints <- extract_timepoint_results(
+    US_glmmTMB_cloglog_results, "glmmTMB_cloglog", "US", "PA"
+  )
+  if(!is.null(US_PA_glmmTMB_cloglog_timepoints)) {
+    write.csv(US_PA_glmmTMB_cloglog_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_PA_glmmTMB_cloglog_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_glmer_results")) {
+  US_PA_glmer_timepoints <- extract_timepoint_results(
+    US_glmer_results, "glmer", "US", "PA"
+  )
+  if(!is.null(US_PA_glmer_timepoints)) {
+    write.csv(US_PA_glmer_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_PA_glmer_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_gee_results")) {
+  US_PA_gee_timepoints <- extract_timepoint_results(
+    US_gee_results, "GEE", "US", "PA"
+  )
+  if(!is.null(US_PA_gee_timepoints)) {
+    write.csv(US_PA_gee_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_PA_GEE_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_brms_results")) {
+  US_PA_brms_timepoints <- extract_timepoint_results(
+    US_brms_results, "brms", "US", "PA"
+  )
+  if(!is.null(US_PA_brms_timepoints)) {
+    write.csv(US_PA_brms_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_PA_brms_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+# Italy cohort PA models
+if(exists("Italy_glmmTMB_logit_results")) {
+  Italy_PA_glmmTMB_logit_timepoints <- extract_timepoint_results(
+    Italy_glmmTMB_logit_results, "glmmTMB_logit", "Italy", "PA"
+  )
+  if(!is.null(Italy_PA_glmmTMB_logit_timepoints)) {
+    write.csv(Italy_PA_glmmTMB_logit_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_PA_glmmTMB_logit_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_glmmTMB_cloglog_results")) {
+  Italy_PA_glmmTMB_cloglog_timepoints <- extract_timepoint_results(
+    Italy_glmmTMB_cloglog_results, "glmmTMB_cloglog", "Italy", "PA"
+  )
+  if(!is.null(Italy_PA_glmmTMB_cloglog_timepoints)) {
+    write.csv(Italy_PA_glmmTMB_cloglog_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_PA_glmmTMB_cloglog_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_glmer_results")) {
+  Italy_PA_glmer_timepoints <- extract_timepoint_results(
+    Italy_glmer_results, "glmer", "Italy", "PA"
+  )
+  if(!is.null(Italy_PA_glmer_timepoints)) {
+    write.csv(Italy_PA_glmer_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_PA_glmer_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_gee_results")) {
+  Italy_PA_gee_timepoints <- extract_timepoint_results(
+    Italy_gee_results, "GEE", "Italy", "PA"
+  )
+  if(!is.null(Italy_PA_gee_timepoints)) {
+    write.csv(Italy_PA_gee_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_PA_GEE_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_brms_results")) {
+  Italy_PA_brms_timepoints <- extract_timepoint_results(
+    Italy_brms_results, "brms", "Italy", "PA"
+  )
+  if(!is.null(Italy_PA_brms_timepoints)) {
+    write.csv(Italy_PA_brms_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_PA_brms_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+```
+
+### Abundance Models - Timepoint-specific Results
+
+```{r abundance_timepoint_results}
+# Extract timepoint results for all abundance models
+
+# Total cohort abundance models
+if(exists("total_nb_results")) {
+  total_abundance_nb_timepoints <- extract_timepoint_results(
+    total_nb_results, "negative_binomial", "total", "abundance"
+  )
+  if(!is.null(total_abundance_nb_timepoints)) {
+    write.csv(total_abundance_nb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_abundance_NB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_hurdle_results")) {
+  total_abundance_hurdle_timepoints <- extract_timepoint_results(
+    total_hurdle_results, "hurdle_NB", "total", "abundance"
+  )
+  if(!is.null(total_abundance_hurdle_timepoints)) {
+    write.csv(total_abundance_hurdle_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_abundance_hurdle_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_zinb_results")) {
+  total_abundance_zinb_timepoints <- extract_timepoint_results(
+    total_zinb_results, "zero_inflated_NB", "total", "abundance"
+  )
+  if(!is.null(total_abundance_zinb_timepoints)) {
+    write.csv(total_abundance_zinb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_abundance_ZINB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("total_voom_results")) {
+  total_abundance_voom_timepoints <- extract_timepoint_results(
+    total_voom_results, "limma_voom", "total", "abundance"
+  )
+  if(!is.null(total_abundance_voom_timepoints)) {
+    write.csv(total_abundance_voom_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/total_abundance_voom_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+# US cohort abundance models
+if(exists("US_nb_results")) {
+  US_abundance_nb_timepoints <- extract_timepoint_results(
+    US_nb_results, "negative_binomial", "US", "abundance"
+  )
+  if(!is.null(US_abundance_nb_timepoints)) {
+    write.csv(US_abundance_nb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_abundance_NB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_hurdle_results")) {
+  US_abundance_hurdle_timepoints <- extract_timepoint_results(
+    US_hurdle_results, "hurdle_NB", "US", "abundance"
+  )
+  if(!is.null(US_abundance_hurdle_timepoints)) {
+    write.csv(US_abundance_hurdle_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_abundance_hurdle_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_zinb_results")) {
+  US_abundance_zinb_timepoints <- extract_timepoint_results(
+    US_zinb_results, "zero_inflated_NB", "US", "abundance"
+  )
+  if(!is.null(US_abundance_zinb_timepoints)) {
+    write.csv(US_abundance_zinb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_abundance_ZINB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("US_voom_results")) {
+  US_abundance_voom_timepoints <- extract_timepoint_results(
+    US_voom_results, "limma_voom", "US", "abundance"
+  )
+  if(!is.null(US_abundance_voom_timepoints)) {
+    write.csv(US_abundance_voom_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/US_abundance_voom_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+# Italy cohort abundance models
+if(exists("Italy_nb_results")) {
+  Italy_abundance_nb_timepoints <- extract_timepoint_results(
+    Italy_nb_results, "negative_binomial", "Italy", "abundance"
+  )
+  if(!is.null(Italy_abundance_nb_timepoints)) {
+    write.csv(Italy_abundance_nb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_abundance_NB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_hurdle_results")) {
+  Italy_abundance_hurdle_timepoints <- extract_timepoint_results(
+    Italy_hurdle_results, "hurdle_NB", "Italy", "abundance"
+  )
+  if(!is.null(Italy_abundance_hurdle_timepoints)) {
+    write.csv(Italy_abundance_hurdle_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_abundance_hurdle_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_zinb_results")) {
+  Italy_abundance_zinb_timepoints <- extract_timepoint_results(
+    Italy_zinb_results, "zero_inflated_NB", "Italy", "abundance"
+  )
+  if(!is.null(Italy_abundance_zinb_timepoints)) {
+    write.csv(Italy_abundance_zinb_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_abundance_ZINB_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+
+if(exists("Italy_voom_results")) {
+  Italy_abundance_voom_timepoints <- extract_timepoint_results(
+    Italy_voom_results, "limma_voom", "Italy", "abundance"
+  )
+  if(!is.null(Italy_abundance_voom_timepoints)) {
+    write.csv(Italy_abundance_voom_timepoints, 
+             "../Orf_Contig_Phrog_compositional/results/Italy_abundance_voom_timepoint_results.csv", 
+             row.names = FALSE)
+  }
+}
+```
+
+### Create Summary Statistics for All Timepoint Results
+
+```{r timepoint_summary_stats}
+# Collect all timepoint results and create comprehensive summaries
+
+# Collect PA timepoint results
+all_PA_timepoint_results <- list()
+if(exists("total_PA_glmmTMB_logit_timepoints")) all_PA_timepoint_results[["total_glmmTMB_logit"]] <- total_PA_glmmTMB_logit_timepoints
+if(exists("total_PA_glmmTMB_cloglog_timepoints")) all_PA_timepoint_results[["total_glmmTMB_cloglog"]] <- total_PA_glmmTMB_cloglog_timepoints
+if(exists("total_PA_glmer_timepoints")) all_PA_timepoint_results[["total_glmer"]] <- total_PA_glmer_timepoints
+if(exists("total_PA_gee_timepoints")) all_PA_timepoint_results[["total_gee"]] <- total_PA_gee_timepoints
+if(exists("total_PA_brms_timepoints")) all_PA_timepoint_results[["total_brms"]] <- total_PA_brms_timepoints
+
+if(exists("US_PA_glmmTMB_logit_timepoints")) all_PA_timepoint_results[["US_glmmTMB_logit"]] <- US_PA_glmmTMB_logit_timepoints
+if(exists("US_PA_glmmTMB_cloglog_timepoints")) all_PA_timepoint_results[["US_glmmTMB_cloglog"]] <- US_PA_glmmTMB_cloglog_timepoints
+if(exists("US_PA_glmer_timepoints")) all_PA_timepoint_results[["US_glmer"]] <- US_PA_glmer_timepoints
+if(exists("US_PA_gee_timepoints")) all_PA_timepoint_results[["US_gee"]] <- US_PA_gee_timepoints
+if(exists("US_PA_brms_timepoints")) all_PA_timepoint_results[["US_brms"]] <- US_PA_brms_timepoints
+
+if(exists("Italy_PA_glmmTMB_logit_timepoints")) all_PA_timepoint_results[["Italy_glmmTMB_logit"]] <- Italy_PA_glmmTMB_logit_timepoints
+if(exists("Italy_PA_glmmTMB_cloglog_timepoints")) all_PA_timepoint_results[["Italy_glmmTMB_cloglog"]] <- Italy_PA_glmmTMB_cloglog_timepoints
+if(exists("Italy_PA_glmer_timepoints")) all_PA_timepoint_results[["Italy_glmer"]] <- Italy_PA_glmer_timepoints
+if(exists("Italy_PA_gee_timepoints")) all_PA_timepoint_results[["Italy_gee"]] <- Italy_PA_gee_timepoints
+if(exists("Italy_PA_brms_timepoints")) all_PA_timepoint_results[["Italy_brms"]] <- Italy_PA_brms_timepoints
+
+# Collect abundance timepoint results
+all_abundance_timepoint_results <- list()
+if(exists("total_abundance_nb_timepoints")) all_abundance_timepoint_results[["total_NB"]] <- total_abundance_nb_timepoints
+if(exists("total_abundance_hurdle_timepoints")) all_abundance_timepoint_results[["total_hurdle"]] <- total_abundance_hurdle_timepoints
+if(exists("total_abundance_zinb_timepoints")) all_abundance_timepoint_results[["total_ZINB"]] <- total_abundance_zinb_timepoints
+if(exists("total_abundance_voom_timepoints")) all_abundance_timepoint_results[["total_voom"]] <- total_abundance_voom_timepoints
+
+if(exists("US_abundance_nb_timepoints")) all_abundance_timepoint_results[["US_NB"]] <- US_abundance_nb_timepoints
+if(exists("US_abundance_hurdle_timepoints")) all_abundance_timepoint_results[["US_hurdle"]] <- US_abundance_hurdle_timepoints
+if(exists("US_abundance_zinb_timepoints")) all_abundance_timepoint_results[["US_ZINB"]] <- US_abundance_zinb_timepoints
+if(exists("US_abundance_voom_timepoints")) all_abundance_timepoint_results[["US_voom"]] <- US_abundance_voom_timepoints
+
+if(exists("Italy_abundance_nb_timepoints")) all_abundance_timepoint_results[["Italy_NB"]] <- Italy_abundance_nb_timepoints
+if(exists("Italy_abundance_hurdle_timepoints")) all_abundance_timepoint_results[["Italy_hurdle"]] <- Italy_abundance_hurdle_timepoints
+if(exists("Italy_abundance_zinb_timepoints")) all_abundance_timepoint_results[["Italy_ZINB"]] <- Italy_abundance_zinb_timepoints
+if(exists("Italy_abundance_voom_timepoints")) all_abundance_timepoint_results[["Italy_voom"]] <- Italy_abundance_voom_timepoints
+
+# Create summary statistics for PA models
+if(length(all_PA_timepoint_results) > 0) {
+  PA_summary_list <- lapply(all_PA_timepoint_results, create_timepoint_summary)
+  PA_summary_combined <- do.call(rbind, PA_summary_list[!sapply(PA_summary_list, is.null)])
+  
+  if(nrow(PA_summary_combined) > 0) {
+    write.csv(PA_summary_combined, 
+             "../Orf_Contig_Phrog_compositional/results/PA_timepoint_summary_all_models.csv", 
+             row.names = FALSE)
+  }
+}
+
+# Create summary statistics for abundance models
+if(length(all_abundance_timepoint_results) > 0) {
+  abundance_summary_list <- lapply(all_abundance_timepoint_results, create_timepoint_summary)
+  abundance_summary_combined <- do.call(rbind, abundance_summary_list[!sapply(abundance_summary_list, is.null)])
+  
+  if(nrow(abundance_summary_combined) > 0) {
+    write.csv(abundance_summary_combined, 
+             "../Orf_Contig_Phrog_compositional/results/abundance_timepoint_summary_all_models.csv", 
+             row.names = FALSE)
+  }
+}
+
+# Create overall combined summary
+if(exists("PA_summary_combined") && exists("abundance_summary_combined")) {
+  overall_timepoint_summary <- rbind(PA_summary_combined, abundance_summary_combined)
+  write.csv(overall_timepoint_summary, 
+           "../Orf_Contig_Phrog_compositional/results/overall_timepoint_summary_all_models.csv", 
+           row.names = FALSE)
+}
+```
+
+# Compositional and Trajectory-Based Analysis
+
+## 1. Trajectory-Based Analysis
+
+### Total cohort - Trajectory Analysis
+```{r trajectory_analysis_total}
+library(vegan)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+
+# Calculate diversity metrics for each sample
+calculate_diversity_metrics <- function(abundance_data, metadata) {
+  diversity_results <- data.frame(
+    sample_id = colnames(abundance_data),
+    shannon = apply(abundance_data, 2, function(x) diversity(x, index = "shannon")),
+    simpson = apply(abundance_data, 2, function(x) diversity(x, index = "simpson")),
+    richness = apply(abundance_data, 2, function(x) sum(x > 0)),
+    evenness = apply(abundance_data, 2, function(x) {
+      H <- diversity(x, index = "shannon")
+      S <- sum(x > 0)
+      if(S <= 1) return(0)
+      H / log(S)
+    }),
+    total_abundance = colSums(abundance_data)
+  )
+  
+  # Merge with metadata
+  diversity_results <- diversity_results %>%
+    left_join(metadata %>% rownames_to_column("sample_id"), by = "sample_id")
+  
+  return(diversity_results)
+}
+
+# Calculate diversity metrics for total cohort
+total_diversity <- calculate_diversity_metrics(total.contig.abundance.clean_0.75_0.03, 
+                                              total.contig.metadata.clean_0.75_0.03)
+
+# Calculate individual trajectory slopes
+calculate_individual_slopes <- function(diversity_data) {
+  slopes_results <- diversity_data %>%
+    group_by(patientID) %>%
+    summarise(
+      n_timepoints = n(),
+      shannon_slope = if(n() >= 2) coef(lm(shannon ~ onset_timeline_combined_numeric))[2] else NA,
+      simpson_slope = if(n() >= 2) coef(lm(simpson ~ onset_timeline_combined_numeric))[2] else NA,
+      richness_slope = if(n() >= 2) coef(lm(richness ~ onset_timeline_combined_numeric))[2] else NA,
+      evenness_slope = if(n() >= 2) coef(lm(evenness ~ onset_timeline_combined_numeric))[2] else NA,
+      abundance_slope = if(n() >= 2) coef(lm(total_abundance ~ onset_timeline_combined_numeric))[2] else NA,
+      Dx.Status = first(Dx.Status),
+      .groups = 'drop'
+    )
+  return(slopes_results)
+}
+
+# Convert onset timeline to numeric for slope calculations
+total_diversity$onset_timeline_combined_numeric <- as.numeric(factor(total_diversity$onset_timeline_combined,
+  levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+# Calculate slopes for total cohort
+total_slopes <- calculate_individual_slopes(total_diversity)
+
+# Save results
+write.csv(total_diversity, "../Orf_Contig_Phrog_compositional/results/total_diversity_metrics.csv", row.names = FALSE)
+write.csv(total_slopes, "../Orf_Contig_Phrog_compositional/results/total_individual_slopes.csv", row.names = FALSE)
+
+# Calculate turnover rates (Bray-Curtis dissimilarity between consecutive timepoints)
+calculate_turnover_rates <- function(abundance_data, metadata) {
+  turnover_results <- metadata %>%
+    rownames_to_column("sample_id") %>%
+    arrange(patientID, onset_timeline_combined_numeric) %>%
+    group_by(patientID) %>%
+    mutate(
+      next_sample = lead(sample_id),
+      time_diff = lead(onset_timeline_combined_numeric) - onset_timeline_combined_numeric
+    ) %>%
+    filter(!is.na(next_sample)) %>%
+    rowwise() %>%
+    mutate(
+      bray_curtis_turnover = vegdist(rbind(abundance_data[, sample_id], 
+                                          abundance_data[, next_sample]), 
+                                    method = "bray")[1]
+    ) %>%
+    ungroup()
+  
+  return(turnover_results)
+}
+
+# Add numeric timeline to metadata
+total.contig.metadata.clean_0.75_0.03$onset_timeline_combined_numeric <- 
+  as.numeric(factor(total.contig.metadata.clean_0.75_0.03$onset_timeline_combined,
+    levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+total_turnover <- calculate_turnover_rates(total.contig.abundance.clean_0.75_0.03, 
+                                          total.contig.metadata.clean_0.75_0.03)
+
+write.csv(total_turnover, "../Orf_Contig_Phrog_compositional/results/total_turnover_rates.csv", row.names = FALSE)
+```
+
+### US cohort - Trajectory Analysis
+```{r trajectory_analysis_US}
+# Calculate diversity metrics for US cohort
+US_diversity <- calculate_diversity_metrics(US.contig.abundance.clean_0.75_0.03, 
+                                           US.contig.metadata.clean_0.75_0.03)
+
+# Convert onset timeline to numeric
+US_diversity$onset_timeline_combined_numeric <- as.numeric(factor(US_diversity$onset_timeline_combined,
+  levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+# Calculate slopes for US cohort
+US_slopes <- calculate_individual_slopes(US_diversity)
+
+# Save results
+write.csv(US_diversity, "../Orf_Contig_Phrog_compositional/results/US_diversity_metrics.csv", row.names = FALSE)
+write.csv(US_slopes, "../Orf_Contig_Phrog_compositional/results/US_individual_slopes.csv", row.names = FALSE)
+
+# Calculate turnover rates
+US.contig.metadata.clean_0.75_0.03$onset_timeline_combined_numeric <- 
+  as.numeric(factor(US.contig.metadata.clean_0.75_0.03$onset_timeline_combined,
+    levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+US_turnover <- calculate_turnover_rates(US.contig.abundance.clean_0.75_0.03, 
+                                       US.contig.metadata.clean_0.75_0.03)
+
+write.csv(US_turnover, "../Orf_Contig_Phrog_compositional/results/US_turnover_rates.csv", row.names = FALSE)
+```
+
+### Italy cohort - Trajectory Analysis
+```{r trajectory_analysis_Italy}
+# Calculate diversity metrics for Italy cohort
+Italy_diversity <- calculate_diversity_metrics(Italy.contig.abundance.clean_0.75_0.03, 
+                                              Italy.contig.metadata.clean_0.75_0.03)
+
+# Convert onset timeline to numeric
+Italy_diversity$onset_timeline_combined_numeric <- as.numeric(factor(Italy_diversity$onset_timeline_combined,
+  levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+# Calculate slopes for Italy cohort
+Italy_slopes <- calculate_individual_slopes(Italy_diversity)
+
+# Save results
+write.csv(Italy_diversity, "../Orf_Contig_Phrog_compositional/results/Italy_diversity_metrics.csv", row.names = FALSE)
+write.csv(Italy_slopes, "../Orf_Contig_Phrog_compositional/results/Italy_individual_slopes.csv", row.names = FALSE)
+
+# Calculate turnover rates
+Italy.contig.metadata.clean_0.75_0.03$onset_timeline_combined_numeric <- 
+  as.numeric(factor(Italy.contig.metadata.clean_0.75_0.03$onset_timeline_combined,
+    levels = c("t0", "t0-6", "t0-12", "t0-18", "t0-24", "t0-30", "t0-36", "t0-over42")))
+
+Italy_turnover <- calculate_turnover_rates(Italy.contig.abundance.clean_0.75_0.03, 
+                                          Italy.contig.metadata.clean_0.75_0.03)
+
+write.csv(Italy_turnover, "../Orf_Contig_Phrog_compositional/results/Italy_turnover_rates.csv", row.names = FALSE)
+```
+
+## 2. Individual Ecosystem Characterization
+
+### Stability and Perturbation Analysis
+```{r ecosystem_characterization}
+# Function to calculate ecosystem stability metrics
+calculate_stability_metrics <- function(diversity_data) {
+  stability_results <- diversity_data %>%
+    group_by(patientID) %>%
+    summarise(
+      n_timepoints = n(),
+      # Coefficient of variation (CV) as stability measure
+      shannon_cv = if(n() >= 2) sd(shannon, na.rm = TRUE) / mean(shannon, na.rm = TRUE) else NA,
+      simpson_cv = if(n() >= 2) sd(simpson, na.rm = TRUE) / mean(simpson, na.rm = TRUE) else NA,
+      richness_cv = if(n() >= 2) sd(richness, na.rm = TRUE) / mean(richness, na.rm = TRUE) else NA,
+      abundance_cv = if(n() >= 2) sd(total_abundance, na.rm = TRUE) / mean(total_abundance, na.rm = TRUE) else NA,
+      
+      # Mean and variance
+      shannon_mean = mean(shannon, na.rm = TRUE),
+      shannon_var = var(shannon, na.rm = TRUE),
+      simpson_mean = mean(simpson, na.rm = TRUE),
+      simpson_var = var(simpson, na.rm = TRUE),
+      richness_mean = mean(richness, na.rm = TRUE),
+      richness_var = var(richness, na.rm = TRUE),
+      
+      # Range (max - min) as variability measure
+      shannon_range = max(shannon, na.rm = TRUE) - min(shannon, na.rm = TRUE),
+      simpson_range = max(simpson, na.rm = TRUE) - min(simpson, na.rm = TRUE),
+      richness_range = max(richness, na.rm = TRUE) - min(richness, na.rm = TRUE),
+      
+      Dx.Status = first(Dx.Status),
+      .groups = 'drop'
+    )
+  return(stability_results)
+}
+
+# Calculate stability metrics for all cohorts
+total_stability <- calculate_stability_metrics(total_diversity)
+US_stability <- calculate_stability_metrics(US_diversity)
+Italy_stability <- calculate_stability_metrics(Italy_diversity)
+
+# Save stability results
+write.csv(total_stability, "../Orf_Contig_Phrog_compositional/results/total_stability_metrics.csv", row.names = FALSE)
+write.csv(US_stability, "../Orf_Contig_Phrog_compositional/results/US_stability_metrics.csv", row.names = FALSE)
+write.csv(Italy_stability, "../Orf_Contig_Phrog_compositional/results/Italy_stability_metrics.csv", row.names = FALSE)
+
+# Host-range diversity analysis (based on contig diversity)
+calculate_host_range_metrics <- function(abundance_data, metadata) {
+  host_range_results <- metadata %>%
+    rownames_to_column("sample_id") %>%
+    rowwise() %>%
+    mutate(
+      # Effective number of contigs (exponential of Shannon diversity)
+      effective_contigs = exp(diversity(abundance_data[, sample_id], index = "shannon")),
+      # Dominance (proportion of most abundant contig)
+      max_proportion = max(abundance_data[, sample_id]) / sum(abundance_data[, sample_id]),
+      # Breadth (proportion of non-zero contigs)
+      breadth = sum(abundance_data[, sample_id] > 0) / nrow(abundance_data)
+    ) %>%
+    ungroup()
+  
+  return(host_range_results)
+}
+
+# Calculate host-range metrics
+total_host_range <- calculate_host_range_metrics(total.contig.abundance.clean_0.75_0.03, 
+                                                total.contig.metadata.clean_0.75_0.03)
+US_host_range <- calculate_host_range_metrics(US.contig.abundance.clean_0.75_0.03, 
+                                             US.contig.metadata.clean_0.75_0.03)
+Italy_host_range <- calculate_host_range_metrics(Italy.contig.abundance.clean_0.75_0.03, 
+                                                Italy.contig.metadata.clean_0.75_0.03)
+
+# Save host-range results
+write.csv(total_host_range, "../Orf_Contig_Phrog_compositional/results/total_host_range_metrics.csv", row.names = FALSE)
+write.csv(US_host_range, "../Orf_Contig_Phrog_compositional/results/US_host_range_metrics.csv", row.names = FALSE)
+write.csv(Italy_host_range, "../Orf_Contig_Phrog_compositional/results/Italy_host_range_metrics.csv", row.names = FALSE)
+```
+
+## 3. Cross-Individual Pattern Recognition
+
+### Trajectory Clustering Analysis
+```{r trajectory_clustering}
+library(cluster)
+library(factoextra)
+
+# Function to perform trajectory clustering
+perform_trajectory_clustering <- function(slopes_data, stability_data, cohort_name) {
+  # Combine slope and stability data
+  clustering_data <- slopes_data %>%
+    left_join(stability_data, by = c("patientID", "Dx.Status")) %>%
+    select(patientID, Dx.Status, ends_with("_slope"), ends_with("_cv")) %>%
+    column_to_rownames("patientID")
+  
+  # Remove rows with too many missing values
+  clustering_data_clean <- clustering_data[rowSums(is.na(clustering_data)) < ncol(clustering_data) * 0.5, ]
+  
+  # Impute remaining missing values with median
+  for(col in names(clustering_data_clean)) {
+    if(is.numeric(clustering_data_clean[[col]])) {
+      clustering_data_clean[[col]][is.na(clustering_data_clean[[col]])] <- 
+        median(clustering_data_clean[[col]], na.rm = TRUE)
+    }
+  }
+  
+  # Scale the data
+  numeric_data <- clustering_data_clean %>% select(-Dx.Status)
+  scaled_data <- scale(numeric_data)
+  
+  # Determine optimal number of clusters
+  if(nrow(scaled_data) >= 4) {
+    # Silhouette method
+    sil_scores <- c()
+    for(k in 2:min(8, nrow(scaled_data)-1)) {
+      km <- kmeans(scaled_data, centers = k, nstart = 25)
+      sil <- silhouette(km$cluster, dist(scaled_data))
+      sil_scores[k-1] <- mean(sil[, 3])
+    }
+    optimal_k <- which.max(sil_scores) + 1
+    
+    # Perform final clustering
+    final_clustering <- kmeans(scaled_data, centers = optimal_k, nstart = 25)
+    
+    # Add cluster assignments back to data
+    clustering_results <- clustering_data_clean %>%
+      rownames_to_column("patientID") %>%
+      mutate(
+        cluster = final_clustering$cluster,
+        cohort = cohort_name
+      )
+    
+    return(list(
+      clustering_results = clustering_results,
+      cluster_centers = final_clustering$centers,
+      optimal_k = optimal_k,
+      silhouette_scores = sil_scores
+    ))
+  } else {
+    return(NULL)
+  }
+}
+
+# Perform trajectory clustering for each cohort
+total_clustering <- perform_trajectory_clustering(total_slopes, total_stability, "total")
+US_clustering <- perform_trajectory_clustering(US_slopes, US_stability, "US")
+Italy_clustering <- perform_trajectory_clustering(Italy_slopes, Italy_stability, "Italy")
+
+# Save clustering results
+if(!is.null(total_clustering)) {
+  write.csv(total_clustering$clustering_results, 
+           "../Orf_Contig_Phrog_compositional/results/total_trajectory_clusters.csv", row.names = FALSE)
+}
+if(!is.null(US_clustering)) {
+  write.csv(US_clustering$clustering_results, 
+           "../Orf_Contig_Phrog_compositional/results/US_trajectory_clusters.csv", row.names = FALSE)
+}
+if(!is.null(Italy_clustering)) {
+  write.csv(Italy_clustering$clustering_results, 
+           "../Orf_Contig_Phrog_compositional/results/Italy_trajectory_clusters.csv", row.names = FALSE)
+}
+```
+
+### Timing Analysis
+```{r timing_analysis}
+# Function to analyze timing patterns
+analyze_timing_patterns <- function(diversity_data, turnover_data, cohort_name) {
+  # Calculate critical transition points (large changes in diversity)
+  critical_transitions <- diversity_data %>%
+    arrange(patientID, onset_timeline_combined_numeric) %>%
+    group_by(patientID) %>%
+    mutate(
+      shannon_change = c(0, diff(shannon)),
+      simpson_change = c(0, diff(simpson)),
+      richness_change = c(0, diff(richness)),
+      large_shannon_change = abs(shannon_change) > quantile(abs(shannon_change), 0.75, na.rm = TRUE),
+      large_simpson_change = abs(simpson_change) > quantile(abs(simpson_change), 0.75, na.rm = TRUE),
+      large_richness_change = abs(richness_change) > quantile(abs(richness_change), 0.75, na.rm = TRUE)
+    ) %>%
+    filter(large_shannon_change | large_simpson_change | large_richness_change) %>%
+    mutate(cohort = cohort_name)
+  
+  # Timing relative to celiac onset analysis
+  timing_summary <- diversity_data %>%
+    group_by(Dx.Status, onset_timeline_combined) %>%
+    summarise(
+      n_individuals = n(),
+      mean_shannon = mean(shannon, na.rm = TRUE),
+      sd_shannon = sd(shannon, na.rm = TRUE),
+      mean_simpson = mean(simpson, na.rm = TRUE),
+      sd_simpson = sd(simpson, na.rm = TRUE),
+      mean_richness = mean(richness, na.rm = TRUE),
+      sd_richness = sd(richness, na.rm = TRUE),
+      .groups = 'drop'
+    ) %>%
+    mutate(cohort = cohort_name)
+  
+  return(list(
+    critical_transitions = critical_transitions,
+    timing_summary = timing_summary
+  ))
+}
+
+# Analyze timing patterns for all cohorts
+total_timing <- analyze_timing_patterns(total_diversity, total_turnover, "total")
+US_timing <- analyze_timing_patterns(US_diversity, US_turnover, "US")
+Italy_timing <- analyze_timing_patterns(Italy_diversity, Italy_turnover, "Italy")
+
+# Save timing analysis results
+write.csv(total_timing$critical_transitions, 
+         "../Orf_Contig_Phrog_compositional/results/total_critical_transitions.csv", row.names = FALSE)
+write.csv(total_timing$timing_summary, 
+         "../Orf_Contig_Phrog_compositional/results/total_timing_summary.csv", row.names = FALSE)
+
+write.csv(US_timing$critical_transitions, 
+         "../Orf_Contig_Phrog_compositional/results/US_critical_transitions.csv", row.names = FALSE)
+write.csv(US_timing$timing_summary, 
+         "../Orf_Contig_Phrog_compositional/results/US_timing_summary.csv", row.names = FALSE)
+
+write.csv(Italy_timing$critical_transitions, 
+         "../Orf_Contig_Phrog_compositional/results/Italy_critical_transitions.csv", row.names = FALSE)
+write.csv(Italy_timing$timing_summary, 
+         "../Orf_Contig_Phrog_compositional/results/Italy_timing_summary.csv", row.names = FALSE)
+```
+
+### Meta-analysis Across Cohorts
+```{r meta_analysis}
+# Combine results across cohorts for meta-analysis
+combined_slopes <- rbind(
+  total_slopes %>% mutate(cohort = "total"),
+  US_slopes %>% mutate(cohort = "US"),
+  Italy_slopes %>% mutate(cohort = "Italy")
+)
+
+combined_stability <- rbind(
+  total_stability %>% mutate(cohort = "total"),
+  US_stability %>% mutate(cohort = "US"),
+  Italy_stability %>% mutate(cohort = "Italy")
+)
+
+combined_timing_summary <- rbind(
+  total_timing$timing_summary,
+  US_timing$timing_summary,
+  Italy_timing$timing_summary
+)
+
+# Cross-cohort pattern analysis
+cross_cohort_patterns <- combined_slopes %>%
+  group_by(Dx.Status) %>%
+  summarise(
+    across(ends_with("_slope"), list(mean = ~mean(.x, na.rm = TRUE), 
+                                    sd = ~sd(.x, na.rm = TRUE),
+                                    median = ~median(.x, na.rm = TRUE))),
+    n_individuals = n(),
+    .groups = 'drop'
+  )
+
+# Save meta-analysis results
+write.csv(combined_slopes, "../Orf_Contig_Phrog_compositional/results/combined_slopes_all_cohorts.csv", row.names = FALSE)
+write.csv(combined_stability, "../Orf_Contig_Phrog_compositional/results/combined_stability_all_cohorts.csv", row.names = FALSE)
+write.csv(combined_timing_summary, "../Orf_Contig_Phrog_compositional/results/combined_timing_summary_all_cohorts.csv", row.names = FALSE)
+write.csv(cross_cohort_patterns, "../Orf_Contig_Phrog_compositional/results/cross_cohort_patterns.csv", row.names = FALSE)
+```
+
+## 4. Compositional Analysis Visualizations
+
+### Individual Trajectory Plots
+```{r trajectory_plots}
+library(ggplot2)
+library(patchwork)
+
+# Function to create trajectory plots
+create_trajectory_plots <- function(diversity_data, cohort_name) {
+  
+  # Ensure numeric timeline for plotting
+  diversity_data$timeline_numeric <- as.numeric(factor(diversity_data$onset_timeline_combined,
+    levels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")))
+  
+  # Individual trajectory plots
+  p1 <- ggplot(diversity_data, aes(x = timeline_numeric, y = shannon, group = patientID, color = Dx.Status)) +
+    geom_line(alpha = 0.3) +
+    geom_smooth(aes(group = Dx.Status), method = "loess", se = TRUE, size = 2) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Shannon Diversity Trajectories"), 
+         x = "Time to Celiac Onset", y = "Shannon Diversity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  p2 <- ggplot(diversity_data, aes(x = timeline_numeric, y = simpson, group = patientID, color = Dx.Status)) +
+    geom_line(alpha = 0.3) +
+    geom_smooth(aes(group = Dx.Status), method = "loess", se = TRUE, size = 2) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Simpson Diversity Trajectories"), 
+         x = "Time to Celiac Onset", y = "Simpson Diversity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  p3 <- ggplot(diversity_data, aes(x = timeline_numeric, y = richness, group = patientID, color = Dx.Status)) +
+    geom_line(alpha = 0.3) +
+    geom_smooth(aes(group = Dx.Status), method = "loess", se = TRUE, size = 2) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Richness Trajectories"), 
+         x = "Time to Celiac Onset", y = "Richness") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  p4 <- ggplot(diversity_data, aes(x = timeline_numeric, y = evenness, group = patientID, color = Dx.Status)) +
+    geom_line(alpha = 0.3) +
+    geom_smooth(aes(group = Dx.Status), method = "loess", se = TRUE, size = 2) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Evenness Trajectories"), 
+         x = "Time to Celiac Onset", y = "Evenness") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Combine plots
+  combined_plot <- (p1 + p2) / (p3 + p4)
+  combined_plot <- combined_plot + plot_layout(guides = 'collect')
+  
+  return(list(shannon = p1, simpson = p2, richness = p3, evenness = p4, combined = combined_plot))
+}
+
+# Create trajectory plots for all cohorts
+if(exists("total_diversity")) {
+  total_trajectory_plots <- create_trajectory_plots(total_diversity, "Total")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/total_diversity_trajectories.pdf", 
+         total_trajectory_plots$combined, width = 12, height = 8)
+}
+
+if(exists("US_diversity")) {
+  US_trajectory_plots <- create_trajectory_plots(US_diversity, "US")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/US_diversity_trajectories.pdf", 
+         US_trajectory_plots$combined, width = 12, height = 8)
+}
+
+if(exists("Italy_diversity")) {
+  Italy_trajectory_plots <- create_trajectory_plots(Italy_diversity, "Italy")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/Italy_diversity_trajectories.pdf", 
+         Italy_trajectory_plots$combined, width = 12, height = 8)
+}
+```
+
+### Slope Distribution Plots
+```{r slope_distribution_plots}
+# Function to create slope comparison plots
+create_slope_plots <- function(slopes_data, cohort_name) {
+  
+  # Reshape data for plotting
+  slopes_long <- slopes_data %>%
+    select(patientID, Dx.Status, ends_with("_slope")) %>%
+    pivot_longer(cols = ends_with("_slope"), names_to = "metric", values_to = "slope") %>%
+    mutate(metric = gsub("_slope", "", metric))
+  
+  p1 <- ggplot(slopes_long, aes(x = Dx.Status, y = slope, fill = Dx.Status)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, alpha = 0.8) +
+    facet_wrap(~metric, scales = "free_y") +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    labs(title = paste(cohort_name, "Cohort: Trajectory Slope Distributions"),
+         x = "Disease Status", y = "Slope (Change per Time Unit)") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  return(p1)
+}
+
+# Create slope plots for all cohorts
+if(exists("total_slopes")) {
+  total_slope_plot <- create_slope_plots(total_slopes, "Total")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/total_slope_distributions.pdf", 
+         total_slope_plot, width = 10, height = 6)
+}
+
+if(exists("US_slopes")) {
+  US_slope_plot <- create_slope_plots(US_slopes, "US")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/US_slope_distributions.pdf", 
+         US_slope_plot, width = 10, height = 6)
+}
+
+if(exists("Italy_slopes")) {
+  Italy_slope_plot <- create_slope_plots(Italy_slopes, "Italy")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/Italy_slope_distributions.pdf", 
+         Italy_slope_plot, width = 10, height = 6)
+}
+```
+
+### Stability Comparison Plots
+```{r stability_plots}
+# Function to create stability comparison plots
+create_stability_plots <- function(stability_data, cohort_name) {
+  
+  # Reshape CV data for plotting
+  stability_cv <- stability_data %>%
+    select(patientID, Dx.Status, ends_with("_cv")) %>%
+    pivot_longer(cols = ends_with("_cv"), names_to = "metric", values_to = "cv") %>%
+    mutate(metric = gsub("_cv", "", metric))
+  
+  p1 <- ggplot(stability_cv, aes(x = Dx.Status, y = cv, fill = Dx.Status)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, alpha = 0.8) +
+    facet_wrap(~metric, scales = "free_y") +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    labs(title = paste(cohort_name, "Cohort: Ecosystem Stability (Coefficient of Variation)"),
+         x = "Disease Status", y = "Coefficient of Variation",
+         subtitle = "Higher CV = More Variable/Less Stable") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Reshape range data for plotting
+  stability_range <- stability_data %>%
+    select(patientID, Dx.Status, ends_with("_range")) %>%
+    pivot_longer(cols = ends_with("_range"), names_to = "metric", values_to = "range") %>%
+    mutate(metric = gsub("_range", "", metric))
+  
+  p2 <- ggplot(stability_range, aes(x = Dx.Status, y = range, fill = Dx.Status)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.2, alpha = 0.8) +
+    facet_wrap(~metric, scales = "free_y") +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    labs(title = paste(cohort_name, "Cohort: Ecosystem Variability (Range)"),
+         x = "Disease Status", y = "Range (Max - Min)",
+         subtitle = "Higher Range = More Variable") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  combined_stability <- p1 / p2
+  return(list(cv = p1, range = p2, combined = combined_stability))
+}
+
+# Create stability plots for all cohorts
+if(exists("total_stability")) {
+  total_stability_plots <- create_stability_plots(total_stability, "Total")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/total_stability_comparison.pdf", 
+         total_stability_plots$combined, width = 12, height = 10)
+}
+
+if(exists("US_stability")) {
+  US_stability_plots <- create_stability_plots(US_stability, "US")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/US_stability_comparison.pdf", 
+         US_stability_plots$combined, width = 12, height = 10)
+}
+
+if(exists("Italy_stability")) {
+  Italy_stability_plots <- create_stability_plots(Italy_stability, "Italy")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/Italy_stability_comparison.pdf", 
+         Italy_stability_plots$combined, width = 12, height = 10)
+}
+```
+
+### Trajectory Clustering Visualizations
+```{r clustering_plots}
+library(pheatmap)
+library(RColorBrewer)
+
+# Function to create clustering heatmaps
+create_clustering_heatmap <- function(clustering_results, cohort_name) {
+  if(is.null(clustering_results) || is.null(clustering_results$clustering_results)) {
+    return(NULL)
+  }
+  
+  clustering_data <- clustering_results$clustering_results
+  
+  # Prepare data for heatmap
+  heatmap_data <- clustering_data %>%
+    select(ends_with("_slope"), ends_with("_cv")) %>%
+    as.matrix()
+  
+  rownames(heatmap_data) <- clustering_data$patientID
+  
+  # Create annotation for disease status and clusters
+  annotation_row <- clustering_data %>%
+    select(patientID, Dx.Status, cluster) %>%
+    column_to_rownames("patientID")
+  
+  # Create color palettes
+  ann_colors <- list(
+    Dx.Status = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946"),
+    cluster = rainbow(length(unique(clustering_data$cluster)))
+  )
+  names(ann_colors$cluster) <- unique(clustering_data$cluster)
+  
+  # Create heatmap
+  pheatmap(heatmap_data,
+           annotation_row = annotation_row,
+           annotation_colors = ann_colors,
+           color = colorRampPalette(c("blue", "white", "red"))(100),
+           scale = "column",
+           clustering_distance_rows = "euclidean",
+           clustering_method = "complete",
+           main = paste(cohort_name, "Cohort: Trajectory Clustering"),
+           filename = paste0("../Orf_Contig_Phrog_compositional/figures/", tolower(cohort_name), "_trajectory_clustering_heatmap.pdf"),
+           width = 10, height = 8)
+  
+  return(paste("Heatmap saved for", cohort_name, "cohort"))
+}
+
+# Create clustering heatmaps for all cohorts
+if(exists("total_clustering")) {
+  total_cluster_result <- create_clustering_heatmap(total_clustering, "Total")
+}
+
+if(exists("US_clustering")) {
+  US_cluster_result <- create_clustering_heatmap(US_clustering, "US")
+}
+
+if(exists("Italy_clustering")) {
+  Italy_cluster_result <- create_clustering_heatmap(Italy_clustering, "Italy")
+}
+```
+
+### Timing Analysis Plots
+```{r timing_plots}
+# Function to create timing analysis plots
+create_timing_plots <- function(timing_summary, cohort_name) {
+  
+  # Convert timeline to numeric for plotting
+  timing_summary$timeline_numeric <- as.numeric(factor(timing_summary$onset_timeline_combined,
+    levels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")))
+  
+  p1 <- ggplot(timing_summary, aes(x = timeline_numeric, y = mean_shannon, color = Dx.Status)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    geom_errorbar(aes(ymin = mean_shannon - sd_shannon, ymax = mean_shannon + sd_shannon), 
+                  width = 0.1) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Shannon Diversity Over Time"),
+         x = "Time to Celiac Onset", y = "Mean Shannon Diversity ± SD") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  p2 <- ggplot(timing_summary, aes(x = timeline_numeric, y = mean_simpson, color = Dx.Status)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    geom_errorbar(aes(ymin = mean_simpson - sd_simpson, ymax = mean_simpson + sd_simpson), 
+                  width = 0.1) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Simpson Diversity Over Time"),
+         x = "Time to Celiac Onset", y = "Mean Simpson Diversity ± SD") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  p3 <- ggplot(timing_summary, aes(x = timeline_numeric, y = mean_richness, color = Dx.Status)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    geom_errorbar(aes(ymin = mean_richness - sd_richness, ymax = mean_richness + sd_richness), 
+                  width = 0.1) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Richness Over Time"),
+         x = "Time to Celiac Onset", y = "Mean Richness ± SD") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Sample size plot
+  p4 <- ggplot(timing_summary, aes(x = timeline_numeric, y = n_individuals, fill = Dx.Status)) +
+    geom_bar(stat = "identity", position = "dodge", alpha = 0.8) +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = paste(cohort_name, "Cohort: Sample Sizes by Timepoint"),
+         x = "Time to Celiac Onset", y = "Number of Individuals") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Combine plots
+  combined_timing <- (p1 + p2) / (p3 + p4)
+  combined_timing <- combined_timing + plot_layout(guides = 'collect')
+  
+  return(combined_timing)
+}
+
+# Create timing plots for all cohorts
+if(exists("total_timing")) {
+  total_timing_plot <- create_timing_plots(total_timing$timing_summary, "Total")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/total_timing_analysis.pdf", 
+         total_timing_plot, width = 12, height = 8)
+}
+
+if(exists("US_timing")) {
+  US_timing_plot <- create_timing_plots(US_timing$timing_summary, "US")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/US_timing_analysis.pdf", 
+         US_timing_plot, width = 12, height = 8)
+}
+
+if(exists("Italy_timing")) {
+  Italy_timing_plot <- create_timing_plots(Italy_timing$timing_summary, "Italy")
+  ggsave("../Orf_Contig_Phrog_compositional/figures/Italy_timing_analysis.pdf", 
+         Italy_timing_plot, width = 12, height = 8)
+}
+```
+
+### Cross-Cohort Meta-Analysis Plots
+```{r meta_analysis_plots}
+# Cross-cohort slope comparison
+if(exists("combined_slopes")) {
+  p_meta_slopes <- ggplot(combined_slopes, aes(x = cohort, y = shannon_slope, fill = Dx.Status)) +
+    geom_violin(alpha = 0.7, position = position_dodge(0.8)) +
+    geom_boxplot(width = 0.2, alpha = 0.8, position = position_dodge(0.8)) +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    labs(title = "Cross-Cohort Shannon Diversity Slope Comparison",
+         x = "Cohort", y = "Shannon Diversity Slope") +
+    theme_minimal()
+  
+  ggsave("../Orf_Contig_Phrog_compositional/figures/cross_cohort_slope_comparison.pdf", 
+         p_meta_slopes, width = 10, height = 6)
+}
+
+# Cross-cohort stability comparison
+if(exists("combined_stability")) {
+  p_meta_stability <- ggplot(combined_stability, aes(x = cohort, y = shannon_cv, fill = Dx.Status)) +
+    geom_violin(alpha = 0.7, position = position_dodge(0.8)) +
+    geom_boxplot(width = 0.2, alpha = 0.8, position = position_dodge(0.8)) +
+    scale_fill_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    labs(title = "Cross-Cohort Shannon Diversity Stability Comparison",
+         x = "Cohort", y = "Shannon Diversity CV",
+         subtitle = "Higher CV = Less Stable") +
+    theme_minimal()
+  
+  ggsave("../Orf_Contig_Phrog_compositional/figures/cross_cohort_stability_comparison.pdf", 
+         p_meta_stability, width = 10, height = 6)
+}
+
+# Cross-cohort timing patterns
+if(exists("combined_timing_summary")) {
+  combined_timing_summary$timeline_numeric <- as.numeric(factor(combined_timing_summary$onset_timeline_combined,
+    levels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")))
+  
+  p_meta_timing <- ggplot(combined_timing_summary, aes(x = timeline_numeric, y = mean_shannon, 
+                                                      color = Dx.Status, linetype = cohort)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    scale_color_manual(values = c("CONTROL" = "#2E86AB", "CELIAC" = "#E63946")) +
+    scale_x_continuous(breaks = 1:8, labels = c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")) +
+    labs(title = "Cross-Cohort Shannon Diversity Timing Patterns",
+         x = "Time to Celiac Onset", y = "Mean Shannon Diversity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  ggsave("../Orf_Contig_Phrog_compositional/figures/cross_cohort_timing_patterns.pdf", 
+         p_meta_timing, width = 12, height = 6)
+}
 ```
 
 

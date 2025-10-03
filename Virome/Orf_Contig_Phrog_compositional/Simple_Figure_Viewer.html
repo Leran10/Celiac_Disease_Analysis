@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celiac Phage Analysis - Figure Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .figure-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .figure-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .figure-description {
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .pdf-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        .pdf-link:hover {
+            background: #0056b3;
+        }
+        .category {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        .category h2 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Celiac Disease Phage Analysis - Figure Viewer</h1>
+        
+        <div class="category">
+            <h2>📊 Summary and Overview</h2>
+            
+            <div class="figure-section">
+                <div class="figure-title">Analysis Summary</div>
+                <div class="figure-description">
+                    Bar plot showing the number of model results by cohort and model type. 
+                    Shows that US cohort generated the most results due to larger gene set.
+                </div>
+                <a href="report_figures/analysis_summary_barplot.pdf" class="pdf-link" target="_blank">View Figure</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">Significant Genes Summary</div>
+                <div class="figure-description">
+                    Heatmap showing counts of significant genes by timepoint and model. 
+                    Demonstrates that US cohort shows highest gene counts, Italy minimal.
+                </div>
+                <a href="report_figures/significant_genes_summary_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/significant_genes_summary_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+        </div>
+
+        <div class="category">
+            <h2>🎯 Presence/Absence (PA) Analysis</h2>
+            
+            <div class="figure-section">
+                <div class="figure-title">Total Cohort PA Heatmap</div>
+                <div class="figure-description">
+                    Shows log odds ratios for CELIAC vs CONTROL at different timepoints. 
+                    Red indicates higher presence probability in CELIAC patients, blue indicates lower.
+                    2 genes showed significant timepoint-specific effects.
+                </div>
+                <a href="report_figures/total_PA_model1_glmmTMB_logit_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/total_PA_model1_glmmTMB_logit_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">US Cohort PA Heatmap</div>
+                <div class="figure-description">
+                    US cohort PA results showing 5 genes with significant effects across 2 timepoints.
+                    More robust temporal patterns compared to total cohort.
+                </div>
+                <a href="report_figures/US_PA_model1_glmmTMB_logit_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/US_PA_model1_glmmTMB_logit_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">Combined PA Analysis</div>
+                <div class="figure-description">
+                    Combined PA analysis across all cohorts. Shows 7 unique gene-cohort combinations 
+                    with significant timepoint effects. Gene names include cohort suffix.
+                </div>
+                <a href="report_figures/combined_PA_all_cohorts_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/combined_PA_all_cohorts_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">PA Effect Sizes</div>
+                <div class="figure-description">
+                    Volcano-style plots showing log odds ratios vs significance across timepoints.
+                    Effect sizes range from moderate to large.
+                </div>
+                <a href="report_figures/total_PA_model1_glmmTMB_logit_effect_sizes.pdf" class="pdf-link" target="_blank">Total Cohort</a>
+                <a href="report_figures/US_PA_model1_glmmTMB_logit_effect_sizes.pdf" class="pdf-link" target="_blank">US Cohort</a>
+                <a href="report_figures/Italy_PA_model1_glmmTMB_logit_effect_sizes.pdf" class="pdf-link" target="_blank">Italy Cohort</a>
+            </div>
+        </div>
+
+        <div class="category">
+            <h2>📈 Abundance Analysis</h2>
+            
+            <div class="figure-section">
+                <div class="figure-title">Total Cohort Abundance Heatmap</div>
+                <div class="figure-description">
+                    Shows log fold changes for CELIAC vs CONTROL abundance patterns across timepoints.
+                    4 genes show significant abundance differences across 3 timepoints.
+                </div>
+                <a href="report_figures/total_abundance_model1_nbinom_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/total_abundance_model1_nbinom_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">US Cohort Abundance Heatmap</div>
+                <div class="figure-description">
+                    US cohort abundance results showing 4 genes with effects across 4 timepoints.
+                    Extended temporal window captures earlier timepoints.
+                </div>
+                <a href="report_figures/US_abundance_model1_nbinom_compact_heatmap.pdf" class="pdf-link" target="_blank">View Compact Version</a>
+                <a href="report_figures/US_abundance_model1_nbinom_heatmap.pdf" class="pdf-link" target="_blank">View Regular Version</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">Abundance Effect Sizes</div>
+                <div class="figure-description">
+                    Shows magnitude and significance of abundance changes across timepoints.
+                    Higher significance observed in abundance models vs PA models.
+                </div>
+                <a href="report_figures/total_abundance_model1_nbinom_effect_sizes.pdf" class="pdf-link" target="_blank">Total Cohort</a>
+                <a href="report_figures/US_abundance_model1_nbinom_effect_sizes.pdf" class="pdf-link" target="_blank">US Cohort</a>
+                <a href="report_figures/Italy_abundance_model1_nbinom_effect_sizes.pdf" class="pdf-link" target="_blank">Italy Cohort</a>
+            </div>
+        </div>
+
+        <div class="category">
+            <h2>🌿 Diversity Analysis</h2>
+            
+            <div class="figure-section">
+                <div class="figure-title">Shannon Diversity by Diagnosis</div>
+                <div class="figure-description">
+                    Shannon diversity comparison between CELIAC and CONTROL groups. 
+                    Box plots show distribution of alpha diversity values.
+                </div>
+                <a href="report_figures/shannon_diversity_by_diagnosis.pdf" class="pdf-link" target="_blank">View Figure</a>
+            </div>
+
+            <div class="figure-section">
+                <div class="figure-title">Shannon Diversity by Timepoint</div>
+                <div class="figure-description">
+                    Shannon diversity patterns across timepoints and diagnosis groups. 
+                    Shows temporal progression of phage diversity approaching diagnosis.
+                </div>
+                <a href="report_figures/shannon_diversity_by_timepoint.pdf" class="pdf-link" target="_blank">View Figure</a>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+            <h3>📁 How to Use This Viewer</h3>
+            <p><strong>Click any "View Figure" button</strong> to open the PDF in a new tab. All figures are organized by analysis type:</p>
+            <ul>
+                <li><strong>Summary:</strong> Overall analysis overview and gene counts</li>
+                <li><strong>PA Analysis:</strong> Presence/absence patterns (Log Odds Ratios)</li>
+                <li><strong>Abundance Analysis:</strong> Count-based patterns (Log Fold Changes)</li>
+                <li><strong>Diversity:</strong> Shannon diversity patterns over time</li>
+            </ul>
+            <p><strong>Compact vs Regular:</strong> Compact versions have smaller cells for easier viewing, regular versions have larger cells for detail.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; color: #666;">
+            <p><strong>Report Generated:</strong> October 3, 2025 | <strong>Total Figures:</strong> 21 PDFs</p>
+        </div>
+    </div>
+</body>
+</html>
