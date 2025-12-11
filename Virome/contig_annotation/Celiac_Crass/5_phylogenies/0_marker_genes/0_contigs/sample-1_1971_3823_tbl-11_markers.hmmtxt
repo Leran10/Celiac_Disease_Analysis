@@ -1,0 +1,89 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_1971_3823_tbl-11_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_1971_3823_tbl-11_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_1971_3823_tbl-11_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_1971_3823|403|1  [L=403]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    1.6e-62  201.7  20.4    6.6e-39  123.7  13.6    4.0  4  VP02684   
+
+
+Domain annotation for each model (and alignments):
+>> VP02684  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   21.6   0.1     3e-09     5e-08      38      77 ..       2      41 ..       1      44 [. 0.96
+   2 !   45.1   0.0   2.3e-16   3.9e-15     147     257 ..      43     129 ..      41     138 .. 0.86
+   3 !   15.9   0.0   1.5e-07   2.6e-06     317     380 ..     123     169 ..     117     173 .. 0.89
+   4 !  123.7  13.6   3.9e-40   6.6e-39     430     698 ..     173     401 ..     170     402 .. 0.97
+
+  Alignments for each domain:
+  == domain 1  score: 21.6 bits;  conditional E-value: 3e-09
+                   VP02684 38 eqfryLeenyGigtptsveftPlikkhvDalvgeylelpi 77
+                              ++f++L  ++Gi+++++++++P++++++D+++  + ++pi
+  sample-1_1971_3823|403|1  2 KRFKLLGIIVGIFAVVLIACFPMLMEDMDKSKIGINQIPI 41
+                              79************************************98 PP
+
+  == domain 2  score: 45.1 bits;  conditional E-value: 2.3e-16
+                   VP02684 147 seYeiaaqnileYlkqsrnidlkkklrellldllitGtcyyrvkptesgenieievlnPlntfvernpnspyvkdSyRvvvrkwl 231
+                               ++Ye++++++++++k+++   ++k+++++++++         +k++  + +++++++nP+++++++++++++v +S+Rv ++   
+  sample-1_1971_3823|403|1  43 GTYEYWTNGGFQWQKFGNVSVYDKTSQIWFNEV---------KKDQDGNVSVDVSMENPAMAITYNDKGKGFVLGSVRVEMP--- 115
+                               79*******************************.........9999***********************************9... PP
+
+                   VP02684 232 tkeqilnkYgkeldkeslkkledefe 257
+                                           l++++l++++++++
+  sample-1_1971_3823|403|1 116 ------------LEQKYLERIQTHYG 129
+                               ............33333333333333 PP
+
+  == domain 3  score: 15.9 bits;  conditional E-value: 1.5e-07
+                   VP02684 317 eiyilrgkdekvirskdkptlcslsvnGvyflnrsnePyslvlacaeLqdkydlltfyRdnlia 380
+                                i    g +e++i++++kptl                  ++v++c++L++++++++++R++lia
+  sample-1_1971_3823|403|1 123 RIQTHYGSQERLIKDLVKPTL-----------------GKVVISCGPLMSSLESVSEKRTDLIA 169
+                               566677889999999999999.................89***********************8 PP
+
+  == domain 4  score: 123.7 bits;  conditional E-value: 3.9e-40
+                   VP02684 430 nntifngfddtvkaqaiqaiqlaiqsveqqassitgvfrerlngieqrdavsnvkvgvknsliitKqyfqqmdliskeilydsln 514
+                               ++ ++  ++++vk+ ++ +  ++++++++ a++i++++++  ng+++++++++  +g+k s++++           ++++y+s++
+  sample-1_1971_3823|403|1 173 DQLNYGVYKTRVKTVETINPLTGEKQLQKVAEAISDSLAP--NGVKRQEESPFAFYGLKVSQLSI-----------NDLEYESAT 244
+                               4556777*********************************..**********************9...........********* PP
+
+                   VP02684 515 lakivykkGltGtliLgdkyqkvftalpeyftvtdfdihieesseavkelekikalkvelikagkadpdiivealtaksltelkr 599
+                               la+i+ +         ++++++++ta+++++++++++i+iee+++a+++++k++++kv++++++ka++ ++v++l+ak+++e ++
+  sample-1_1971_3823|403|1 245 LAQISKQ---------READMSIVTAKAKALEAVQKTIQIEEEGKASAAQAKWEQEKVKAVEVTKAQQAFEVAELQAKEANEKAK 320
+                               *******.........9******************************************************************** PP
+
+                   VP02684 600 kvkkalkkkkeennqlqqlqqqleqlqkqlqqlqqelqqaqnkieslneakleieqqkvesevkielykargdkdykessadakk 684
+                               k+ +++++++e+n+  +q++ ++++                 k+e++++++++++++  +sevk+++++++g+++ ++ ++da++
+  sample-1_1971_3823|403|1 321 KIIAEGRAEAEANKLKVQAGLTPQE-----------------KAEWDYKTTVGVAEALSKSEVKWVPDVMMGGSNGNN-AMDAVG 387
+                               *************************.................*********************************998.9***** PP
+
+                   VP02684 685 krleieiaqllDkn 698
+                                ++ ++ia++l+k+
+  sample-1_1971_3823|403|1 388 LKMVMDIADKLNKS 401
+                               **********9986 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (403 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         6  (0.352941); expected 0.3 (0.02)
+Passed bias filter:                        2  (0.117647); expected 0.3 (0.02)
+Passed Vit filter:                         2  (0.117647); expected 0.0 (0.001)
+Passed Fwd filter:                         1  (0.0588235); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               1  [number of targets reported over threshold]
+# CPU time: 0.02u 0.00s 00:00:00.02 Elapsed: 00:00:00.02
+# Mc/sec: 144.14
+//
+[ok]

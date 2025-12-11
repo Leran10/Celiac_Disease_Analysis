@@ -1,0 +1,19 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VP02208              -            499 sample-1_4061_1441|437|1 -            437  1.4e-232  762.4   0.4   1   1  5.4e-233  1.5e-232  762.2   0.4    66   499     4   435     1   435 0.99 -
+MCP                  -            486 sample-1_4061_1441|437|1 -            437  1.4e-138  452.4   0.5   1   1  5.9e-139  1.7e-138  452.1   0.5    71   484     6   432     3   434 0.98 -
+VP02209              -            504 sample-1_4061_1441|437|1 -            437  1.7e-109  356.5   0.7   1   1  6.8e-110  1.9e-109  356.3   0.7    71   503     5   433     1   434 0.91 -
+VP02211              -            490 sample-1_4061_1441|437|1 -            437   1.2e-61  198.8   0.1   1   1   5.6e-62   1.6e-61  198.4   0.1    71   485     5   430     3   434 0.91 -
+VP02204              -            484 sample-1_4061_1441|437|1 -            437   6.3e-57  183.3   0.2   1   1   2.9e-57   8.1e-57  182.9   0.2    73   480     6   430     3   432 0.86 -
+VP02584              -            490 sample-1_4061_1441|437|1 -            437   3.5e-52  167.5   0.1   1   1   1.6e-52   4.7e-52  167.1   0.1    72   480     5   425     3   433 0.84 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4061_1441_tbl-11_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4061_1441_tbl-11_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4061_1441_tbl-11_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4061_1441_tbl-11_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:37 2025
+# [ok]

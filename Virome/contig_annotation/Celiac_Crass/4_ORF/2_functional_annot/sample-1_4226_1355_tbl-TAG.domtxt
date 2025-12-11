@@ -1,0 +1,17 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_4226_1355|451|1 -            451 portal               -            808  1.1e-175  572.0   3.8   1   1  1.3e-175  1.3e-175  571.8   3.8    28   485     2   451     1   451 0.98 -
+sample-1_4226_1355|451|1 -            451 VP00410              -            789  2.2e-162  527.9   4.4   1   1  2.5e-162  2.5e-162  527.7   4.4    26   478     2   450     1   451 0.95 -
+sample-1_4226_1355|451|1 -            451 VP02585              -            853    2e-242  792.8   6.0   1   1  2.2e-242  2.2e-242  792.7   6.0    25   480     1   451     1   451 0.99 -
+sample-1_4226_1355|451|1 -            451 VP02684              -            708   3.7e-16   44.4   1.8   1   1   6.9e-16   6.9e-16   43.5   1.8    23   398    26   434    23   445 0.82 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_4226_1355_tbl-TAG.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_4226_1355_tbl-TAG.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_4226_1355_tbl-TAG.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_4226_1355_tbl-TAG.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:34 2025
+# [ok]

@@ -1,0 +1,108 @@
+LOCUS       PV860611                2811 bp ss-RNA     linear   ENV 10-SEP-2025
+DEFINITION  MAG: Rhinovirus A isolate He_L2273_2952 genomic sequence.
+ACCESSION   PV860611
+VERSION     PV860611.1
+DBLINK      BioProject: PRJNA999684
+            BioSample: SAMN36746643
+            Sequence Read Archive: SRR25448849
+KEYWORDS    ENV; Metagenome Assembled Genome; MAG.
+SOURCE      Rhinovirus A (human throat swab metagenome)
+  ORGANISM  Rhinovirus A
+            Viruses; Riboviria; Orthornavirae; Pisuviricota; Pisoniviricetes;
+            Picornavirales; Picornaviridae; Ensavirinae; Enterovirus;
+            Enterovirus alpharhino.
+REFERENCE   1  (bases 1 to 2811)
+  AUTHORS   Zhao,P., Hu,Y. and Yang,F.
+  TITLE     The Human Anelloviruses Virome
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 2811)
+  AUTHORS   Zhao,P., Hu,Y. and Yang,F.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (27-MAY-2025) National Institute of Pathogen Biology,
+            Chinese Academy of Medical Sciences & Peking Union Medical College,
+            6 Rongjing Eastern Street, DaXing, BeiJing 100176, China
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: SPAdes v. 3.15.4; Megahit v. 1.2.9
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2811
+                     /organism="Rhinovirus A"
+                     /mol_type="genomic RNA"
+                     /isolate="He_L2273_2952"
+                     /isolation_source="throat swab"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:147711"
+                     /environmental_sample
+                     /geo_loc_name="China: Hebei"
+                     /lat_lon="36.64 N 114.49 E"
+                     /collection_date="09-Jul-2015"
+                     /metagenome_source="human throat swab metagenome"
+                     /note="RVA10/China/2015/HBH77; throat swab;
+                     metagenomic"
+     CDS             458..2449
+                     /codon_start=1
+                     /product="ORF1 protein"
+                     /protein_id="XXL21923.1"
+                     /translation="MARYYNYYNRNRHRWNRRRYYKPYARRKPRRYYRRYTTKTFRRK
+                     WRRHRRFKVKRKLPYLKVKQYQPKTIKKCSIIGMLCLLHCSHGRESNNYAQYQQTRAP
+                     PDYPSGGGFSILRLSIGALYEDLEKFRNYWTKTNENLDLIRYTGMSLTFYRHQYVSYI
+                     VTYSLCNPMTLSKISHMNTHPYRQLLNKNKIIVPSLQEAPLKKKLYIKKKLQPPKQMV
+                     NKWFFQRDFADVGLVLIHVASISLNHMYQATNSKNTTVSLFCLNHKVFKNNDFANATG
+                     YRPNDDFWYWGQDNRHNWISLLGITHQLGETTTNADTLTEKQKWGNLFWHSWLHKEGP
+                     IAIKATADKTKPQDTNYTRNPHDLIVECRYNPYSDKGTGNKIYLVSTLGKEKFLPPST
+                     VHDFYIEGYPLWLMWYGWLDWCVKLRPGAQIDINYTAVFQSPYLWPEQPYYCPINRSM
+                     YNNEGPWGTDIEDISLTQYSHWYPRVANQVEAINNICCTGPAIPKAENITSWEHHCKY
+                     KAYIKWGGCPTPYVQIEDPSKQPKYPAPDNILLRSQIQDLDNQSPQNIIYSWDFKRGI
+                     VTEEALQRITKDVSLTDSLRKPSKRTTDAPIQTPSKIQKLLQEAQETSSEEEEEIPLQ
+                     QQLRHQRFKQQRLKQRLLNLIQKLEKQQQKCQRYITPIT"
+ORIGIN      
+        1 gtcacatact tccccttttt gccattactt cctcttttcc tcattattat tcattacatt
+       61 aattaataat caccgtaatt ccggggagga gactattatt tataaaacca actacacttc
+      121 cgaatggctg agtttatgcc gccagacgga gacgggatca cttcagtgac tccaggctga
+      181 tcttgggcgg gtgccgaagg tgagtgaaac caccggagtc aaggggcaat tcgggctaga
+      241 tcagtctggc ggaacgggca agaaacttaa aaactatttt tcttacagaa atgtctgtat
+      301 gctggaaacc accagtgtac gaaccaagag ggagagaaag acaatggctt aacagcattt
+      361 ggtccagcca tgactgtttc tgcggatgcg acacaccagc aactcacctc caactacttc
+      421 taactaaaga aaatattgga ttatccctcg aaccaggatg gctcgctact acaactacta
+      481 caacagaaac agacaccgct ggaacagacg aaggtactac aaaccatatg ccagaagaaa
+      541 accaagacga tattacagaa gatatactac aaaaactttt cgaagaaaat ggagacgaca
+      601 cagacgattt aaggtaaaga gaaaacttcc ttacttaaaa gttaaacaat atcaaccaaa
+      661 aactattaag aaatgctcta taataggaat gctttgctta ttacactgct cgcatggtag
+      721 agaatctaat aactatgctc aatatcaaca aacaagagca ccaccagact atccctccgg
+      781 aggaggtttc tctatactaa gactatcaat aggtgctcta tatgaagact tagaaaaatt
+      841 cagaaactac tggacaaaaa ctaatgaaaa cttagacctt ataagatata caggaatgtc
+      901 actaactttt tatagacatc aatatgtaag ctatattgta acatattcac tatgtaaccc
+      961 aatgacactc tcaaaaattt ctcacatgaa cacacaccca tacagacaac tactaaacaa
+     1021 aaacaaaata atagtaccct cactacaaga agcaccacta aagaaaaaac tatacattaa
+     1081 aaaaaaatta caaccaccaa aacaaatggt taacaaatgg ttttttcaaa gagacttcgc
+     1141 agatgtaggc ttagtactca tacatgtagc cagtatttcc ttaaaccaca tgtaccaagc
+     1201 cacaaacagt aaaaatacca cagtttccct attctgcctt aaccacaaag tctttaaaaa
+     1261 taacgacttt gctaatgcaa caggttacag gcctaacgat gacttctggt actggggaca
+     1321 agacaataga cataactgga tatctctttt aggaataaca caccaactag gagaaacaac
+     1381 aactaatgca gacacactaa cagaaaaaca aaaatgggga aacctattct ggcattcctg
+     1441 gctacataaa gaaggaccaa tagcaataaa agctacagca gataaaacaa aaccacaaga
+     1501 cacaaactac acaagaaacc cacatgattt aatagtagaa tgcagataca acccatacag
+     1561 tgacaaaggc acaggaaaca aaatatacct agtaagcaca ctaggaaaag aaaaattttt
+     1621 accaccatca acagtacatg acttttacat agaaggatac ccactatggc taatgtggta
+     1681 tggctggcta gactggtgcg taaaactaag accaggagca caaatagaca taaactacac
+     1741 agcagttttt caaagcccat acctatggcc agaacaacca tactactgtc caataaacag
+     1801 aagcatgtac aataatgaag ggccatgggg aacagacata gaagacatat cactaacaca
+     1861 atactcacac tggtacccta gagtagctaa ccaggtagaa gcaataaata atatttgttg
+     1921 cacaggccca gcaatcccaa aagcagaaaa catcacatct tgggaacacc actgcaaata
+     1981 taaagcatat attaagtggg gaggctgccc aacaccttat gtacaaattg aagacccttc
+     2041 taaacaacca aagtaccctg cacccgataa catcttactt cgatcacaaa tacaggacct
+     2101 tgacaaccaa tcaccacaaa acattatcta ctcctgggac ttcaaaaggg gcattgttac
+     2161 cgaagaagct ttacaaagaa ttacaaaaga cgtctctctt acagactctc tgcgaaaacc
+     2221 ttcaaagagg acaacagacg ccccaataca aaccccttca aaaatccaaa aactactcca
+     2281 ggaggcacaa gagacatcat ccgaggaaga agaagaaatc ccactacagc agcagctcag
+     2341 acaccagcga ttcaaacaac agcgactcaa acagcgactc ctcaacctaa tacaaaaatt
+     2401 agaaaaacaa caacaaaagt gtcaaaggta tataacacct ataacataag cttgttcgga
+     2461 gaaccaccac aaaaaaacag aaggttaact cctaaagaac aagcagaaga aaaagaagac
+     2521 gcagctatat ggcgcaggcc acaacgaaca ttcctattag acaaacccta ttatccctgg
+     2581 tgccctaaag accctgaaaa gtttatatct gattattacc gtgtaaactt tgacttaaac
+     2641 ttcattgaat aaaggccaac attatttcac cctcggtgtc catttatata agtaaaaact
+     2701 taaataaaca tccaccacct cccaaaaaat aggcctagca aaatggccgc caaaaacaaa
+     2761 atggctgcta agccactccc ataaaagggg ggcaaagccc cccttaaacc c
+//
+

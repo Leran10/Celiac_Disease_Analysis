@@ -1,0 +1,129 @@
+LOCUS       NC_075447               2919 bp    DNA     circular VRL 05-MAY-2023
+DEFINITION  Anelloviridae sp. strain vzttmv5, complete genome.
+ACCESSION   NC_075447
+VERSION     NC_075447.1
+DBLINK      BioProject: PRJNA485481
+KEYWORDS    RefSeq.
+SOURCE      Anelloviridae sp.
+  ORGANISM  Anelloviridae sp.
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae.
+REFERENCE   1  (bases 1 to 2919)
+  AUTHORS   Lu,L., Robertson,G., Ivens,A., Ashworth,J. and Woolhouse,M.
+  TITLE     Epidemiology and molecular evolution of divergent viral pathogens
+            associated with respiratory tract infections across Vietnam
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 2919)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (03-MAY-2023) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2919)
+  AUTHORS   Lu,L., Robertson,G., Ivens,A., Ashworth,J. and Woolhouse,M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-NOV-2018) Centre for Immunity, Infection and
+            Evolution, University of Edinburgh, Charlotte Auerbach Road,
+            Edinburgh EH9 3FL, United Kingdom
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence is identical to MK212032.
+            
+            ##Assembly-Data-START##
+            Assembly Method       :: CLC v. 5.0.4
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2919
+                     /organism="Anelloviridae sp."
+                     /mol_type="genomic DNA"
+                     /strain="vzttmv5"
+                     /isolation_source="NT swab"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:2055263"
+                     /geo_loc_name="Viet Nam"
+                     /collection_date="07-Mar-2014"
+     gene            327..659
+                     /locus_tag="QKD34_gp1"
+                     /db_xref="GeneID:80527921"
+     CDS             327..659
+                     /locus_tag="QKD34_gp1"
+                     /codon_start=1
+                     /product="ORF2"
+                     /protein_id="YP_010790515.1"
+                     /db_xref="GeneID:80527921"
+                     /translation="MSYYYKPPIYGPRGLEKQWYNNIFHSHDLICGCDSTIHHLLSLI
+                     ASQTTPSDLPGTEELFKKCLPSTTTGTTDTITATAGGKESEDDLGIDIGDLEKLFEED
+                     GAGEELEG"
+     gene            512..2506
+                     /locus_tag="QKD34_gp2"
+                     /db_xref="GeneID:80527920"
+     CDS             512..2506
+                     /locus_tag="QKD34_gp2"
+                     /codon_start=1
+                     /product="ORF1"
+                     /protein_id="YP_010790516.1"
+                     /db_xref="GeneID:80527920"
+                     /translation="MPPFNYYWYNRYNYRNRWRKRKRRRPWNRYRRPRKTLRRRRRWR
+                     RTRRVRKIKKKLKKLPLSQWQPNTIKKCKVKGWFCLLRGSKGRESNNYGMYQATRDPP
+                     GYPGGGGLSMIKFTLGALFQELTKLRNWWTSSNENLDLVRYTGCKIKFWRHDYVDYIC
+                     IYSRCNPMEISRTSFMNTHPYRQLLNYKKIIVPSLKTAPHIKKLFFVKKIKPPNEMVN
+                     RWFFQNSFSDTGLLLLHTSSANLTHMYQNINTKSATAGFYVINPQLFTNANFAATTYK
+                     PNDKFNYWGTTNGAEKPTQQQLIALTSTQHTPGKPPATNGQPGNLLWWKYISGDQRVW
+                     ISQATDTTPSNPEKLTVPLIYMCRYNAYDDDGTGNEIYLVSNLSTGNFEPNPRDDFYI
+                     SGYPLWLMVSGLLDWWRKLRPAYQIDLHYAICIRSRFIYPKLTTYIPLDDHFIHNEGP
+                     YGTDIHDLSDANLQHWYPRILYQQESINNIYLSGPNTPQGEFVSGWESHIQYTFYFRW
+                     GGCPAKQTNIADPNSQPSYPIPSNLLLQSQIKDPETQTPENITYAWDYRRDFITNTAL
+                     TRMQQISPTDISLQTDTDRHQRKRKGTDPPIQGSSQKIQKLLQETQVLLQQTPQEAQE
+                     KTLNQQLQQQQLYQRLITRNILKLLRKLNKQQSTYMPLGE"
+ORIGIN      
+        1 cccccttacc ccctattaag ccactcctta accgcaaaat ttgcattgcc gaccacaaac
+       61 gaatatgcaa attttgttcc tcttttgcac taaactcctc ccataattaa ttagtaatct
+      121 gcatcacccc ggggaggagc cactcttcta tataaccaag tatacttccg aatggctgag
+      181 tttacgccgc cagacggagc aaagacaacg tcctttgctg attttgggca ggtgccgaag
+      241 gtgagtgaaa ccaccggagt caaggggcca tatgggcaaa atcagtcttg gcggaacggg
+      301 ctaactaact taaatatttt ttacagatga gctactatta caagccacca atatatggac
+      361 ctagaggcct ggaaaaacaa tggtacaaca acatcttcca tagccacgac cttatctgcg
+      421 gatgcgactc tacaattcat cacctgcttt ctttaattgc ttctcaaaca actccatctg
+      481 atcttcccgg gaccgaagaa ctcttcaaaa aatgcctccc ttcaactact actggtacaa
+      541 cagatacaat taccgcaacc gctggaggaa aagaaagcga agacgacctt ggaatagata
+      601 tcggagacct agaaaaactc ttcgaagaag acggcgctgg agaagaacta gaagggtaag
+      661 aaaaattaaa aaaaaactta aaaaactacc tttaagtcaa tggcaaccaa atactataaa
+      721 aaaatgtaaa gtaaaaggat ggttttgcct actaagagga tctaaaggca gagaatccaa
+      781 taactatggg atgtatcaag ccactagaga ccctccaggc tatcctggag gaggaggact
+      841 cagtatgatt aaatttactt tgggagcctt atttcaagaa cttactaaac ttagaaactg
+      901 gtggacttct tctaatgaaa atttagacct tgtaagatat actggatgta aaattaagtt
+      961 ttggagacat gattatgttg attatatatg tatatatagc agatgtaacc ctatggaaat
+     1021 tagtagaaca agctttatga acacacatcc atacagacaa ctacttaatt acaaaaagat
+     1081 tatagtacca tcactaaaga cagcaccaca catcaaaaaa ctattctttg taaagaaaat
+     1141 aaagccacca aatgaaatgg taaacaggtg gttttttcaa aactcatttt cagacacagg
+     1201 actcttatta ctgcacacat cctcagccaa tttaacacac atgtaccaga acataaacac
+     1261 aaaatcagct acagcaggat tttatgttat aaacccacaa ttatttacta atgctaactt
+     1321 tgcagctact acatataagc caaatgacaa atttaattac tggggaacaa ctaacggtgc
+     1381 agaaaaaccc acacaacagc agttaattgc attaactagt acacaacaca caccaggaaa
+     1441 accaccagcc acaaacggcc aacctggcaa cctactgtgg tggaaataca tatccggaga
+     1501 ccaacgggtg tggatttctc aagccactga cacaacacca agcaacccag aaaaactaac
+     1561 ggtaccatta atatatatgt gcagatataa tgcttacgat gatgacggta ccggcaatga
+     1621 aatatactta gtaagtaact tatcaacagg caattttgaa cctaatccaa gagatgactt
+     1681 ctacatctca ggatacccac tatggctcat ggtctctggc ctcttagatt ggtggagaaa
+     1741 actaagacct gcataccaaa tagacttaca ctatgccatc tgcattagaa gcagatttat
+     1801 atatccaaaa ttaacaacat acataccact agacgaccac tttatacaca atgaaggacc
+     1861 atatggaaca gacattcatg atttaagtga tgccaattta caacattggt accctagaat
+     1921 tctatatcaa caagaatcaa taaataacat atatttatct ggtccaaaca ccccacaggg
+     1981 agaatttgtc tcaggatggg aatctcacat acaatacaca ttctacttta gatggggagg
+     2041 atgtccagca aaacaaacaa acattgctga ccccaacagt caaccctcat atcctatacc
+     2101 cagtaacctc ttactgcaat cacagattaa ggacccagaa acacaaactc cagaaaacat
+     2161 cacatacgcc tgggactaca gaagagactt tattacaaac acagctctta caagaatgca
+     2221 acaaatctca ccaactgaca tctctcttca aacagataca gaccgccacc aaagaaagcg
+     2281 aaaaggaaca gatcccccaa tacaaggatc ctcacaaaaa atacaaaaac tactacaaga
+     2341 aacacaagtc ctcctccaac agacaccgca agaagcgcaa gagaagaccc tcaaccagca
+     2401 gctccagcag cagcagctgt accaacgact catcacaaga aacatcctca aactgctcag
+     2461 aaaattaaac aaacaacagt caacatatat gccactgggg gagtaactct gttcccaact
+     2521 aataaaactg taaatagacg cattcaacct catgaaatgc aaactgaaaa agaacttgct
+     2581 gatatatttc atagacctgt aagaactttt atacatgata tgccttatta cccatggtta
+     2641 ccaaaagacc ctgaaaaatt tatgtacaat tactacaaag ttaactttca aattgatgat
+     2701 tctaacctgt aaataaaatt ctatgccgct gtaattcact ctcggtgtcc gtttatataa
+     2761 gtttaacctt aataaaccaa caccgcctcc ctaaaataaa ggcctacaaa aataaaaggg
+     2821 ggcaaagccc cctaaaaccc cctaaagggg gggcaaagcc cccccttaaa ccccccaaaa
+     2881 aggggggcta cgcccccctt aaacccccgg ggggtaaac
+//
+

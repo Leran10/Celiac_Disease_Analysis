@@ -181,7 +181,7 @@ filter_and_save_wide_data(orf,
                           output_path = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/")
 # Number of changes: 185957
 
-orf.processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Orf/data_correct/total/wide_rpkm_genes_75Cov.rds") %>%
+orf.processed <- readRDS("/Users/leranwang/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/Orf/data_correct/total/wide_rpkm_genes_75Cov.rds") %>%
                  column_to_rownames("ORFID")
 
 

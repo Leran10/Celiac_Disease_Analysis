@@ -1,0 +1,25 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+portal               -            808 sample-1_241_22966|811|6 -            811  7.6e-246  808.2  27.5   1   1  1.6e-246  9.1e-246  807.9  27.5     5   807     7   802     1   803 0.96 -
+VP00410              -            789 sample-1_241_22966|811|6 -            811  1.6e-218  717.6  24.3   1   1  3.2e-219  1.8e-218  717.4  24.3     3   789     7   798     5   798 0.98 -
+VP02585              -            853 sample-1_241_22966|811|6 -            811   2.3e-54  174.8  22.1   1   1   5.2e-55   2.9e-54  174.4  22.1     7   790    11   796     5   810 0.76 -
+TerL                 -            780 sample-1_241_22966|766|8 -            766  1.2e-251  827.2  19.2   1   1  3.1e-252  1.3e-251  827.0  19.2    32   752     2   763     1   765 0.95 -
+VP00412              -            717 sample-1_241_22966|766|8 -            766  1.9e-230  756.8  17.9   1   1  5.4e-231  2.3e-230  756.5  17.9     9   707    10   765     3   765 0.96 -
+VP02579              -            684 sample-1_241_22966|766|8 -            766   1.3e-57  185.4  12.3   1   1   4.2e-58   1.8e-57  184.9  12.3     2   634    48   731    47   762 0.79 -
+VP02686              -            761 sample-1_241_22966|766|8 -            766   1.6e-29   92.4   8.1   1   1   1.9e-29   8.2e-29   90.1   8.1    98   641    63   673    54   685 0.79 -
+MCP                  -            486 sample-1_241_22966|492|4 -            492  5.6e-181  592.2   2.4   1   1  1.8e-181  6.3e-181  592.1   2.4     3   485     1   491     1   491 0.99 -
+VP02211              -            490 sample-1_241_22966|492|4 -            492   5.2e-49  157.1   0.1   1   1     2e-49   6.7e-49  156.7   0.1    19   440    15   443     4   476 0.88 -
+VP02204              -            484 sample-1_241_22966|492|4 -            492   2.6e-41  131.8   0.3   1   1     1e-41   3.4e-41  131.4   0.3    24   471    20   479    11   486 0.87 -
+VP02584              -            490 sample-1_241_22966|492|4 -            492   1.4e-32  102.9   0.1   1   1     5e-33   1.7e-32  102.6   0.1    22   438    19   440     6   472 0.85 -
+VP02209              -            504 sample-1_241_22966|492|4 -            492   6.4e-27   84.1   0.6   1   1   2.7e-27   9.1e-27   83.6   0.6    21   496    16   484     4   491 0.82 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_241_22966_tbl-11_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_241_22966_tbl-11_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_241_22966_tbl-11_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_241_22966_tbl-11_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:27 2025
+# [ok]

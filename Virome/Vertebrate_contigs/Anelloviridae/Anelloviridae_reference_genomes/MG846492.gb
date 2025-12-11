@@ -1,0 +1,108 @@
+LOCUS       MG846492                2383 bp    DNA     circular VRL 20-MAR-2018
+DEFINITION  Avian gyrovirus 2 strain RS/BR/15/2S, complete genome.
+ACCESSION   MG846492
+VERSION     MG846492.1
+KEYWORDS    .
+SOURCE      Avian gyrovirus 2
+  ORGANISM  Avian gyrovirus 2
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Gyrovirus; Gyrovirus
+            galga1.
+REFERENCE   1  (bases 1 to 2383)
+  AUTHORS   Lima,D.A. and Roehe,P.M.
+  TITLE     A case-control study in search for viruses in malabsorption
+            syndrome affected and healthy chickens
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 2383)
+  AUTHORS   Lima,D.A. and Roehe,P.M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-JAN-2018) Departamento de Microbiologia, Imunologia e
+            Parasitologia, Universidade Federal do Rio Grande do Sul, Sarmento
+            Leite, 500, Porto Alegre, Rio Grande do Sul 90050-170, Brazil
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: MetaSPAdes v. 3.10.1; Geneious v. 9.1.8
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2383
+                     /organism="Avian gyrovirus 2"
+                     /mol_type="genomic DNA"
+                     /strain="RS/BR/15/2S"
+                     /isolation_source="feces"
+                     /host="Gallus gallus"
+                     /db_xref="taxon:1002273"
+                     /geo_loc_name="Brazil"
+                     /collection_date="2015"
+                     /collected_by="Diane Lima"
+     CDS             451..1146
+                     /codon_start=1
+                     /product="VP2"
+                     /protein_id="AVN87711.1"
+                     /translation="MSSGGLGDCSACETRAAGGSELPLRQEGQLGPSGAGSTGKTLNA
+                     DPPLSPTSNNYSVRTINGIRASNKFVSASRNDLDRDPNWYRVNYNYSIATWLRQCARS
+                     HDEICTCGRWRSHWFQEASGLVTQETQTDQLARDLRRLQRKGEAAKRKLDYLKRRGTP
+                     HKKTKTVTWQDYDDDDLVDALASTTEDDGTGDTDCDEDAIPGGVNFDMRVEDPLIAAL
+                     RGGSSTHTRAPMW"
+     CDS             578..952
+                     /codon_start=1
+                     /product="VP3"
+                     /protein_id="AVN87712.1"
+                     /translation="MQTPRSRRQATTTRSELLTAYEHPTSSCPPAETTSIEIQIGIGS
+                     TIITLSLPGYASVRVLTTRSAPADDGGVTGSRRLADSSHRRPRRTSSPEIYVGFSAKE
+                     RRQKENLITLREEGPPIKKLRL"
+     CDS             954..2336
+                     /codon_start=1
+                     /product="VP1"
+                     /protein_id="AVN87710.1"
+                     /translation="MARLRRRRPRGRFGFYHRGRWHWRHRLRRRRYSRRGKFRYARRR
+                     SFDRRVKRRIFNPHPGSYVVRLPNPYNKLTLFFQGIVFIPEAQAFVKSTYTKTNLTVC
+                     HVASINVNLREFMLATMPLDAKSKIGGPNPYPQHLQGCQWSAQTTQDAWPYSAGMSET
+                     KRPSVPPSEWWRWALLVMHPRAPGRFYNAPKLMTLDAMGDLLGGWQLFRHVKTKFRVL
+                     ATMGQGAFSPVASLLVQNDYWSRRHLEGFPVKGAPPMCTMQRKTQQYGNVEANAPADE
+                     QWLPVNPPDPPVYPNQGGCSQNVAPGIYRLAGLQDSSRCFYSKACFPSFAALSAMGAP
+                     WSFPSTQKPIQRGSFNKHSITGTGDPQGRRWLTLVPKGVEWITDDTMEQTQLDTDIAT
+                     LFLAQGSPMWAPYKFGTFHKAMAITAMQTTPWCVVKVRSIWQLGNQRQPYPWQVNWYN
+                     EHTATDRYNP"
+ORIGIN      
+        1 tgattggctg tgacgtaccc ccccgtcaat aaataattaa ataaagcaaa ttgaattatt
+       61 tatttatttt cggcgcgcgc ggcagcagcc tgtacacaga gacgtcgctc gggtcctccg
+      121 gaccctcgct cctcaacctt ttcttattaa aatcatcacc cagcgcgaca aacgccacaa
+      181 ggcgtggtaa ccaacgatat gtaagtaaac tgagactcat accggtacag gggggtacgt
+      241 catcatgtac aggggggtac gtcaccatgt acaggggggt acgtcaccat gtacaggggg
+      301 gtacgtcacc atgtacaggg gggtacgtca ccatgtacag gggggtacgt cacagccaat
+      361 cagaattgag cacgcccaga aacgcccctg ggcgggcaga tcctatcaat taggggatat
+      421 aagcagagcg cataccggtc ggcagtaggt atgtcatccg gcggtctcgg ggattgcagc
+      481 gcctgtgaga cccgagccgc tgggggcagt gaattgccgc ttaggcaaga ggggcaactt
+      541 gggcccagcg gagccggatc cacgggcaag acactaaatg cagacccccc gctctcgccg
+      601 acaagcaaca actactcggt cagaactatt aacggcatac gagcatccaa caagttcgtg
+      661 tccgccagca gaaacgacct cgatagagat ccaaattggt atcgggtcaa ctataattac
+      721 tctatcgcta cctggctacg ccagtgtgcg cgttctcacg acgagatctg cacctgcgga
+      781 cgatggagga gtcactggtt ccaggaggct agcggactcg tcacacagga gacccagacg
+      841 gaccagctcg ccagagatct acgtcggctt cagcgcaaag gagaggcggc aaaaagaaaa
+      901 cttgattacc ttaagagaag agggaccccc cataaaaaaa ctaagactgt gacatggcaa
+      961 gattacgacg acgacgacct cgtggacgct ttggcttcta ccacagagga cgatggcact
+     1021 ggagacacag actgcgacga agacgctatt cccggagggg taaatttcga tatgcgcgta
+     1081 gaagatcctt tgatcgccgc gttaagagga ggatcttcaa cccacacccg ggctcctatg
+     1141 tggtaaggct accaaaccct tacaataagc ttaccctctt tttccaaggc attgtgttca
+     1201 ttccggaggc tcaagcattt gttaaaagta cttatacaaa gactaatctt acggtttgcc
+     1261 atgtagcctc aataaatgtt aacctccgag aatttatgct tgctacaatg cctttagatg
+     1321 caaagagcaa aatcggaggc cctaatcctt atcctcagca cttgcagggg tgccaatggt
+     1381 cagcacaaac gacgcaggac gcatggccgt actcggcggg catgtcagag acaaaaagac
+     1441 ccagcgtacc accgagtgag tggtggcgct gggctctcct ggtgatgcac cctagagcac
+     1501 ctggcagatt ttacaatgcc cctaagctaa tgactctgga cgctatggga gacctcttag
+     1561 ggggctggca actattccgt catgttaaaa ccaagttcag agtgctggcc actatgggcc
+     1621 agggtgcatt ctcaccggtt gcaagcctcc ttgtgcaaaa tgactattgg agcaggaggc
+     1681 acttagaggg cttcccagtg aaaggtgcac cgcctatgtg caccatgcaa agaaagactc
+     1741 agcaatacgg caacgtggag gcgaacgctc cagcagatga gcagtggcta ccggtgaatc
+     1801 ccccagaccc accagtgtac cctaaccagg gaggatgctc ccaaaacgtg gctccaggca
+     1861 tataccggct tgcaggctta caagacagta gcagatgctt ttattcaaag gcttgtttcc
+     1921 ccagctttgc agcgctttct gctatggggg caccctggtc atttcctagc actcaaaaac
+     1981 ccattcaaag aggctcattt aacaaacatt ccatcacggg gacaggggac ccccagggcc
+     2041 gacggtggtt aacacttgtg cctaaaggcg tggaatggat cactgatgac accatggaac
+     2101 aaacgcaact ggacacagac attgcaacac tcttcttagc tcaaggcagc ccaatgtggg
+     2161 caccctacaa attcgggact tttcacaagg caatggccat aacagcaatg cagaccaccc
+     2221 cctggtgcgt ggtgaaagta cggtccatct ggcagctcgg caaccaaaga cagccgtacc
+     2281 catggcaagt gaactggtac aacgagcata ctgcaacgga cagatacaac ccgtaattgg
+     2341 ggggggcttc gtcgcccccc cccaaacccc ccccccccaa ttc
+//
+

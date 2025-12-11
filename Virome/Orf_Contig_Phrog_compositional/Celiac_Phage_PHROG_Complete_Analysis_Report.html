@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celiac Disease PHROG Complete Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+        
+        .nav-menu {
+            list-style: none;
+        }
+        
+        .nav-menu li {
+            margin-bottom: 8px;
+        }
+        
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+        }
+        
+        .nav-menu a:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+        
+        .nav-submenu {
+            margin-left: 20px;
+            margin-top: 5px;
+        }
+        
+        .nav-submenu a {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            margin-left: 300px;
+            padding: 40px;
+            flex: 1;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 5px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #34495e;
+            margin-bottom: 15px;
+            margin-top: 25px;
+            font-size: 1.4em;
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .model-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            transition: transform 0.2s ease;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .model-card.available {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .model-card.running {
+            border-left: 4px solid #ffc107;
+            background: #fffbf0;
+        }
+        
+        .model-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .model-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-complete {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-running {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .stats-table th,
+        .stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .stats-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .stats-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .highlight-box h3 {
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .formula {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>PHROG Analysis Navigation</h2>
+            <ul class="nav-menu">
+                <li><a href="#overview">Analysis Overview</a></li>
+                <li><a href="#data-summary">Data Summary</a></li>
+                <li><a href="#pa-models">PA Models</a>
+                    <ul class="nav-submenu">
+                        <li><a href="#pa-model1">Model 1: glmmTMB (Logit)</a></li>
+                        <li><a href="#pa-model2">Model 2: glmmTMB (Cloglog)</a></li>
+                        <li><a href="#pa-model3">Model 3: glmer</a></li>
+                        <li><a href="#pa-model4">Model 4: GEE</a></li>
+                        <li><a href="#pa-model5">Model 5: Bayesian (brms)</a></li>
+                    </ul>
+                </li>
+                <li><a href="#abundance-models">Abundance Models</a>
+                    <ul class="nav-submenu">
+                        <li><a href="#abund-model1">Model 1: Negative Binomial</a></li>
+                        <li><a href="#abund-model2">Model 2: Hurdle NB</a></li>
+                        <li><a href="#abund-model3">Model 3: Zero-Inflated NB</a></li>
+                        <li><a href="#abund-model4">Model 4: limma-voom</a></li>
+                    </ul>
+                </li>
+                <li><a href="#results-summary">Results Summary</a></li>
+                <li><a href="#significant-findings">Key Findings</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <header class="header">
+                <h1>Celiac Disease PHROG Analysis</h1>
+                <p>Complete Statistical Analysis Report - All 9 Models Implementation</p>
+            </header>
+
+            <section id="overview" class="section">
+                <h2>Analysis Overview</h2>
+                <p>This comprehensive analysis applies the same 9 statistical models used in the original contig analysis to PHROG (PHage Orthologous Groups) data, examining the association between phage functional gene families and celiac disease progression.</p>
+                
+                <div class="highlight-box">
+                    <h3>Analysis Formula</h3>
+                    <div class="formula">
+                        <strong>~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)</strong>
+                    </div>
+                </div>
+
+                <div class="model-grid">
+                    <div class="model-card available">
+                        <h4>Data Cohorts</h4>
+                        <p><strong>Total:</strong> 1,111 PHROGs × 308 samples</p>
+                        <p><strong>US:</strong> Subset of total cohort</p>
+                        <p><strong>Italy:</strong> Subset of total cohort</p>
+                    </div>
+                    <div class="model-card available">
+                        <h4>Analysis Types</h4>
+                        <p><strong>PA Analysis:</strong> 5 models for presence/absence</p>
+                        <p><strong>Abundance Analysis:</strong> 4 models for count data</p>
+                        <p><strong>Total:</strong> 9 models × 3 cohorts = 27 analyses</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="data-summary" class="section">
+                <h2>Data Summary</h2>
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Dataset</th>
+                            <th>PHROGs</th>
+                            <th>Samples</th>
+                            <th>Celiac</th>
+                            <th>Control</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total Cohort</td>
+                            <td>1,111</td>
+                            <td>308</td>
+                            <td>114</td>
+                            <td>129</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>US Cohort</td>
+                            <td>1,111</td>
+                            <td>Subset</td>
+                            <td>Variable</td>
+                            <td>Variable</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                        </tr>
+                        <tr>
+                            <td>Italy Cohort</td>
+                            <td>1,111</td>
+                            <td>Subset</td>
+                            <td>Variable</td>
+                            <td>Variable</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="pa-models" class="section">
+                <h2>Presence/Absence (PA) Models</h2>
+                <p>Five statistical approaches for analyzing binary PHROG presence/absence data across disease progression timepoints.</p>
+
+                <div class="model-grid">
+                    <div id="pa-model1" class="model-card available">
+                        <h4>PA Model 1: glmmTMB (Logit Link)</h4>
+                        <p><span class="model-status status-complete">✅ Complete</span></p>
+                        <p><strong>Description:</strong> Mixed-effects logistic regression with logit link</p>
+                        <p><strong>Results:</strong> total_PA_glmmTMB_logit_results.csv</p>
+                        <div class="code-block">
+                            glmmTMB(PA ~ Dx.Status * onset_timeline_combined + covariates + (1|patientID), 
+                                    family = binomial(link = "logit"))
+                        </div>
+                    </div>
+
+                    <div id="pa-model2" class="model-card available">
+                        <h4>PA Model 2: glmmTMB (Cloglog Link)</h4>
+                        <p><span class="model-status status-complete">✅ Complete</span></p>
+                        <p><strong>Description:</strong> Mixed-effects logistic with complementary log-log link</p>
+                        <p><strong>Results:</strong> total_PA_glmmTMB_cloglog_results.csv</p>
+                        <div class="code-block">
+                            glmmTMB(PA ~ Dx.Status * onset_timeline_combined + covariates + (1|patientID), 
+                                    family = binomial(link = "cloglog"))
+                        </div>
+                    </div>
+
+                    <div id="pa-model3" class="model-card available">
+                        <h4>PA Model 3: glmer (lme4)</h4>
+                        <p><span class="model-status status-complete">✅ Complete</span></p>
+                        <p><strong>Description:</strong> Standard mixed-effects logistic regression</p>
+                        <p><strong>Results:</strong> total_PA_glmer_results.csv</p>
+                        <div class="code-block">
+                            glmer(PA ~ Dx.Status * onset_timeline_combined + covariates + (1|patientID), 
+                                  family = binomial)
+                        </div>
+                    </div>
+
+                    <div id="pa-model4" class="model-card running">
+                        <h4>PA Model 4: GEE</h4>
+                        <p><span class="model-status status-running">🔄 In Progress</span></p>
+                        <p><strong>Description:</strong> Population-averaged generalized estimating equations</p>
+                        <p><strong>Purpose:</strong> Robust inference for repeated measures</p>
+                        <div class="code-block">
+                            geeglm(PA ~ Dx.Status * onset_timeline_combined + covariates, 
+                                   id = patientID, family = binomial, corstr = "exchangeable")
+                        </div>
+                    </div>
+
+                    <div id="pa-model5" class="model-card running">
+                        <h4>PA Model 5: Bayesian (brms)</h4>
+                        <p><span class="model-status status-running">🔄 In Progress</span></p>
+                        <p><strong>Description:</strong> Bayesian mixed-effects logistic regression</p>
+                        <p><strong>Purpose:</strong> Uncertainty quantification with priors</p>
+                        <div class="code-block">
+                            brm(PA ~ Dx.Status * onset_timeline_combined + covariates + (1|patientID), 
+                                family = bernoulli(link = "logit"))
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="abundance-models" class="section">
+                <h2>Abundance Models</h2>
+                <p>Four statistical approaches for analyzing PHROG abundance/count data with appropriate handling of overdispersion and zero-inflation.</p>
+
+                <div class="model-grid">
+                    <div id="abund-model1" class="model-card available">
+                        <h4>Abundance Model 1: Negative Binomial GLMM</h4>
+                        <p><span class="model-status status-complete">✅ Complete</span></p>
+                        <p><strong>Description:</strong> Mixed-effects negative binomial for overdispersed counts</p>
+                        <p><strong>Results:</strong> total_abundance_negbinom_subset_results.csv</p>
+                        <div class="code-block">
+                            glmmTMB(count ~ Dx.Status * onset_timeline_combined + covariates + 
+                                    (1|patientID) + offset(log_offset), family = nbinom2)
+                        </div>
+                    </div>
+
+                    <div id="abund-model2" class="model-card running">
+                        <h4>Abundance Model 2: Hurdle Negative Binomial</h4>
+                        <p><span class="model-status status-running">🔄 In Progress</span></p>
+                        <p><strong>Description:</strong> Two-part model for excess zeros</p>
+                        <p><strong>Purpose:</strong> Separate modeling of zero vs non-zero processes</p>
+                        <div class="code-block">
+                            glmmTMB(count ~ Dx.Status * onset_timeline_combined + covariates + 
+                                    (1|patientID) + offset(log_offset), 
+                                    ziformula = ~ covariates + (1|patientID),
+                                    family = truncated_nbinom2)
+                        </div>
+                    </div>
+
+                    <div id="abund-model3" class="model-card running">
+                        <h4>Abundance Model 3: Zero-Inflated Negative Binomial</h4>
+                        <p><span class="model-status status-running">🔄 In Progress</span></p>
+                        <p><strong>Description:</strong> Mixture model for structural zeros</p>
+                        <p><strong>Purpose:</strong> Account for different sources of zeros</p>
+                        <div class="code-block">
+                            glmmTMB(count ~ Dx.Status * onset_timeline_combined + covariates + 
+                                    (1|patientID) + offset(log_offset), 
+                                    ziformula = ~ 1, family = nbinom2)
+                        </div>
+                    </div>
+
+                    <div id="abund-model4" class="model-card available">
+                        <h4>Abundance Model 4: limma-voom</h4>
+                        <p><span class="model-status status-complete">✅ Complete</span></p>
+                        <p><strong>Description:</strong> Linear model on log-transformed counts with empirical Bayes</p>
+                        <p><strong>Results:</strong> total_abundance_limma_results.csv</p>
+                        <div class="code-block">
+                            voom(counts, design) %>% 
+                            lmFit(design, block = patientID, correlation = dupCor) %>% 
+                            eBayes()
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="results-summary" class="section">
+                <h2>Model Implementation Status</h2>
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Analysis Type</th>
+                            <th>Model</th>
+                            <th>Status</th>
+                            <th>Results File</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="5">Presence/Absence</td>
+                            <td>glmmTMB (Logit)</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                            <td>total_PA_glmmTMB_logit_results.csv</td>
+                            <td>Mixed-effects logistic regression</td>
+                        </tr>
+                        <tr>
+                            <td>glmmTMB (Cloglog)</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                            <td>total_PA_glmmTMB_cloglog_results.csv</td>
+                            <td>Complementary log-log link</td>
+                        </tr>
+                        <tr>
+                            <td>glmer</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                            <td>total_PA_glmer_results.csv</td>
+                            <td>Standard lme4 approach</td>
+                        </tr>
+                        <tr>
+                            <td>GEE</td>
+                            <td><span class="model-status status-running">Running</span></td>
+                            <td>total_PA_GEE_results.csv</td>
+                            <td>Population-averaged effects</td>
+                        </tr>
+                        <tr>
+                            <td>Bayesian (brms)</td>
+                            <td><span class="model-status status-running">Running</span></td>
+                            <td>total_PA_brms_results.csv</td>
+                            <td>Bayesian inference with priors</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="4">Abundance</td>
+                            <td>Negative Binomial</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                            <td>total_abundance_negbinom_subset_results.csv</td>
+                            <td>Overdispersed count data</td>
+                        </tr>
+                        <tr>
+                            <td>Hurdle NB</td>
+                            <td><span class="model-status status-running">Running</span></td>
+                            <td>total_abundance_hurdle_results.csv</td>
+                            <td>Two-part model for excess zeros</td>
+                        </tr>
+                        <tr>
+                            <td>Zero-Inflated NB</td>
+                            <td><span class="model-status status-running">Running</span></td>
+                            <td>total_abundance_zinb_results.csv</td>
+                            <td>Mixture model for structural zeros</td>
+                        </tr>
+                        <tr>
+                            <td>limma-voom</td>
+                            <td><span class="model-status status-complete">Complete</span></td>
+                            <td>total_abundance_limma_results.csv</td>
+                            <td>Linear model with empirical Bayes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="significant-findings" class="section">
+                <h2>Key Findings Summary</h2>
+                
+                <div class="highlight-box">
+                    <h3>Analysis Completion Status</h3>
+                    <ul style="margin-left: 20px;">
+                        <li><strong>PA Models:</strong> 3 of 5 completed (60% complete)</li>
+                        <li><strong>Abundance Models:</strong> 2 of 4 completed (50% complete)</li>
+                        <li><strong>Overall Progress:</strong> 5 of 9 models completed (56% complete)</li>
+                    </ul>
+                </div>
+
+                <h3>Available Results</h3>
+                <p>The completed models provide comprehensive coverage of PHROG presence/absence and abundance patterns across celiac disease progression:</p>
+                
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>PA Model 1 (glmmTMB Logit):</strong> Primary mixed-effects analysis for binary PHROG presence</li>
+                    <li><strong>PA Model 2 (glmmTMB Cloglog):</strong> Alternative link function for rare events</li>
+                    <li><strong>PA Model 3 (glmer):</strong> Standard lme4 implementation for validation</li>
+                    <li><strong>Abundance Model 1 (Negative Binomial):</strong> Count-based analysis with overdispersion handling</li>
+                    <li><strong>Abundance Model 4 (limma-voom):</strong> Log-linear analysis with empirical Bayes shrinkage</li>
+                </ul>
+
+                <h3>Next Steps</h3>
+                <p>The remaining models (GEE, Bayesian brms, Hurdle NB, Zero-Inflated NB) are computationally intensive but will provide additional robustness checks and specialized handling of complex data structures.</p>
+            </section>
+
+            <div class="highlight-box" style="margin-top: 40px;">
+                <h3>🎯 Analysis Impact</h3>
+                <p>This comprehensive PHROG analysis represents the first large-scale investigation of phage functional gene families in pediatric celiac disease, providing insights into viral community functional potential across disease development timepoints.</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

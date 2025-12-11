@@ -1,0 +1,13 @@
+# Large data files exceeding GitHub's file size limits
+
+# Vertebrate contigs - large TSV files
+Vertebrate_contigs/bigtable.tsv
+Vertebrate_contigs/contig_count_table.tsv
+Vertebrate_contigs/Coverm_concatenated_contigs.txt
+Vertebrate_contigs/total/Coverm_concatenated_vertebrate_contigs.txt
+Vertebrate_contigs/US/US_Coverm_concatenated_vertebrate_contigs.txt
+Vertebrate_contigs/Italy/Italy_Coverm_concatenated_vertebrate_contigs.txt
+
+# Contig annotation - large files
+contig_annotation/Celiac_Crass/2_six_frames/0_faa/sample-1.faa
+contig_annotation/Celiac_Crass/7_ANI/0_species/all_genomes_ref_crassus_blast.tsv

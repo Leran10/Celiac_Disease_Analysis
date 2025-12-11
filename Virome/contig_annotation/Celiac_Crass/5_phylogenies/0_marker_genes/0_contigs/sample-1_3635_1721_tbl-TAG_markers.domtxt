@@ -1,0 +1,17 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VP02579              -            684 sample-1_3635_1721|497|1 -            497    3e-262  861.6   2.3   1   1  7.8e-263  3.3e-262  861.5   2.3     1   496     1   497     1   497 1.00 -
+TerL                 -            780 sample-1_3635_1721|497|1 -            497  9.6e-200  655.5   3.7   1   1  2.5e-200  1.1e-199  655.3   3.7    81   572     5   494     1   497 0.99 -
+VP00412              -            717 sample-1_3635_1721|497|1 -            497    1e-177  582.5   3.7   1   1  2.6e-178  1.1e-177  582.3   3.7    47   524     2   494     1   497 0.98 -
+VP02686              -            761 sample-1_3635_1721|497|1 -            497   1.8e-76  247.7   1.6   1   1   5.5e-77   2.3e-76  247.3   1.6    90   531     9   476     3   489 0.86 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3635_1721_tbl-TAG_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3635_1721_tbl-TAG_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3635_1721_tbl-TAG_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3635_1721_tbl-TAG_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:35 2025
+# [ok]

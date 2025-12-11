@@ -1,0 +1,70 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2475_2996_tbl-11_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2475_2996_tbl-11_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2475_2996_tbl-11_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_2475_2996|697|2  [L=697]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    2.8e-09   25.6   1.3    1.3e-08   23.4   0.6    2.1  2  VP00412   
+
+
+Domain annotation for each model (and alignments):
+>> VP00412  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !    0.4   0.0     0.007      0.12     149     282 ..     140     272 ..     132     340 .. 0.73
+   2 !   23.4   0.6   7.7e-10   1.3e-08     396     573 ..     400     558 ..     383     644 .. 0.78
+
+  Alignments for each domain:
+  == domain 1  score: 0.4 bits;  conditional E-value: 0.007
+                   VP00412 149 eeareegk..hlivlkaRrkGfSyknAsilaneynl.fpnskvivvAadkeyltgdgllskakkmlefieehtefakgrlkdsem 230
+                               ee r+ gk   +++lkaR+ G S      +a+  ++   + +++++A++ +    d + +++ +m++ +  +   + g + ++++
+  sample-1_2475_2996|697|2 140 EELRKAGKpiRIVLLKARQWGGSTTSQLYMAWLQLVhRVGLNSLIIAHQGTAS--DEIKDMFDRMIKAYPIEMLHRLGDIYKDNE 222
+                               55555565224688999999999666666666444414455668999998865..889999999999998888888888888888 PP
+
+                   VP00412 231 hirsgYkkkeegkekekGykSeilsvslkdnpdkarGkraelivfEEaGkfp 282
+                                ++ g  k+ +        + +i   ++ + pd  rG + +l+++ E+G ++
+  sample-1_2475_2996|697|2 223 PKMVGVGKSGS-IYRVPQRNCKIKIGTA-ERPDGCRGGDYSLVHLSEVGLWK 272
+                               88888866554.3333334445555544.89999999999999999999884 PP
+
+  == domain 2  score: 23.4 bits;  conditional E-value: 7.7e-10
+                   VP00412 396 kyiaekPltpsEaflstgeniFpseeLkeqlnklkadkkykdlgtvgeleideegkvefkpdedlkpikkfplkknddkeGcvvi 480
+                                + +e+P  + Eaf+ +g+ +F++ +++++ +  ka       ++vg+++ d+++  +    + lk+     l+  +dk+G +++
+  sample-1_2475_2996|697|2 400 LMASEYPSDDVEAFVHSGTMVFDKYKVEAFDKYCKAP------RYVGDVYADGDE-GK----AALKN-----LRFTQDKQGVFWV 468
+                               67899*****************999999999999888......447888888888.22....23333.....566789******* PP
+
+                   VP00412 481 yehPvkdksgeipkglYiigvDpYdqDksttnSlgsalVikrfnnfskpkdriVAeYvGRPetaeefyenvrklavyY.nakilv 564
+                               +  P + +s+e + ++Y + vD  +     ++  + ++V++r   +++ k ++VA+++G    ++   ++  ++a +Y na ++v
+  sample-1_2475_2996|697|2 469 WNLP-EIDSEEKVVNRYLVVVDVGGRS--RKADWSVIVVFDRLMMMDGGKPLVVAQWYGHC-DMDVLAWKAAQIAAFYgNALLVV 549
+                               ****.555599999********87776..555566799**********************9.78899999999999999****** PP
+
+                   VP00412 565 Ennrgeiis 573
+                               E n+ e+ +
+  sample-1_2475_2996|697|2 550 ESNTLETHD 558
+                               ***988765 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (697 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         2  (0.117647); expected 0.3 (0.02)
+Passed bias filter:                        2  (0.117647); expected 0.3 (0.02)
+Passed Vit filter:                         1  (0.0588235); expected 0.0 (0.001)
+Passed Fwd filter:                         1  (0.0588235); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               1  [number of targets reported over threshold]
+# CPU time: 0.00u 0.00s 00:00:00.00 Elapsed: 00:00:00.01
+# Mc/sec: 590.21
+//
+[ok]

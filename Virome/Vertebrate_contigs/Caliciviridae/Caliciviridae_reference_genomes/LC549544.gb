@@ -1,0 +1,130 @@
+LOCUS       LC549544                2871 bp    RNA     linear   VRL 08-APR-2021
+DEFINITION  Sapovirus GI.1 SaV/Hu/13699/JPN/2015 genes for polyprotein,
+            hypothetical protein, minor structural protein, partial and
+            complete cds.
+ACCESSION   LC549544
+VERSION     LC549544.1
+KEYWORDS    .
+SOURCE      Sapovirus GI.1
+  ORGANISM  Sapovirus GI.1
+            Viruses; Riboviria; Orthornavirae; Pisuviricota; Pisoniviricetes;
+            Picornavirales; Caliciviridae; Sapovirus; Sapovirus sapporoense.
+REFERENCE   1
+  AUTHORS   Okitsu,S., Khamrin,P., Thongprachum,A., Hikita,T., Kumthip,K.,
+            Pham,N.T.K., Takanashi,S., Hayakawa,S., Maneekarn,N. and
+            Ushijima,H.
+  TITLE     Diversity of human sapovirus genotypes detected in Japanese
+            pediatric patients with acute gastroenteritis, 2014-2017
+  JOURNAL   J Med Virol (2021) In press
+   PUBMED   33704833
+  REMARK    DOI:10.1002/jmv.26934
+            Publication Status: Available-Online prior to print
+REFERENCE   2  (bases 1 to 2871)
+  AUTHORS   Okitsu,S., Khamrin,P., Maneekarn,N. and Ushijima,H.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-MAY-2020) Contact:Shoko Okitsu Nihon University
+            School of Medicine, Division of Microbiology, Department of
+            Pathology and Microbiology; 30-1, Oyaguchi-kamicho, Itabashi-ku,
+            Tokyo 173-8610, Japan URL :http://www.nihon-u.med-microbe.jp/
+FEATURES             Location/Qualifiers
+     source          1..2871
+                     /organism="Sapovirus GI.1"
+                     /mol_type="genomic RNA"
+                     /strain="SaV/Hu/13699/JPN/2015"
+                     /isolation_source="feces"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:1398550"
+                     /geo_loc_name="Japan: Gunma, Kiryu"
+                     /collection_date="2015"
+                     /note="genotype: GI.1"
+     CDS             <1..2283
+                     /note="RNA-dependent RNA polymerase, capsid protein"
+                     /codon_start=1
+                     /product="polyprotein"
+                     /protein_id="BCG68675.1"
+                     /translation="YMWAAAILQAYESHNVPYTGNVFQVETIHTYGDDCMYSVCPATA
+                     SIFHTVLANLTSYGLKPTAADKSDAIKPTNTPVFLKRTFTQTPHGVRALLDITSITRQ
+                     FYWLKANRTSDPSSPPAFDRQARSAQLENALAYASQHGPVTFDTVRQIAIKTAQGEGL
+                     VLVNTNYDQALATYNAWFIGGTVPDPVGHTEGTHKIVFEMEGNGSNSEPKQSNNPMVV
+                     DPPGTTGPTTSHVVVANPEQPNGAAQRLELAVATGATQSNVPEAIRNCFAVFRTFAWN
+                     DRMPTGTFLGSISLHPNINPYTSHLSGMWAGWGGSFEVRLSISGSGVFAGRIIASVIP
+                     PGVDPSSIRDPGVLPHAFVDARITEPVSFMIPDVRAVDYHRMDGAEPTCSLGFWVYQP
+                     LLNPFSTTAVSTCWVSVETKPGGDFDFCLLRPPGQQMENGVSPEGLLPRRLGYSRGNR
+                     VGGLVVGMILVAEHKQVNRHFNSNSVTFGWSTAPVNPMAAEIVTNQAHSTSRHAWLSI
+                     GAQNKGPLFPGIPNHFPDSCASTIVGAMDTSLGGRPSTGVCGPAISFQNNGDVYENDT
+                     PSVMFATYDPLTSGTGVALTNSINPASLALVRISNNDFDTSGFANDKNVVVQMSWEMY
+                     TGTNQIRGQVTPMSGTNYTFTSTGANTLVLWQERMLSYDGHQAILYSSQLERTAEYFQ
+                     NDIVNIPENSMAVFNVETNSASFQIGIRPDGYMVTGGSIGVNVPLEPETRFQYVGILP
+                     LSAALSGPSGNMGRARRVFQ"
+     mat_peptide     598..2280
+                     /product="capsid protein"
+                     /note="VP1"
+     CDS             608..1093
+                     /note="VP3"
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="BCG68676.1"
+                     /translation="MAPTQSQSRATTQWSLTRLARQVRPHPTLLLLIRSNPMGPHSAW
+                     SWLLPLVQPNPMSLRQYATALQSFVLLLGTTGCPRELFLDLYRFIPTLTRTLLTSLGC
+                     GPGGAVALRSGYRSLVLACSLGASLLLSYHQGLIPRPSGIQACCLTLSLMLASLSQFL
+                     S"
+     CDS             2280..2777
+                     /note="VP2"
+                     /codon_start=1
+                     /product="minor structural protein"
+                     /protein_id="BCG68677.1"
+                     /translation="MSWLVGALQTFGSLADVAGTVSNIVYQQRQAAQLEKQNELMETW
+                     MNKQEALQKSQMELTRDLSINGPAARVQSALDAGFDEVSARRIAGSGERVIWGNLDRP
+                     IMHAGTMDSIRQTKHLDSLSHSLATFKNGTPFGKPAPPTAKFGKPQATTAQINIGHNP
+                     GSSSA"
+ORIGIN      
+        1 tatatgtggg cagcagccat tctgcaggca tatgagagcc acaatgtccc atacactggg
+       61 aatgttttcc aggtggagac cattcacacg tacggtgatg actgcatgta cagcgtgtgc
+      121 cctgccaccg catcaatttt ccacactgta cttgccaacc taacatcgta tggactgaag
+      181 cccacagcag ctgacaagag tgatgcaatc aaaccaacca acacaccagt gtttctgaag
+      241 aggacattca cgcaaacccc acatggagtc cgtgcactac tagacatcac ttccataact
+      301 agacaatttt actggctgaa agcaaataga acatctgacc cctctagtcc acctgctttt
+      361 gatcgacagg cacgcagtgc acaactggag aacgcactag cctatgcctc acaacacgga
+      421 cctgtcacgt ttgacaccgt gcgccaaatt gccatcaaga ctgcccaagg agagggactg
+      481 gtgcttgtca acaccaacta tgaccaggct ctcgccacct acaatgcttg gttcataggt
+      541 ggtacagtac ctgacccagt gggtcacact gaaggaaccc acaaaatagt gtttgagatg
+      601 gagggcaatg gctccaactc agagccaaag cagagcaaca acccaatggt cgttgacccg
+      661 cctggcacga caggtccgac cacatcccac gttgttgttg ctaatccgga gcaacccaat
+      721 ggggccgcac agcgcctgga gttggctgtt gccactggtg caacccaatc caatgtccct
+      781 gaggcaatac gcaactgctt tgcagtcttt cgtacttttg cttggaacga caggatgccc
+      841 acgggaactt ttcttggatc tatatcgctt catcccaaca ttaacccgta cacttctcac
+      901 ctctctggga tgtgggccgg gtggggcggt agctttgagg tccggctatc gatctctggt
+      961 tctggcgtgt tcgctgggcg catcattgct tctgtcatac caccaggggt tgatccctcg
+     1021 tccatcaggg atccaggcgt gttgcctcac gctttcgttg atgctcgcat cactgagcca
+     1081 gtttctttca tgatccctga tgtcagagca gtggactacc ataggatgga tggtgctgaa
+     1141 cccacatgtt ccttggggtt ttgggtctac caaccattac tcaacccctt ctccaccact
+     1201 gccgtgtcaa catgttgggt gtcagtggaa actaaaccag gtggtgattt tgacttctgt
+     1261 ttgctaaggc caccaggtca acagatggaa aatggggttt caccagaagg cctgttgccc
+     1321 aggcgtttgg gttactcgcg tggcaatcgt gttggtggtc tggtggttgg catgattttg
+     1381 gtggctgaac acaagcaggt caacaggcat ttcaactcca attctgtcac atttggttgg
+     1441 tcaacggcac ctgttaaccc aatggcagca gagatcgtga ccaaccaggc acattcgaca
+     1501 tcacgccatg cgtggctctc cattggtgct cagaacaagg gtccactgtt ccccgggata
+     1561 cccaaccatt tccccgattc gtgtgcatca acaatcgtgg gggccatgga cacttctctt
+     1621 ggcggccggc cgtccactgg ggtgtgtggg cctgccataa gcttccaaaa caatggtgac
+     1681 gtctatgaaa atgacacacc ctcagtcatg tttgccacct acgaccctct cacgtccggc
+     1741 acgggggttg ctcttaccaa cagcatcaac cctgcgtccc tggcattggt gcgcatatcc
+     1801 aacaacgact ttgacaccag tggttttgcc aacgacaaga atgtagtggt gcaaatgtca
+     1861 tgggagatgt acacaggcac caaccaaatt agaggtcaag ttacaccaat gtctggtacc
+     1921 aactacacct ttacttccac aggtgcgaat actcttgtgt tgtggcagga gcgcatgctc
+     1981 agttatgatg ggcaccaagc aatactgtac tcgtcacaat tggagaggac ggctgagtac
+     2041 ttccagaatg acatagtcaa cataccagaa aattccatgg cggtgttcaa tgtggaaacc
+     2101 aattctgcat ctttccaaat tggcattaga cctgatggtt atatggtgac aggtggatcc
+     2161 attggcgtca acgtgccgct tgaacctgaa actagattcc aatacgttgg tatcctccct
+     2221 ttgtctgcag ctttatctgg gcccagtggg aacatgggaa gggccagacg ggtgttccaa
+     2281 tgagttggtt ggtaggtgcc ctccagacct tcgggtcatt ggctgacgtt gctggcactg
+     2341 tgtctaacat agtataccag cagcgccaag ctgctcagtt ggaaaaacaa aatgaactga
+     2401 tggagacatg gatgaacaag caagaagcac tgcaaaaatc ccaaatggaa ttaacccgag
+     2461 acctttccat taatggtcca gctgcccggg tgcaatcagc acttgacgca ggttttgatg
+     2521 aagtgagtgc acggcgcatt gctggttcag gtgagcgcgt gatatggggt aatcttgatc
+     2581 ggcctatcat gcacgctggc actatggaca gcatacgcca aactaaacat ttggactctt
+     2641 tgagtcactc attggccaca tttaaaaatg gaactccatt tggtaaacct gcacccccaa
+     2701 cagcaaaatt tggcaagcct caggccacaa ccgcacaaat taacattggt cacaaccctg
+     2761 gtagctccag tgcctaaatc caaattttct tttctttgaa acggtcccac acgcgttcgg
+     2821 gtgggtaaca gacaattaag cgattgtcgc cgttcccaaa aaaaaaaaaa a
+//
+

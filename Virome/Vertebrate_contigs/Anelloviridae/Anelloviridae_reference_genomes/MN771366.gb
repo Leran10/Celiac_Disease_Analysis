@@ -1,0 +1,111 @@
+LOCUS       MN771366                2876 bp    DNA     linear   ENV 19-DEC-2021
+DEFINITION  MAG: TTV-like mini virus isolate SAfiA-479-12, complete genome.
+ACCESSION   MN771366
+VERSION     MN771366.1
+KEYWORDS    ENV; Metagenome Assembled Genome; MAG.
+SOURCE      TTV-like mini virus (human serum metagenome)
+  ORGANISM  TTV-like mini virus
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Betatorquevirus.
+REFERENCE   1  (bases 1 to 2876)
+  AUTHORS   Cordey,S., Laubscher,F., Hartley,M.A., Junier,T., Keitel,K.,
+            Docquier,M., Guex,N., Iseli,C., Vieille,G., Le Mercier,P.,
+            Gleizes,A., Samaka,J., Mlaganile,T., Kagoro,F., Masimba,J.,
+            Said,Z., Temba,H., Elbanna,G.H., Tapparel,C., Zanella,M.C.,
+            Xenarios,I., Fellay,J., D'Acremont,V. and Kaiser,L.
+  TITLE     Blood virosphere in febrile Tanzanian children
+  JOURNAL   Emerg Microbes Infect 10 (1), 982-993 (2021)
+   PUBMED   33929935
+REFERENCE   2  (bases 1 to 2876)
+  AUTHORS   Cordey,S., Laubscher,F., Hartley,M.-A., Junier,T., Keitel,K.,
+            Docquier,M., Guex,N., Iseli,C., Vieille,G., Le Mercier,P.,
+            Gleizes,A., Samaka,J., Mlaganile,T., Kagoro,F., Masimba,J.,
+            Said,Z., Temba,H., Tapparel,C., Zanella,M.-C., Xenarios,I.,
+            Fellay,J., D'Acremont,V. and Kaiser,L.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (03-DEC-2019) Laboratory of Virology, University
+            Hospitals of Geneva, Rue Gabrielle-Perret-Gentil 4, Geneva, Geneva
+            1205, Switzerland
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: IDBA-UD v. 1.1.3
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2876
+                     /organism="TTV-like mini virus"
+                     /mol_type="genomic DNA"
+                     /isolate="SAfiA-479-12"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:93678"
+                     /environmental_sample
+                     /geo_loc_name="Tanzania"
+                     /collection_date="2015"
+                     /metagenome_source="human serum metagenome"
+                     /note="metagenomic"
+     CDS             544..2526
+                     /codon_start=1
+                     /product="ORF1"
+                     /protein_id="UGV36166.1"
+                     /translation="MPWHWRPQPYWRRRRTWRRRSRRPFRRRLWRRKYYRRYTVRKHR
+                     LKRKLKYLPLKEWQPQYIRKLKITGIQPLYMTTSDRVSHNGTLYFDSIAPHYVPSGGG
+                     FSVQIFTLNAFWELFKKGRCWWTQSNDDFPLIRFLGAKIYLYRAEASDYIINYHSCPP
+                     MKATLETYQSTQPNLMQLNKHHKIIPCKKHNYKAKPYKVVRIRPPATMKNKWYFQKEL
+                     ANTPLVLLMASAMSLDRFYMGSNSISNTVGFFSLNSNFFHYHNFKQKTTTGYIPKDGV
+                     YMYSYRDTSTSWQTVKLSKLIYLGNSTNYTLGEPVGSAWNNYASTPDKWGNVFHNNYL
+                     KGPLPVLTSNHSPTYLQQTYTNPETTTLQTAGISPVAEPLLIEFRYNPLNDRSEQNEI
+                     FVDTILTQKPNWQAPTDPTQKSDNLPLWLGLWGFTDWQKRQGITKLDINNIIVLHTNY
+                     IEPKQVPFIIPIDDDMLQGRSPFRPPNNITPSDMENWHPKAQFQQRTLNEICAAGPAV
+                     IKLPQNVSAEAHMRFVFYFKLGGCAQPSKNIENPEDQPIFPTPGNILQSTSLQSPETP
+                     IQNFLYSFDWRRHFLTKAAQKRIEQYCLAEQALLEPTGLSKFNPEASHQETPTPIQET
+                     EEKENQALELLIEQQRRKQNQLRQRILQLLTDPNLE"
+ORIGIN      
+        1 acatgtccac catcattaac cacgcctact gaacccacaa aattagaatg gctgaccaca
+       61 aacagacaac ggaaaccaca aaatttgcat tgccgaccac aaactgacaa cttccctttt
+      121 ttgcacttca cttcctcttt atctaattat tattcattac attaattatt aaacaccgtc
+      181 accccgggga ggagccacac aactatataa ctaacaacac ttccgaatgg ctgagtttat
+      241 gccgccggac ggagacgaga aacttctcgg ctgagcctgg gcgggtgccg aaggtgagtg
+      301 aaaccaccgt agtcaagggg cctaatgggc aggctcagtc ctggcggaac gggctaactg
+      361 tcttaatttt ttacagatgc ctaaactgct cccaataaca acttcatcaa agaatagaaa
+      421 atatgactgg ctaaatacta ttgttcacgt ccataaccta caatgcggct gtgacgaccc
+      481 cctgggacac acagtagaag aaatatttga acaagaacca ggaattaaag aaaagcttac
+      541 aaaatgccct ggcactggag accccagccc tactggagac gacgacgtac ttggcgccgg
+      601 agatctagac gcccttttcg ccgcagactt tggagaagaa aatactaccg gagatacacg
+      661 gtaagaaaac acagactaaa aagaaaactt aaatacttac ctttaaaaga gtggcaacct
+      721 caatatataa gaaaacttaa aataactgga atacagccac tatatatgac tactagtgac
+      781 agagtttcac acaatggaac attatacttt gacagcattg cacctcatta tgtaccttcc
+      841 ggaggtggat tttctgtaca aatatttact ttaaatgctt tttgggaact gtttaaaaaa
+      901 ggacggtgtt ggtggactca aagtaatgat gatttcccac ttatccgctt tttgggtgcc
+      961 aaaatatact tgtacagagc agaagcttct gactatataa taaattacca tagttgtcct
+     1021 cctatgaaag ccacactaga aacataccaa tcaacacaac caaacctaat gcaattaaac
+     1081 aaacaccaca aaataatacc ttgcaaaaaa cacaactaca aggcaaaacc atataaagta
+     1141 gtaagaataa gaccaccagc aacaatgaaa aacaaatggt actttcaaaa agaactagca
+     1201 aacacacctc tagtactact aatggcttca gcaatgtctt tagaccgatt ctatatggga
+     1261 tcaaactcta taagcaacac agtaggcttc ttttcactta actctaactt ctttcactac
+     1321 cataacttta aacaaaaaac tactacagga tatataccaa aagacggagt ttacatgtac
+     1381 tcatacagag acaccagcac atcctggcaa actgttaaat tatcaaaatt aatatactta
+     1441 ggaaactcca ctaactacac attaggggaa cctgtaggct ccgcatggaa taactatgca
+     1501 tctactccag ataagtgggg aaatgttttt cataataact atctaaaagg acccttacct
+     1561 gtcttaacat ccaatcactc acctacatac ctacaacaaa catacacaaa cccagaaacc
+     1621 acaacattac aaacagctgg tataagtcca gtagcagaac ctctactcat agaattcaga
+     1681 tacaatccac taaatgacag atctgaacaa aatgaaatat ttgtagacac aatacttaca
+     1741 caaaaaccta attggcaagc acccacagac cccacacaaa aaagtgacaa ccttccacta
+     1801 tggctaggac tatggggttt cacagactgg caaaaaagac aaggcataac taaacttgac
+     1861 ataaataaca taatagtgct acatacaaac tacatagaac ccaaacaagt tccatttata
+     1921 ataccaatag atgatgacat gctacagggc agatcacctt tcagaccacc aaataacatt
+     1981 acaccctcag atatggaaaa ttggcaccca aaagcacaat ttcagcaacg gacattaaat
+     2041 gaaatatgtg cagcaggtcc cgctgtaatt aaactgcctc aaaatgtctc tgctgaagct
+     2101 catatgcgct ttgtatttta ctttaaattg ggtggctgtg cacagccttc caaaaacatt
+     2161 gagaatcctg aggaccaacc tatctttccc acacccggta acatcctaca atcaacttcg
+     2221 ttacagagtc cagaaacacc aatccaaaac ttcttatact ccttcgactg gaggagacat
+     2281 ttccttacaa aagcagctca aaaacgaatt gaacaatact gccttgctga acaagctctt
+     2341 ctcgaaccta caggactcag caaattcaac ccagaagcat cccaccaaga aacaccgaca
+     2401 ccgatccaag agacagagga aaaagaaaac caagcactgg agctcctcat cgagcagcag
+     2461 cgaagaaagc aaaaccagct cagacagcga atcctccaac tcctaacgga cccaaattta
+     2521 gaataatagg ctgtactact aaaatacaat tatttgacat gcccaaacct aatagaaggt
+     2581 ttaccccaaa agaatttgaa gaagaattag ctgatgctag agcctggttt agaccaccca
+     2641 gatcctttat taaagacaca cccttttacc cctgggccta cccaccacct aaaccagata
+     2701 tatgctttga cctaaaccca caaatgtatg gtatctaaca ataaaggcct gcaaactttc
+     2761 acatctcggt gtcagtttat taaggtcata cttaaataaa catccaccac actcccaaat
+     2821 acgcaggcgt agcagggggc tccgccccct gcaacccccg gggggggata cccccc
+//
+

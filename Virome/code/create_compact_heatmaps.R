@@ -69,7 +69,7 @@ create_compact_heatmap <- function(timepoint_file, output_name, title_prefix) {
   fig_width <- max(6, n_timepoints * cell_width + 3)        # Dynamic width
   
   # Create compact heatmap
-  pdf(paste0("../Orf_Contig_Phrog_compositional/figures/", output_name, "_compact_heatmap.pdf"), 
+  pdf(paste0("../Orf_Contig_Phrog_compositional/results_temp/", output_name, "_compact_heatmap.pdf"), 
       width = fig_width, height = fig_height)
   
   pheatmap(estimate_matrix,
@@ -95,9 +95,11 @@ create_compact_heatmap <- function(timepoint_file, output_name, title_prefix) {
 }
 
 # Create compact heatmaps for all timepoint-specific results
-timepoint_files <- list.files("../Orf_Contig_Phrog_compositional/results/", 
-                             pattern = "timepoint_specific_results.csv", 
+timepoint_files <- list.files("/Users/leranwang/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/Orf_Contig_Phrog_compositional/results_temp", 
+                             pattern = ".csv", 
                              full.names = TRUE)
+
+
 
 for(file in timepoint_files) {
   base_name <- gsub("_timepoint_specific_results.csv", "", basename(file))

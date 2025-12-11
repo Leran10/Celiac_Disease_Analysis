@@ -1,0 +1,84 @@
+LOCUS       MG846494                1539 bp    DNA     linear   VRL 20-MAR-2018
+DEFINITION  Gyrovirus 4 strain RS/BR/15/2S, partial genome.
+ACCESSION   MG846494
+VERSION     MG846494.1
+KEYWORDS    .
+SOURCE      Gyrovirus 4
+  ORGANISM  Gyrovirus 4
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Gyrovirus; Gyrovirus
+            homsa3.
+REFERENCE   1  (bases 1 to 1539)
+  AUTHORS   Lima,D.A. and Roehe,P.M.
+  TITLE     A case-control study in search for viruses in malabsorption
+            syndrome affected and healthy chickens
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 1539)
+  AUTHORS   Lima,D.A. and Roehe,P.M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-JAN-2018) Departamento de Microbiologia, Imunologia e
+            Parasitologia, Universidade Federal do Rio Grande do Sul, Sarmento
+            Leite, 500, Porto Alegre, Rio Grande do Sul 90050-170, Brazil
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: MetaSPAdes v. 3.10.1; Geneious v. 9.1.8
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..1539
+                     /organism="Gyrovirus 4"
+                     /mol_type="genomic DNA"
+                     /strain="RS/BR/15/2S"
+                     /isolation_source="feces"
+                     /host="Gallus gallus"
+                     /db_xref="taxon:1214955"
+                     /geo_loc_name="Brazil"
+                     /collection_date="2015"
+                     /collected_by="Diane Lima"
+     CDS             23..676
+                     /codon_start=1
+                     /product="VP2"
+                     /protein_id="AVN87716.1"
+                     /translation="MGSPDHRFSAVPIDLLDSVCPQWKQVCFNYGIACWLTECRVSHS
+                     RVCRCTSFRNHWFQLEGKPVSTVEVGVQTDPGDLEPPRSGTSTAEIGPRVDAARRLLS
+                     SISFKRDACRALEGAPKPKKRKRGDARKEFLRRFREGEETESDAEWDSFVEWSDSDGD
+                     PGVDYMRGGAGGGILREDRMGGGIEVESTGGGTGGTEGTPFLKLLSGNFTSSTPARM"
+     CDS             481..1539
+                     /codon_start=1
+                     /product="VP1"
+                     /protein_id="AVN87715.1"
+                     /translation="MVRFRRRPWGRLYAWRRGGWHFKRRPYGRWYRSGKYRRGYRRHR
+                     RYAFSKAFKRKFYVQHPGSYVVRKTRPYNSMKVYFQGVIFVNNAVYQSGQAETSAFRV
+                     YSIELSLRNLLLAYYTQYVSGGPGWTGSSTAKVNISPLDWWRWAYIRMHPSPDQRVFA
+                     SATRPTDTQLFNYFSQWQLFRHIKTDFRVLNTDVTNTPDVRILASLLTQDSYWQVQNK
+                     TSADLSQLRFPSFAELTAWGAQWAFTPGQKSVSGRSFNHHSMRGTNDPKGEPWKTLTP
+                     LQHQVISDINWVFGTLFLAEFSNFTVLNEYNTENRALAATGLSETWSIVKVRSLFEFG
+                     NQQYLLADSVRFTSHLPA"
+ORIGIN      
+        1 agtgttgtaa ggctctcggg gtatgggcag ccctgatcat cgttttagtg ctgttcctat
+       61 tgatctgttg gatagtgtgt gcccgcagtg gaaacaggtc tgtttcaact acggtatagc
+      121 atgttggctg acggagtgtc gagtgtctca cagcagggtg tgccggtgca cgagcttcag
+      181 gaatcattgg tttcagttgg aggggaagcc ggtttcaacg gtagaagtcg gtgtgcaaac
+      241 agaccctggg gatctcgaac cgccgcgttc tggtacctcc actgcagaga ttgggccaag
+      301 agtcgacgcc gcgcggagat tattgagttc tatctcgttc aaaagagacg cctgccgagc
+      361 tttggaggga gcgcctaaac cgaagaagag aaagagagga gatgcgcgaa aagagtttct
+      421 gagaagattt cgagagggtg aggagactga gtctgatgct gagtgggaca gttttgtgga
+      481 atggtccgat tcagacggag accctggggt agattatatg cgtggaggcg cggggggtgg
+      541 cattttaaga gaagaccgta tgggaggtgg tatcgaagtg gaaagtaccg gagggggtac
+      601 cggaggcacc gaaggtacgc cttttctaaa gcttttaagc ggaaatttta cgtccagcac
+      661 cccggctcgt atgtagtgag aaagacaagg ccatataatt ctatgaaagt gtattttcag
+      721 ggtgtcatat ttgttaacaa tgccgtatat cagtctggac aggctgaaac ttctgctttt
+      781 agggtttata gtatcgagct ttcccttaga aatttgttgc ttgcttatta tacacagtat
+      841 gtatcagggg gaccggggtg gactggcagt agcactgcta aggttaatat tagtccgctt
+      901 gattggtgga ggtgggctta tatcagaatg catccatctc ctgatcagag agtgtttgca
+      961 agtgcaacta ggccgacaga tactcagctt tttaactatt ttagtcagtg gcagttgttc
+     1021 aggcacataa aaactgactt tagagtgctt aacacagatg taacgaacac accagatgtg
+     1081 aggattttag cgagtctatt gactcaagat agttattggc aggttcagaa caagacttct
+     1141 gcagatctga gtcagttgag gttccctagt tttgcggagt tgactgcttg gggtgcacag
+     1201 tgggctttca cgccgggtca aaaaagtgtg agtggaagga gctttaacca tcactcgatg
+     1261 aggggtacga acgaccctaa gggggaacct tggaagactc taactccctt gcagcatcag
+     1321 gtaattagcg atataaattg ggtgttcggg actctgttct tagcggagtt tagcaatttc
+     1381 actgtattaa atgagtataa cacggagaat agagcattag cagctactgg attgagtgaa
+     1441 acgtggagca ttgtaaaggt gagaagcctt tttgagtttg gcaatcagca gtatttgctg
+     1501 gccgattcag taaggttcac ctctcactta ccagcttga
+//
+

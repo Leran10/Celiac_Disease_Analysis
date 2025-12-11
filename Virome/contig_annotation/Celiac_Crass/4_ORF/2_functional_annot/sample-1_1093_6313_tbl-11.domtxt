@@ -1,0 +1,26 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_1093_6313|599|1 -            599 portal               -            808  3.3e-184  602.8  14.7   1   1  1.5e-183  9.2e-183  598.0  14.7    21   649     5   599     2   599 0.96 -
+sample-1_1093_6313|768|3 -            768 TerL                 -            780  5.1e-242  793.8   8.5   1   1    1e-242  6.2e-242  793.5   8.5    19   769    11   760     1   766 0.96 -
+sample-1_1093_6313|196|4 -            196 VP00407              -            183   1.8e-34  107.5   1.3   1   1   3.6e-35   2.1e-34  107.3   1.3     6   175     8   188     3   194 0.88 -
+sample-1_1093_6313|599|1 -            599 VP00410              -            789   5.1e-73  234.9  12.5   1   2   6.7e-34     4e-33  103.0   2.8    44   330    24   318     2   322 0.82 -
+sample-1_1093_6313|599|1 -            599 VP00410              -            789   5.1e-73  234.9  12.5   2   2   1.2e-44   6.9e-44  138.5   3.4   355   637   306   596   295   599 0.90 -
+sample-1_1093_6313|768|3 -            768 VP00412              -            717  4.8e-124  403.5   6.0   1   1  1.1e-124  6.7e-124  403.1   6.0    59   677    90   694    80   726 0.92 -
+sample-1_1093_6313|768|3 -            768 VP02579              -            684   1.2e-77  250.0   6.9   1   1   2.8e-78   1.7e-77  249.6   6.9    15   639    91   693    85   710 0.88 -
+sample-1_1093_6313|599|1 -            599 VP02585              -            853   1.5e-32  101.1  11.4   1   2   5.2e-11   3.1e-10   27.3   3.0    50   329    27   318    11   324 0.78 -
+sample-1_1093_6313|599|1 -            599 VP02585              -            853   1.5e-32  101.1  11.4   2   2   1.2e-26     7e-26   79.0   2.6   364   642   319   592   296   599 0.86 -
+sample-1_1093_6313|196|4 -            196 VP02596              -            175   5.6e-20   60.8   0.6   1   1   1.2e-20   7.4e-20   60.3   0.6     3   167     6   187     4   190 0.85 -
+sample-1_1093_6313|196|4 -            196 VP02683              -            193   2.3e-93  299.8   1.3   1   1   4.2e-94   2.5e-93  299.7   1.3     1   192     1   193     1   194 0.99 -
+sample-1_1093_6313|599|1 -            599 VP02684              -            708  2.8e-299  982.9  16.4   1   1  5.2e-300  3.1e-299  982.7  16.4     2   578     6   599     5   599 0.99 -
+sample-1_1093_6313|768|3 -            768 VP02686              -            761         0 1182.9   9.3   1   1         0         0 1182.7   9.3     8   759     3   759     1   761 0.98 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_1093_6313_tbl-11.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_1093_6313_tbl-11.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_1093_6313_tbl-11.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_1093_6313_tbl-11.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:30 2025
+# [ok]

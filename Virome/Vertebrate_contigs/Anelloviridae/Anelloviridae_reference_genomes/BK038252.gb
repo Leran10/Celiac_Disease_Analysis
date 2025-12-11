@@ -1,0 +1,139 @@
+LOCUS       BK038252                3046 bp    DNA     linear   ENV 24-JUN-2021
+DEFINITION  MAG TPA_asm: Bacteriophage sp. isolate ctTSw6, partial genome.
+ACCESSION   BK038252
+VERSION     BK038252.1
+DBLINK      BioProject: PRJNA504921, PRJNA573942
+            BioSample: SAMN10408156
+            Sequence Read Archive: SRR8240799
+KEYWORDS    ENV; Metagenome Assembled Genome; MAG; Third Party Data; TPA;
+            TPA:assembly.
+SOURCE      Bacteriophage sp. (Human Metagenome)
+  ORGANISM  Bacteriophage sp.
+            Viruses.
+REFERENCE   1  (bases 1 to 3046)
+  AUTHORS   Tisza,M.J. and Buck,C.B.
+  TITLE     A catalog of tens of thousands of viruses from human metagenomes
+            reveals hidden associations with chronic diseases
+  JOURNAL   Proc Natl Acad Sci U S A 118 (23) (2021)
+   PUBMED   34083435
+REFERENCE   2  (bases 1 to 3046)
+  AUTHORS   Tisza,M.J. and Buck,C.B.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (15-APR-2021) Lab of Cellular Oncology, National Cancer
+            Institute, 37 Convent Dr., Bethesda, MD 20814, USA
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: MEGAHIT v. 1.2.9
+            Genome Coverage       :: 442.1031x
+            Sequencing Technology :: Illumina
+            Annotation Pipeline   :: Cenote-Taker2
+            URL                   :: https://github.com/mtisza1/Cenote-Taker2
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..3046
+                     /organism="Bacteriophage sp."
+                     /mol_type="genomic DNA"
+                     /isolate="ctTSw6"
+                     /isolation_source="Human metagenome"
+                     /db_xref="taxon:38018"
+                     /environmental_sample
+                     /geo_loc_name="USA"
+                     /collection_date="2019-03-08"
+                     /metagenome_source="Human Metagenome"
+                     /note="genome binned from sequencing reads available in
+                     SRX5058895;
+                     metagenomic"
+     CDS             <1..351
+                     /inference="protein motif:PFAM:PF02957.14"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="TT viral ORF2"
+                     /protein_id="DAO85012.1"
+                     /translation="LFMSMTYIIVLQMSDYVPVNPTSKQQKINWMNTIVHVHDLQCNC
+                     DSPLEHTILHITNQEPNLRFSDKQKKNLKRCLFMEDTIVKEEEPFGEGELEALFAQED
+                     GGDIDTTDTDAATR"
+     CDS             480..2228
+                     /inference="protein motif:PFAM:PF02956.13"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="TT viral orf 1"
+                     /protein_id="DAO85013.1"
+                     /translation="MYWYERSEHYVPGGGGFSVICFTLSALYQLFEKCQCYWTRSNTT
+                     MPLIRYTGGTIKLFRAAESDYITTYHTCFPMKPTLDTYASTHPAILQLNKRHKILTCK
+                     KHNRNRKPYIKIRLKPPAPIKNRWFFQKELADVPLAMLMTSAASFDRYYLSSTSISTT
+                     IEFYSLDTRTFVFHNWKIQSTSGYQADTKKYLWALKNGTTDISKEKMMNLIYLGDTKN
+                     FKAGDTVISTKASSTNLQAWERYFQSSTHWGNPFWHEYLQQEKTVLISSKSPTELQSK
+                     FLTTSGDPELGSDFTTPTYKLIQTCRYNPYSDYGNNHIFITPITDNDKEPWRQPTNPK
+                     LEGKQLPLWLNTWGFIDFEKNVIGNKVDTDYVCVLVSDYVNPKLGYYVPIDKEFIEGR
+                     SKYQPEHSLPFLFDQLHWHPKVTMQLSSINAIGSSGPGTIKLPPNISAESHAQFTFHF
+                     KLGGCAPEPNTIEDPEKQPTFPTPDNISSSTSFQSPTMPIESYIYGFDKRRDLFTAKA
+                     IERMQKYSISKELVSSITDSNKLQPGPLQETSSEDSEEEKTEKETLLQQLQLQRNKQH
+                     KFRQRILQLIQQLSSE"
+     CDS             2285..2434
+                     /note="No HHsearch hits"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="DAO85014.1"
+                     /translation="MTAKEYEQELQESKIWGHYPRNFILDRPYYKDIPITPIIPKVNF
+                     DLGYF"
+     CDS             2983..>3046
+                     /note="No HHsearch hits"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="hypothetical protein"
+                     /protein_id="DAO85015.1"
+                     /translation="MSDYVPVNPTSKQQKINWMNT"
+ORIGIN      
+        1 ttgttcatgt ccatgaccta cataattgtt ttacagatga gcgactatgt tccagttaat
+       61 ccaacttcta aacaacaaaa aattaattgg atgaacacca ttgttcatgt ccatgaccta
+      121 caatgcaact gcgattctcc attagaacac accattctac acattactaa ccaagaacca
+      181 aacctccgct tctctgataa acaaaagaaa aacctaaaaa gatgcctttt tatggaagat
+      241 actatcgtaa aagaagaaga gccttttgga gaaggagagc tagaggccct tttcgcccaa
+      301 gaagatggag gcgacataga tactaccgat accgacgccg caacacggta agaagaaaaa
+      361 gaaaattacc ttacttacac ttaaaagaat accaacctcc atatattaac aaactaaaat
+      421 gcaaaggaat tattccttta ttttactgta ccagagaaag actggtaaat aacttttcta
+      481 tgtactggta tgaaagaagt gaacattatg tacccggagg tgggggattt agtgttatat
+      541 gttttactct atcagctttg tatcaattgt ttgaaaaatg tcaatgttac tggactagaa
+      601 gtaatactac tatgccttta ataagataca caggaggcac tataaaacta tttagagcag
+      661 cagaatcaga ctacataaca acataccaca catgttttcc aatgaaacct acattagata
+      721 cttatgcatc tactcaccca gctatactac aactaaacaa aagacataaa atactaacat
+      781 gcaaaaaaca taacagaaac agaaaaccat acataaaaat aagactaaaa ccaccagcac
+      841 caattaaaaa cagatggttt tttcaaaaag aactagctga tgtaccacta gctatgctaa
+      901 tgacttcagc ggcatctttt gacagatact acttaagttc cacatcaata agcacaacca
+      961 tagaatttta tagtttagac acaagaacat ttgtttttca taactggaaa atacaaagca
+     1021 caagcggata ccaagcagac acaaaaaaat acttatgggc attaaaaaac ggcacaacag
+     1081 acattagcaa agaaaaaatg atgaacctaa tatacttagg agacacaaaa aactttaaag
+     1141 caggagacac tgtaatatct acaaaagcct catcaacaaa cctacaagca tgggaaagat
+     1201 acttccaaag tagcacacat tggggaaacc cattttggca cgaataccta caacaagaaa
+     1261 aaacagtact aattagcagt aaatcaccaa cagaactaca atctaaattt ttaacaacat
+     1321 caggagaccc tgaactaggt tcagacttta caacaccaac atacaaacta atacaaacat
+     1381 gcagatataa cccatattca gactatggaa acaaccacat atttataaca ccaataacag
+     1441 acaatgacaa agaaccatgg agacaaccaa caaatccaaa attagaaggt aaacaattac
+     1501 cactatggct aaacacatgg ggttttatag actttgaaaa aaatgtaata ggaaacaaag
+     1561 tagacactga ctatgtatgt gtacttgtat cagactatgt aaatccaaaa ctaggatact
+     1621 atgtacccat agacaaagaa tttatagaag gaagaagcaa ataccaacca gaacattcct
+     1681 taccattttt atttgatcaa ctacattggc atcctaaagt aactatgcaa ttatcaagca
+     1741 taaatgccat aggatcctct ggtcctggaa caataaaact gcctccaaac atatcagcag
+     1801 aaagtcatgc acaatttacc tttcacttta agcttggagg ctgtgcacca gaaccaaaca
+     1861 caattgaaga cccagaaaag caacctacat ttcccactcc cgataacatc tcatcatcaa
+     1921 cttcgtttca gagtccaaca atgccaatcg aaagctatat ctatggattt gacaaaagaa
+     1981 gagacctctt tacagcaaaa gctatcgaaa gaatgcaaaa atactcaata tctaaagaac
+     2041 ttgtttcttc aattacagac agcaacaaac tccaaccagg accactccaa gaaacatcat
+     2101 cggaggactc ggaggaggag aaaaccgaaa aggagacact gctccaacag ctccaactcc
+     2161 agcgaaacaa gcaacacaag ttcagacagc gaattctcca actaatacaa caactgagct
+     2221 cagaataaaa cacagcaaaa taacaatcaa cttatttgaa gaaccaaaac ctaaaaacag
+     2281 acgcatgaca gctaaagaat acgaacaaga actacaagaa agcaaaatat ggggacatta
+     2341 ccctagaaac tttattttag atagacctta ctataaagac ataccaatca ccccaataat
+     2401 acccaaagta aactttgacc ttggttactt ttaataaagc ctgcaaactt tcacttatcg
+     2461 gtgtccattt atttaagtat aaccttaata aacatccacc acactcccga atacgcaggc
+     2521 gcaatagggg gctccgcccc ctataacccc caggggggga caccccccca accccccccc
+     2581 gaaaaaccac aaaattaact aacaaaccac caacggaacg gaaaccacat aatttgcatt
+     2641 gccgaccaca aactgacagg aaaaccacat aatttgcatt gccgaccaca aaccgtcttt
+     2701 aacttcccca ttttaacata cttcctcttt atctcataaa tattcattaa attaattaat
+     2761 acacagcatc acttccaggg cgtgtctact atgctatata ttcaacaacc atgacgaatg
+     2821 gctgagttta tgccgccaga cggagacggg atcacttcag tgactccagg ctgagcttgg
+     2881 gcgggagccg aaggtgagtg aaaccaccgt agtctagggg caattcgggc tagctcagtc
+     2941 tggcggaacg ggcaagaaac ttaaaatata attgttttac agatgagcga ctatgttcca
+     3001 gttaatccaa cttctaaaca acaaaaaatt aattggatga acacca
+//
+

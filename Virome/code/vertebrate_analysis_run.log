@@ -1,0 +1,44 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+Loading required package: limma
+Welcome to emmeans.
+Caution: You lose important information if you filter this package's results.
+See '? untidy'
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:data.table’:
+
+    transpose
+
+[1] 31264   327
+[1]   327 31264
+[1]   303 31291
+[1]   303 30582
+
+FALSE  TRUE 
+26946  3343 
+[1] 3343  303
+[1] "01_GEMM_006_60M" "01_GEMM_060_18M" "01_GEMM_061_84M" "01_GEMM_102_12M"
+[5] "01_GEMM_109_48M" "02_GEMM_006_30M" "02_GEMM_034_12M"
+[1] 3343  297
+[1] 297  26
+[1] TRUE
+Error: object 'contig_count_table' not found
+Execution halted

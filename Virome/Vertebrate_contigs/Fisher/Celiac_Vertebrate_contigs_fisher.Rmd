@@ -1,0 +1,1230 @@
+---
+title: "Celiac_Vertebrate_contig_divide_by_disease"
+output: html_document
+date: "2025-12-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(dplyr)
+library(broom.mixed)
+library(limma)
+library(edgeR)
+library(glmmTMB)
+library(emmeans)
+library(purrr)
+library(tidyr)
+library(stringr)
+library(tibble)
+
+```
+
+
+
+# load metadata
+```{r}
+
+metadata <- read.csv("~/Handley Lab Dropbox/16S/Celiac/metadata/Updated_Metadata_with_Onset_Timeline.csv") %>%
+            column_to_rownames("X")
+
+
+```
+
+
+# prepare US vertebrate count table with 75% mapping filtering
+```{r}
+library(data.table)
+
+
+# load the 75% mapping rate filtered contig table
+US_vertebrate_contig_processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/US/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+
+# then let's check colSums and ensure there is no sample have all 0s across orfs
+sample_all_0 <- names(colSums(US_vertebrate_contig_processed)[colSums(US_vertebrate_contig_processed) == 0])
+# [1] "NovaSeq_N966_I12886_39602_Celiac_Leonard_Stool_01_GEMM_119_30M"       "NovaSeq_N966_I12920_39636_Celiac_Leonard_Stool_01_GEMM_154_30M"      
+# [3] "NovaSeq_N978_I13149_39572_Celiac_Leonard_Stool_01_GEMM_093_24M"       "NovaSeq_N978_I13150_39573_Celiac_Leonard_Stool_01_GEMM_093_30M"      
+# [5] "NovaSeq_N978_I13151_39574_Celiac_Leonard_Stool_01_GEMM_093_36M"       "NovaSeq_N978_I13152_39575_Celiac_Leonard_Stool_01_GEMM_093_48M"      
+# [7] "NovaSeq_N978_I13166_39589_Celiac_Leonard_Stool_01_GEMM_106_24M"       "NovaSeq_N980_I13250_39529_Leonard_Human_Stool_Celiac_01_GEMM_057_60M"
+# [9] "NovaSeq_N983_I13413_39587_Celiac_Leonard_Stool_01_GEMM_106_12M" 
+
+
+# let's remove the 6 0 counts samples
+US_vertebrate_contig_processed <- US_vertebrate_contig_processed %>%
+                               select(-all_of(sample_all_0))
+dim(US_vertebrate_contig_processed)
+# 23366   199
+
+
+# assign vertebrate_contig_processed to vertebrate_contig_count, so vertebrate_contig_processed won't be changed in downstream analysis
+US_vertebrate_contig_count <- US_vertebrate_contig_processed
+
+colnames(US_vertebrate_contig_count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(US_vertebrate_contig_count))
+
+colnames(US_vertebrate_contig_count) <- str_replace_all(colnames(US_vertebrate_contig_count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(US_vertebrate_contig_count) <- sapply(strsplit(colnames(US_vertebrate_contig_count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(US_vertebrate_contig_count) <- ifelse(colnames(US_vertebrate_contig_count) %like% "_6Y",gsub("_6Y","_72M",colnames(US_vertebrate_contig_count)),
+                                           ifelse(colnames(US_vertebrate_contig_count) %like% "_7Y",gsub("_7Y","_84M",colnames(US_vertebrate_contig_count)),colnames(US_vertebrate_contig_count)))
+
+US_vertebrate_contig_count.table_0.75 <- t(US_vertebrate_contig_count) 
+dim(US_vertebrate_contig_count.table_0.75)
+# 199 23366
+
+
+US_vertebrate_contig_count.table_0.75 <- merge(metadata,US_vertebrate_contig_count.table_0.75,by = 0) %>% # 189 samples left
+                                      filter(feeding_first_year != "Unknown") %>%  # 189 samples left
+                                      filter(Age.at.Gluten.Introduction..months. != "Unknown") # 185 sample left
+dim(US_vertebrate_contig_count.table_0.75)
+# 193 samples x  23393 metadata+contigs
+# 31237 contigs
+
+
+all_0_contigs <- names(colSums(US_vertebrate_contig_count.table_0.75[28:23393])[colSums(US_vertebrate_contig_count.table_0.75[28:23393]) == 0])
+# 159 contigs become 0 through all samples after the 14 samples were removed from the above step
+# so we need to remove those contigs
+
+US_vertebrate_contig_count.table_0.75 <- US_vertebrate_contig_count.table_0.75 %>%
+                            select(-all_of(all_0_contigs))
+dim(US_vertebrate_contig_count.table_0.75)
+# 185 22739
+# 22712 contigs
+
+
+US_vertebrate_contig_abundance.table_0.75 <- US_vertebrate_contig_count.table_0.75 %>%
+                       select(c("Row.names",28:22739)) %>%
+                       column_to_rownames("Row.names") %>% 
+                       t(.) %>%
+                       data.frame(.)
+colnames(US_vertebrate_contig_abundance.table_0.75) <- gsub("X","",colnames(US_vertebrate_contig_abundance.table_0.75))
+
+
+# create PA table
+US_vertebrate_contig_PA.table_0.75 <- ifelse(US_vertebrate_contig_abundance.table_0.75 > 0,1,0)
+
+
+
+US_vertebrate_metadata_0.75 <- US_vertebrate_contig_count.table_0.75[1:27] %>%
+                  column_to_rownames("Row.names")
+dim(US_vertebrate_metadata_0.75)
+# 185  26
+
+
+
+
+# set up categorical variable levels
+US_vertebrate_metadata_0.75$feeding_first_year <- factor(US_vertebrate_metadata_0.75$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+US_vertebrate_metadata_0.75$HLA.Category <- factor(US_vertebrate_metadata_0.75$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+US_vertebrate_metadata_0.75$Sex <- factor(US_vertebrate_metadata_0.75$Sex,levels = c("Female","Male"))
+US_vertebrate_metadata_0.75$Delivery.Mode <- factor(US_vertebrate_metadata_0.75$Delivery.Mode,levels = c("Vaginal","C-Section"))
+US_vertebrate_metadata_0.75$Age.at.Gluten.Introduction..months. <- as.numeric(US_vertebrate_metadata_0.75$Age.at.Gluten.Introduction..months.)
+US_vertebrate_metadata_0.75$Dx.Status <- factor(US_vertebrate_metadata_0.75$Dx.Status,levels = c("CONTROL","CELIAC"))
+US_vertebrate_metadata_0.75$onset_timeline_combined <- factor(US_vertebrate_metadata_0.75$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+
+# check if the column names of abundance table match the order of the row names of metadata table
+all(rownames(US_vertebrate_metadata_0.75) == colnames(US_vertebrate_contig_abundance.table_0.75))
+# TRUE
+
+count_matrix <- as.matrix(US_vertebrate_contig_abundance.table_0.75[, sapply(US_vertebrate_contig_abundance.table_0.75, is.numeric)])
+sparsity <- sum(count_matrix == 0) / length(count_matrix)
+# 0.9788477
+
+
+```
+
+
+
+# prepare Italy vertebrate count table with 75% mapping filtering
+```{r}
+
+
+# load the 75% mapping rate filtered contig table
+Italy_vertebrate_contig_processed <- readRDS("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Italy/wide_rpkm_genes_75Cov.rds") %>%
+                 column_to_rownames("ORFID")
+
+
+# then let's check colSums and ensure there is no sample have all 0s across orfs
+sample_all_0 <- names(colSums(Italy_vertebrate_contig_processed)[colSums(Italy_vertebrate_contig_processed) == 0])
+# [1] "NovaSeq_N981_I13300_39814_Celiac_Leonard_Stool_02_GEMM_021_36M"       "NovaSeq_N981_I13317_39831_Celiac_Leonard_Stool_02_GEMM_057_24M"      
+# [3] "NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M"       "NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M"
+
+
+# let's remove the 6 0 counts samples
+Italy_vertebrate_contig_processed <- Italy_vertebrate_contig_processed %>%
+                               select(-all_of(sample_all_0))
+dim(Italy_vertebrate_contig_processed)
+# 17174   128
+
+
+# assign vertebrate_contig_processed to vertebrate_contig_count, so vertebrate_contig_processed won't be changed in downstream analysis
+Italy_vertebrate_contig_count <- Italy_vertebrate_contig_processed
+
+colnames(Italy_vertebrate_contig_count) <- gsub("NovaSeq_N966_|NovaSeq_N978_|NovaSeq_N979_|NovaSeq_N980_|NovaSeq_N981_|NovaSeq_N982_|NovaSeq_N983_|_stats","",colnames(Italy_vertebrate_contig_count))
+
+colnames(Italy_vertebrate_contig_count) <- str_replace_all(colnames(Italy_vertebrate_contig_count),"Leonard_Human_stool_Celiac","Celiac_Leonard_Stool")
+colnames(Italy_vertebrate_contig_count) <- sapply(strsplit(colnames(Italy_vertebrate_contig_count),"_Stool_|_Stool_Celiac_"),"[",2)
+colnames(Italy_vertebrate_contig_count) <- ifelse(colnames(Italy_vertebrate_contig_count) %like% "_6Y",gsub("_6Y","_72M",colnames(Italy_vertebrate_contig_count)),
+                                           ifelse(colnames(Italy_vertebrate_contig_count) %like% "_7Y",gsub("_7Y","_84M",colnames(Italy_vertebrate_contig_count)),colnames(Italy_vertebrate_contig_count)))
+
+Italy_vertebrate_contig_count.table_0.75 <- t(Italy_vertebrate_contig_count) 
+dim(Italy_vertebrate_contig_count.table_0.75)
+# 128 17174
+
+
+Italy_vertebrate_contig_count.table_0.75 <- merge(metadata,Italy_vertebrate_contig_count.table_0.75,by = 0) %>% # 126 samples left
+                                      filter(feeding_first_year != "Unknown") %>%  # 110 samples left
+                                      filter(Age.at.Gluten.Introduction..months. != "Unknown") # 110 sample left
+dim(Italy_vertebrate_contig_count.table_0.75)
+# 110 samples x  17201 metadata+contigs
+# 17174 contigs
+
+
+all_0_contigs <- names(colSums(Italy_vertebrate_contig_count.table_0.75[28:17201])[colSums(Italy_vertebrate_contig_count.table_0.75[28:17201]) == 0])
+# 779 contigs become 0 through all samples after the 18 samples were removed from the above step
+# so we need to remove those contigs
+
+Italy_vertebrate_contig_count.table_0.75 <- Italy_vertebrate_contig_count.table_0.75 %>%
+                            select(-all_of(all_0_contigs))
+dim(Italy_vertebrate_contig_count.table_0.75)
+# 110 samples x 16422 metadata+contigs
+# 16395 contigs
+
+
+Italy_vertebrate_contig_abundance.table_0.75 <- Italy_vertebrate_contig_count.table_0.75 %>%
+                       select(c("Row.names",28:16422)) %>%
+                       column_to_rownames("Row.names") %>% 
+                       t(.) %>%
+                       data.frame(.)
+colnames(Italy_vertebrate_contig_abundance.table_0.75) <- gsub("X","",colnames(Italy_vertebrate_contig_abundance.table_0.75))
+
+# create PA table
+Italy_vertebrate_contig_PA.table_0.75 <- ifelse(Italy_vertebrate_contig_abundance.table_0.75 > 0,1,0)
+
+
+Italy_vertebrate_metadata_0.75 <- Italy_vertebrate_contig_count.table_0.75[1:27] %>%
+                  column_to_rownames("Row.names")
+dim(Italy_vertebrate_metadata_0.75)
+# 110  26
+
+
+# set up categorical variable levels
+Italy_vertebrate_metadata_0.75$feeding_first_year <- factor(Italy_vertebrate_metadata_0.75$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+Italy_vertebrate_metadata_0.75$HLA.Category <- factor(Italy_vertebrate_metadata_0.75$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+Italy_vertebrate_metadata_0.75$Sex <- factor(Italy_vertebrate_metadata_0.75$Sex,levels = c("Female","Male"))
+Italy_vertebrate_metadata_0.75$Delivery.Mode <- factor(Italy_vertebrate_metadata_0.75$Delivery.Mode,levels = c("Vaginal","C-Section"))
+Italy_vertebrate_metadata_0.75$Age.at.Gluten.Introduction..months. <- as.numeric(Italy_vertebrate_metadata_0.75$Age.at.Gluten.Introduction..months.)
+Italy_vertebrate_metadata_0.75$Dx.Status <- factor(Italy_vertebrate_metadata_0.75$Dx.Status,levels = c("CONTROL","CELIAC"))
+Italy_vertebrate_metadata_0.75$onset_timeline_combined <- factor(Italy_vertebrate_metadata_0.75$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+
+# check if the column names of abundance table match the order of the row names of metadata table
+all(rownames(Italy_vertebrate_metadata_0.75) == colnames(Italy_vertebrate_contig_abundance.table_0.75))
+# TRUE
+
+count_matrix <- as.matrix(Italy_vertebrate_contig_abundance.clean[, sapply(Italy_vertebrate_contig_abundance.clean, is.numeric)])
+sparsity <- sum(count_matrix == 0) / length(count_matrix)
+# 0.8580126
+
+
+```
+
+
+
+
+############################# US ####################################
+
+
+
+# Astroviridae
+```{r}
+
+Astroviridae_contigs <- c("contig_3357","contig_34440","contig_3567","contig_3669","contig_43336","contig_4647","contig_49047","contig_49065","contig_8153")
+
+## 0. Short aliases to keep code readable
+count_mat <- US_vertebrate_contig_PA.table_0.75
+meta      <- US_vertebrate_metadata_0.75
+
+# write.csv(US_vertebrate_contig_PA.table_0.75,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/US_vertebrate_contig_PA.table_0.75.csv")
+# write.csv(US_vertebrate_metadata_0.75,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/US_vertebrate_metadata_0.75.csv")
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+## Replace this with your real contig list
+Astroviridae_contigs <- c("contig_3357","contig_34440","contig_3567","contig_3669","contig_43336","contig_4647","contig_49047","contig_49065","contig_8153")
+
+## Keep only contigs that actually exist in the count table
+Astroviridae_contigs <- intersect(Astroviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Astroviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+Astroviridae_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Astroviridae/Astroviridae_top1_hits.tsv")
+Astroviridae_fisher_annotation <- merge(fisher_results,Astroviridae_annotation,by = 0)
+
+
+write.csv(Astroviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/Astroviridae_fisher_annotation.csv")
+
+
+```
+
+
+# Anelloviridae
+```{r}
+
+Anelloviridae_contigs <- c("contig_30686","contig_14733","contig_42538","contig_7638","contig_39636","contig_8637","contig_10228","contig_9781","contig_7962","contig_23715","contig_36641","contig_13000","contig_41090","contig_25647","contig_6273","contig_30674","contig_34347","contig_21558","contig_6488" ,"contig_33822","contig_10424","contig_41802","contig_7169","contig_22197","contig_25919","contig_8612","contig_21645","contig_26562","contig_46055","contig_15372","contig_38908","contig_47848","contig_49946","contig_14012","contig_22018","contig_9359","contig_25612","contig_11020","contig_7799","contig_33967","contig_49814","contig_40383","contig_40400","contig_49639","contig_8416","contig_20459","contig_11215","contig_35851","contig_36742","contig_45997","contig_13393","contig_14584","contig_8872","contig_9163","contig_9685","contig_46929","contig_26624","contig_43766","contig_9281","contig_11113","contig_9335","contig_5833","contig_685","contig_28092","contig_26972","contig_10357","contig_27323","contig_8313","contig_36473","contig_30210","contig_17146","contig_23561","contig_7355","contig_8111","contig_8203","contig_35169","contig_16851","contig_6571","contig_22898","contig_10173","contig_32356","contig_14117","contig_6711","contig_17385","contig_40927","contig_7778","contig_25715","contig_29277","contig_35520","contig_38987","contig_9065","contig_11182","contig_17660","contig_18632","contig_7587","contig_42090","contig_46346","contig_33693","contig_8484","contig_8505","contig_12655","contig_30042","contig_7798","contig_12607","contig_7294","contig_42211","contig_11040","contig_13635","contig_6399","contig_7262","contig_8253","contig_12364","contig_686","contig_8312","contig_6829","contig_30191" ,"contig_20764","contig_38226","contig_17021","contig_10247","contig_10528","contig_14516","contig_35806","contig_13875","contig_44065","contig_7525","contig_7210","contig_40324","contig_45257","contig_25052","contig_14022","contig_19233","contig_33077","contig_7521","contig_7219","contig_11970","contig_32845","contig_11420","contig_7949","contig_11066","contig_35170","contig_24801","contig_13532","contig_9099","contig_6926","contig_15297","contig_7325","contig_7956","contig_9565","contig_8930","contig_12325")
+
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- US_vertebrate_contig_PA.table_0.75
+meta      <- US_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Anelloviridae_contigs <- intersect(Anelloviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Anelloviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Anello_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Anelloviridae/Anelloviridae_with_coordinates.tsv")
+Anelloviridae_fisher_annotation <- merge(fisher_results,Anello_annotation,by = 0)
+# 91 24
+
+write.csv(Anelloviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/Anello_fisher_annotation.csv")
+
+
+
+```
+
+
+# Adenoviridae
+```{r}
+
+Adenoviridae_contigs <- c("contig_48716","contig_2664","contig_2451","contig_2453","contig_48715","contig_13045","contig_2450","contig_2464","contig_33906","contig_2452","contig_5040","contig_8600","contig_7385","contig_48956")
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- US_vertebrate_contig_PA.table_0.75
+meta      <- US_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Adenoviridae_contigs <- intersect(Adenoviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Adenoviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Adeno_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Adenoviridae/Adenoviridae_with_coordinates.tsv")
+Adenoviridae_fisher_annotation <- merge(fisher_results,Adeno_annotation,by = 0)
+dim(Adenoviridae_fisher_annotation)
+# 3 24
+
+write.csv(Adenoviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/Adeno_fisher_annotation.csv")
+
+
+
+
+```
+
+
+# Caliciviridae
+```{r}
+
+Caliciviridae_contigs <- c("contig_7353","contig_37552","contig_6302","contig_3246","contig_48995","contig_48991","contig_3242","contig_11605","contig_3640","contig_4341","contig_3213","contig_22772","contig_5160","contig_3210","contig_3270","contig_9439","contig_3231","contig_3211","contig_30594","contig_14281","contig_7879","contig_3212","contig_9179")
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- US_vertebrate_contig_PA.table_0.75
+meta      <- US_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Caliciviridae_contigs <- intersect(Caliciviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Caliciviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Calici_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Caliciviridae/Caliciviridae_with_coordinates.tsv")
+Caliciviridae_fisher_annotation <- merge(fisher_results,Calici_annotation,by = 0)
+dim(Caliciviridae_fisher_annotation)
+# 11 24
+
+write.csv(Caliciviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/Calici_fisher_annotation.csv")
+
+
+
+```
+
+
+# Picornaviridae
+```{r}
+
+Picornaviridae_contigs <- c("contig_3146","contig_3249","contig_3176","contig_292","contig_49004","contig_3235","contig_24559","contig_10196","contig_3299","contig_8104","contig_33655","contig_9975","contig_4215","contig_3279","contig_49016","contig_27255","contig_43881","contig_3229","contig_9150","contig_3260","contig_3301","contig_3290","contig_13618","contig_3516","contig_3096","contig_3263","contig_3303","contig_3225","contig_44945","contig_42204","contig_10454","contig_49003","contig_3224","contig_3287","contig_3292","contig_3302","contig_3280","contig_18302","contig_3276","contig_3241","contig_3295","contig_49002","contig_30058","contig_3233","contig_3069","contig_9184","contig_11106","contig_17084","contig_29259","contig_3214","contig_10594","contig_15445","contig_37308","contig_48979","contig_4110")
+
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- US_vertebrate_contig_PA.table_0.75
+meta      <- US_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Picornaviridae_contigs <- intersect(Picornaviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Picornaviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Picorna_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Picornaviridae/Picornaviridae_with_coordinates.tsv")
+Picornaviridae_fisher_annotation <- merge(fisher_results,Picorna_annotation,by = 0)
+dim(Picornaviridae_fisher_annotation)
+# 24 24
+
+
+write.csv(Picornaviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/US/Picorna_fisher_annotation.csv")
+
+
+
+```
+
+
+
+
+############################# Italy ####################################
+
+
+
+# Astroviridae
+```{r}
+
+Astroviridae_contigs <- c("contig_3357","contig_34440","contig_3567","contig_3669","contig_43336","contig_4647","contig_49047","contig_49065","contig_8153")
+
+## 0. Short aliases to keep code readable
+count_mat <- Italy_vertebrate_contig_PA.table_0.75
+meta      <- Italy_vertebrate_metadata_0.75
+
+
+write.csv(Italy_vertebrate_contig_PA.table_0.75,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Italy_vertebrate_contig_PA.table_0.75.csv")
+write.csv(Italy_vertebrate_metadata_0.75,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Italy_vertebrate_metadata_0.75.csv")
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+## Replace this with your real contig list
+Astroviridae_contigs <- c("contig_3357","contig_34440","contig_3567","contig_3669","contig_43336","contig_4647","contig_49047","contig_49065","contig_8153")
+
+## Keep only contigs that actually exist in the count table
+Astroviridae_contigs <- intersect(Astroviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Astroviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Astroviridae_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Astroviridae/Astroviridae_top1_hits.tsv")
+Astroviridae_fisher_annotation <- merge(fisher_results,Astroviridae_annotation,by = 0)
+dim(Astroviridae_fisher_annotation)
+# 7 19
+
+write.csv(Astroviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Astro_fisher_annotation.csv")
+
+
+
+```
+
+
+# Anelloviridae
+```{r}
+
+Anelloviridae_contigs <- c("contig_30686","contig_14733","contig_42538","contig_7638","contig_39636","contig_8637","contig_10228","contig_9781","contig_7962","contig_23715","contig_36641","contig_13000","contig_41090","contig_25647","contig_6273","contig_30674","contig_34347","contig_21558","contig_6488" ,"contig_33822","contig_10424","contig_41802","contig_7169","contig_22197","contig_25919","contig_8612","contig_21645","contig_26562","contig_46055","contig_15372","contig_38908","contig_47848","contig_49946","contig_14012","contig_22018","contig_9359","contig_25612","contig_11020","contig_7799","contig_33967","contig_49814","contig_40383","contig_40400","contig_49639","contig_8416","contig_20459","contig_11215","contig_35851","contig_36742","contig_45997","contig_13393","contig_14584","contig_8872","contig_9163","contig_9685","contig_46929","contig_26624","contig_43766","contig_9281","contig_11113","contig_9335","contig_5833","contig_685","contig_28092","contig_26972","contig_10357","contig_27323","contig_8313","contig_36473","contig_30210","contig_17146","contig_23561","contig_7355","contig_8111","contig_8203","contig_35169","contig_16851","contig_6571","contig_22898","contig_10173","contig_32356","contig_14117","contig_6711","contig_17385","contig_40927","contig_7778","contig_25715","contig_29277","contig_35520","contig_38987","contig_9065","contig_11182","contig_17660","contig_18632","contig_7587","contig_42090","contig_46346","contig_33693","contig_8484","contig_8505","contig_12655","contig_30042","contig_7798","contig_12607","contig_7294","contig_42211","contig_11040","contig_13635","contig_6399","contig_7262","contig_8253","contig_12364","contig_686","contig_8312","contig_6829","contig_30191" ,"contig_20764","contig_38226","contig_17021","contig_10247","contig_10528","contig_14516","contig_35806","contig_13875","contig_44065","contig_7525","contig_7210","contig_40324","contig_45257","contig_25052","contig_14022","contig_19233","contig_33077","contig_7521","contig_7219","contig_11970","contig_32845","contig_11420","contig_7949","contig_11066","contig_35170","contig_24801","contig_13532","contig_9099","contig_6926","contig_15297","contig_7325","contig_7956","contig_9565","contig_8930","contig_12325")
+
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- Italy_vertebrate_contig_PA.table_0.75
+meta      <- Italy_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Anelloviridae_contigs <- intersect(Anelloviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Anelloviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+Anello_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Anelloviridae/Anelloviridae_with_coordinates.tsv")
+Anelloviridae_fisher_annotation <- merge(fisher_results,Anello_annotation,by = 0)
+# 73 24
+
+write.csv(Anelloviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Anello_fisher_annotation.csv")
+
+
+
+
+```
+
+
+# Adenoviridae
+```{r}
+
+Adenoviridae_contigs <- c("contig_48716","contig_2664","contig_2451","contig_2453","contig_48715","contig_13045","contig_2450","contig_2464","contig_33906","contig_2452","contig_5040","contig_8600","contig_7385","contig_48956")
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- Italy_vertebrate_contig_PA.table_0.75
+meta      <- Italy_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Adenoviridae_contigs <- intersect(Adenoviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Adenoviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Adeno_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Adenoviridae/Adenoviridae_with_coordinates.tsv")
+Adenoviridae_fisher_annotation <- merge(fisher_results,Adeno_annotation,by = 0)
+# 13 24
+
+write.csv(Adenoviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Adeno_fisher_annotation.csv")
+
+
+
+```
+
+
+# Caliciviridae
+```{r}
+
+Caliciviridae_contigs <- c("contig_7353","contig_37552","contig_6302","contig_3246","contig_48995","contig_48991","contig_3242","contig_11605","contig_3640","contig_4341","contig_3213","contig_22772","contig_5160","contig_3210","contig_3270","contig_9439","contig_3231","contig_3211","contig_30594","contig_14281","contig_7879","contig_3212","contig_9179")
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- Italy_vertebrate_contig_PA.table_0.75
+meta      <- Italy_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Caliciviridae_contigs <- intersect(Caliciviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Caliciviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+Calici_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Caliciviridae/Caliciviridae_with_coordinates.tsv")
+Caliciviridae_fisher_annotation <- merge(fisher_results,Calici_annotation,by = 0)
+dim(Caliciviridae_fisher_annotation)
+# 11 24
+
+write.csv(Caliciviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Calici_fisher_annotation.csv")
+
+
+```
+
+
+# Picornaviridae
+```{r}
+
+Picornaviridae_contigs <- c("contig_3146","contig_3249","contig_3176","contig_292","contig_49004","contig_3235","contig_24559","contig_10196","contig_3299","contig_8104","contig_33655","contig_9975","contig_4215","contig_3279","contig_49016","contig_27255","contig_43881","contig_3229","contig_9150","contig_3260","contig_3301","contig_3290","contig_13618","contig_3516","contig_3096","contig_3263","contig_3303","contig_3225","contig_44945","contig_42204","contig_10454","contig_49003","contig_3224","contig_3287","contig_3292","contig_3302","contig_3280","contig_18302","contig_3276","contig_3241","contig_3295","contig_49002","contig_30058","contig_3233","contig_3069","contig_9184","contig_11106","contig_17084","contig_29259","contig_3214","contig_10594","contig_15445","contig_37308","contig_48979","contig_4110")
+
+
+
+
+## 0. Short aliases to keep code readable
+count_mat <- Italy_vertebrate_contig_PA.table_0.75
+meta      <- Italy_vertebrate_metadata_0.75
+
+## 1. Make sure sample order in metadata matches columns of count table
+meta <- meta[colnames(count_mat), , drop = FALSE]
+
+## 2. Disease vector (CELIAC / CONTROL)
+dx <- meta$Dx.Status       # assume exactly "CELIAC" and "CONTROL"
+dx <- factor(dx, levels = c("CONTROL", "CELIAC"))  # optional but nice
+
+## 3. Vector of contigs of interest
+
+## Keep only contigs that actually exist in the count table
+Picornaviridae_contigs <- intersect(Picornaviridae_contigs, rownames(count_mat))
+
+## 4. Function to run Fisher's test for a single contig
+fisher_for_contig <- function(contig_id) {
+  # Get counts (or PA) across samples
+  x_raw <- count_mat[contig_id, ]
+
+  # Convert to presence/absence (1/0) if needed
+  # If your table is already 0/1, this does nothing harmful
+  x_pa <- as.integer(x_raw > 0)
+
+  # Build 2x2 contingency table: rows = presence(0/1), cols = Dx.Status
+  tbl <- table(PA = x_pa, Dx = dx)
+
+  # If we don't have both rows (0 and 1), Fisher's test is not meaningful
+  if (!all(c(0, 1) %in% rownames(tbl)) || nrow(tbl) < 2) {
+    return(data.frame(
+      Contig      = contig_id,
+      Present_CELIAC  = NA_integer_,
+      Absent_CELIAC   = NA_integer_,
+      Present_CONTROL = NA_integer_,
+      Absent_CONTROL  = NA_integer_,
+      OddsRatio   = NA_real_,
+      P_value     = NA_real_
+    ))
+  }
+
+  # Run Fisher's exact test
+  ft <- fisher.test(tbl)
+
+  # Extract counts in a consistent order
+  present_control <- tbl["1", "CONTROL"]
+  present_celiac  <- tbl["1", "CELIAC"]
+  absent_control  <- tbl["0", "CONTROL"]
+  absent_celiac   <- tbl["0", "CELIAC"]
+
+  data.frame(
+    Contig          = contig_id,
+    Present_CELIAC  = present_celiac,
+    Absent_CELIAC   = absent_celiac,
+    Present_CONTROL = present_control,
+    Absent_CONTROL  = absent_control,
+    OddsRatio       = unname(ft$estimate),
+    P_value         = ft$p.value
+  )
+}
+
+## 5. Apply to all target contigs
+fisher_list <- lapply(Picornaviridae_contigs, fisher_for_contig)
+fisher_results <- do.call(rbind, fisher_list)
+
+## 6. Multiple-testing correction (BH FDR)
+fisher_results$FDR <- p.adjust(fisher_results$P_value, method = "BH")
+
+## 7. Optional: sort by p-value
+fisher_results <- fisher_results[order(fisher_results$P_value), ]
+
+## Look at the top hits
+head(fisher_results)
+
+
+Picorna_annotation <- fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Picornaviridae/Picornaviridae_with_coordinates.tsv")
+Picornaviridae_fisher_annotation <- merge(fisher_results,Picorna_annotation,by = 0)
+dim(Picornaviridae_fisher_annotation)
+# 29 24
+
+write.csv(Picornaviridae_fisher_annotation,"~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/Fisher/Italy/Picorna_fisher_annotation.csv")
+
+
+
+```
+
+
+
+
+################## making plots #####################
+```{r}
+
+
+## Contigs of interest (or load from Fisher results)
+Astroviridae_contigs <- c("contig_3357","contig_34440","contig_3567","contig_3669",
+                          "contig_43336","contig_4647","contig_49047","contig_49065","contig_8153")
+## Keep only contigs that exist in count table
+Astroviridae_contigs <- intersect(Astroviridae_contigs, rownames(count_mat))
+
+
+
+Anelloviridae_contigs <- c("contig_30686","contig_14733","contig_42538","contig_7638","contig_39636","contig_8637","contig_10228","contig_9781","contig_7962","contig_23715","contig_36641","contig_13000","contig_41090","contig_25647","contig_6273","contig_30674","contig_34347","contig_21558","contig_6488" ,"contig_33822","contig_10424","contig_41802","contig_7169","contig_22197","contig_25919","contig_8612","contig_21645","contig_26562","contig_46055","contig_15372","contig_38908","contig_47848","contig_49946","contig_14012","contig_22018","contig_9359","contig_25612","contig_11020","contig_7799","contig_33967","contig_49814","contig_40383","contig_40400","contig_49639","contig_8416","contig_20459","contig_11215","contig_35851","contig_36742","contig_45997","contig_13393","contig_14584","contig_8872","contig_9163","contig_9685","contig_46929","contig_26624","contig_43766","contig_9281","contig_11113","contig_9335","contig_5833","contig_685","contig_28092","contig_26972","contig_10357","contig_27323","contig_8313","contig_36473","contig_30210","contig_17146","contig_23561","contig_7355","contig_8111","contig_8203","contig_35169","contig_16851","contig_6571","contig_22898","contig_10173","contig_32356","contig_14117","contig_6711","contig_17385","contig_40927","contig_7778","contig_25715","contig_29277","contig_35520","contig_38987","contig_9065","contig_11182","contig_17660","contig_18632","contig_7587","contig_42090","contig_46346","contig_33693","contig_8484","contig_8505","contig_12655","contig_30042","contig_7798","contig_12607","contig_7294","contig_42211","contig_11040","contig_13635","contig_6399","contig_7262","contig_8253","contig_12364","contig_686","contig_8312","contig_6829","contig_30191" ,"contig_20764","contig_38226","contig_17021","contig_10247","contig_10528","contig_14516","contig_35806","contig_13875","contig_44065","contig_7525","contig_7210","contig_40324","contig_45257","contig_25052","contig_14022","contig_19233","contig_33077","contig_7521","contig_7219","contig_11970","contig_32845","contig_11420","contig_7949","contig_11066","contig_35170","contig_24801","contig_13532","contig_9099","contig_6926","contig_15297","contig_7325","contig_7956","contig_9565","contig_8930","contig_12325")
+## Keep only contigs that actually exist in the count table
+Anelloviridae_contigs <- intersect(Anelloviridae_contigs, rownames(count_mat))
+
+
+
+Adenoviridae_contigs <- c("contig_48716","contig_2664","contig_2451","contig_2453","contig_48715","contig_13045","contig_2450","contig_2464","contig_33906","contig_2452","contig_5040","contig_8600","contig_7385","contig_48956")
+## Keep only contigs that actually exist in the count table
+Adenoviridae_contigs <- intersect(Adenoviridae_contigs, rownames(count_mat))
+
+
+
+Caliciviridae_contigs <- c("contig_7353","contig_37552","contig_6302","contig_3246","contig_48995","contig_48991","contig_3242","contig_11605","contig_3640","contig_4341","contig_3213","contig_22772","contig_5160","contig_3210","contig_3270","contig_9439","contig_3231","contig_3211","contig_30594","contig_14281","contig_7879","contig_3212","contig_9179")
+## Keep only contigs that actually exist in the count table
+Caliciviridae_contigs <- intersect(Caliciviridae_contigs, rownames(count_mat))
+
+
+
+Picornaviridae_contigs <- c("contig_3146","contig_3249","contig_3176","contig_292","contig_49004","contig_3235","contig_24559","contig_10196","contig_3299","contig_8104","contig_33655","contig_9975","contig_4215","contig_3279","contig_49016","contig_27255","contig_43881","contig_3229","contig_9150","contig_3260","contig_3301","contig_3290","contig_13618","contig_3516","contig_3096","contig_3263","contig_3303","contig_3225","contig_44945","contig_42204","contig_10454","contig_49003","contig_3224","contig_3287","contig_3292","contig_3302","contig_3280","contig_18302","contig_3276","contig_3241","contig_3295","contig_49002","contig_30058","contig_3233","contig_3069","contig_9184","contig_11106","contig_17084","contig_29259","contig_3214","contig_10594","contig_15445","contig_37308","contig_48979","contig_4110")
+## Keep only contigs that actually exist in the count table
+Picornaviridae_contigs <- intersect(Picornaviridae_contigs, rownames(count_mat))
+
+
+
+```

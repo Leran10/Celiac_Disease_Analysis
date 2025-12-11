@@ -1,0 +1,811 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_10_102032_tbl-TAG_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_10_102032_tbl-TAG_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_10_102032_tbl-TAG_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_10_102032|726|29_28_27_26  [L=726]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+          0 1230.3  42.2   2.3e-303  998.5  34.2    2.0  2  VP02585   
+   4.1e-255  838.8  44.0   5.6e-208  682.9  35.5    2.0  2  portal    
+   1.3e-205  674.9  47.9   2.3e-165  541.8  38.6    2.1  2  VP00410   
+    4.1e-36  114.4  12.4    4.1e-36  114.4  12.4    3.0  3  VP02684   
+
+
+Domain annotation for each model (and alignments):
+>> VP02585  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  237.1   1.2   7.7e-74   3.3e-73       5     135 ..       3     133 ..       1     139 [. 0.98
+   2 !  998.5  34.2  5.4e-304  2.3e-303     250     848 ..     140     726 .]     135     726 .] 0.98
+
+  Alignments for each domain:
+  == domain 1  score: 237.1 bits;  conditional E-value: 7.7e-74
+                             VP02585   5 nkkslPiqklplskkteeWkedcvdyiigesaaansngnnrtrveelqtyydlynsiynekdlkyvtnPfkvdDg 79 
+                                         n +++Piqklp+skkt++W+e+c+dy+ig+s   ++ngnnrtr ee+qtyydlynsiynekdlkyvtnPfk++Dg
+  sample-1_10_102032|726|29_28_27_26   3 NINQMPIQKLPMSKKTKDWQESCIDYVIGRSLGGSRNGNNRTRREEMQTYYDLYNSIYNEKDLKYVTNPFKQQDG 77 
+                                         789************************************************************************ PP
+
+                             VP02585  80 fPataqdyniirPkidlllGeetkrPlnfkvvrtsdeaaselqekakqmlldyiqa 135
+                                         fPa+aqdynii+PkidlllGeetkrP+nf+vvrtsd+aase+q++akq+l+dyi +
+  sample-1_10_102032|726|29_28_27_26  78 FPAMAQDYNIIKPKIDLLLGEETKRPFNFRVVRTSDIAASEMQDRAKQLLIDYISG 133
+                                         *****************************************************986 PP
+
+  == domain 2  score: 998.5 bits;  conditional E-value: 5.4e-304
+                             VP02585 250 ekmilsvaeiyDrfydkldekdlnellellddtskgglnpevrkssvDdyehiktktlnnlssnpfdeadnievw 324
+                                         + m++sv+e+yDr+ydk++ek+ln+ll+++d++skgg+npevrk+s+D y+hikt+ +n++ssnpfd++++++vw
+  sample-1_10_102032|726|29_28_27_26 140 RSMNMSVTELYDRLYDKMSEKQLNQLLDMMDQASKGGINPEVRKTSLD-YTHIKTHAINGFSSNPFDSTNSVKVW 213
+                                         78**********************************************.************************** PP
+
+                             VP02585 325 kvcWksfkkigfvtlidpetgepeeevvDesykvtgeeleveedWiievWeGyrvgedlyfGiqPieyqyisadn 399
+                                         ++cWksfkkigfvt+idpe gep+e++vDesyk+tg+el+ve++Wi evWeGyr+gedly+GiqP+eyqy+s+dn
+  sample-1_10_102032|726|29_28_27_26 214 HCCWKSFKKIGFVTIIDPELGEPKEYQVDESYKETGMELNVEWKWITEVWEGYRAGEDLYIGIQPLEYQYTSSDN 288
+                                         *************************************************************************** PP
+
+                             VP02585 400 pnsqklPytGvvysntnskprslvsllkPlqymyivlwyrlelalarDkGkvvvmDvtqiPkslgidvekWmhyL 474
+                                         pnsq+lPytGvvy+ntns+prslvs++kPlqymyivlwyrlela+arDkGkvv+mD+tqiPks++idv+kWmhyL
+  sample-1_10_102032|726|29_28_27_26 289 PNSQRLPYTGVVYNNTNSRPRSLVSMMKPLQYMYIVLWYRLELAMARDKGKVVNMDITQIPKSMNIDVSKWMHYL 363
+                                         *************************************************************************** PP
+
+                             VP02585 475 salGvalinPyeegWdiPGreGgkPsqfnqftalDltmsnviaqyieLldkieqmaseisGvtkqreGaissnel 549
+                                         salGv++inPyeegWdiPGreGgkPsqfn+  +   +m+n+i+qyi+L+dkie+m+seisGv+kqreG+issnel
+  sample-1_10_102032|726|29_28_27_26 364 SALGVNFINPYEEGWDIPGREGGKPSQFNSDYS---SMANTIDQYINLMDKIESMLSEISGVSKQREGSISSNEL 435
+                                         *****************************7554...8************************************** PP
+
+                             VP02585 550 vgnversvvqsahiteplfwlhnqvkkrvltmLLntakaawkdsdkkllsyilddgtrafldlsddfayedmDif 624
+                                         vgnversvvqsahitep+fw+h qvk+++ltmLLnta++awkd +k++l+yildd+trafl+lsdd+ yed+Dif
+  sample-1_10_102032|726|29_28_27_26 436 VGNVERSVVQSAHITEPWFWTHSQVKRECLTMLLNTARWAWKDGSKTHLQYILDDATRAFLTLSDDMLYEDFDIF 510
+                                         *************************************************************************** PP
+
+                             VP02585 625 vsdstkeqqkieqLkqLiqPamqnGasLldiaeiltsdnlsvikskLeeieqkrqeqqqqqeeaeaqqqqqliqm 699
+                                         ++d+tk+qq+ie+LkqL+qPamqnGasLldiaei+t+dn+s+iks+Leeieqkr+eqqq++e+a+a+++qq+iqm
+  sample-1_10_102032|726|29_28_27_26 511 IEDTTKNQQYIETLKQLMQPAMQNGASLLDIAEIITMDNISMIKSRLEEIEQKRMEQQQAMEQAQAEREQQAIQM 585
+                                         *************************************************************************** PP
+
+                             VP02585 700 qnevkeeelmlkeaeldLkkykiDqdnatkitvaqlnayrgaedmdqdengipd.pieiakqal..eeqklasda 771
+                                         qne+keeelm+keae+dL+kykiDqdnatkitvaqlnayrgae+mdq  +   +  +eia+q +  +e+k+asd+
+  sample-1_10_102032|726|29_28_27_26 586 QNEIKEEELMIKEAEMDLEKYKIDQDNATKITVAQLNAYRGAENMDQRWKWTYQiLVEIAQQGIgmAERKQASDE 660
+                                         ***********************************************988665516899999753389******* PP
+
+                             VP02585 772 askqlelelkareaeakkeiekkkiqkklelekeklelekekleeekelqkqkdeaalereklkaktalknkvkg 846
+                                         askq+e+++k re+++kkeie+kk q           le+e++++e++lq++kd+aa+ere+lkakta+knkv+g
+  sample-1_10_102032|726|29_28_27_26 661 ASKQFEFNAKIREQKMKKEIEDKKNQ-----------LERERMDHEMKLQAAKDKAAMERERLKAKTAIKNKVTG 724
+                                         **************************...........************************************** PP
+
+                             VP02585 847 ek 848
+                                         ek
+  sample-1_10_102032|726|29_28_27_26 725 EK 726
+                                         97 PP
+
+>> portal  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  160.9   2.0   8.8e-51   3.7e-50       5     132 ..       3     134 ..       1     139 [. 0.96
+   2 !  682.9  35.5  1.3e-208  5.6e-208     246     805 ..     140     726 .]     134     726 .] 0.98
+
+  Alignments for each domain:
+  == domain 1  score: 160.9 bits;  conditional E-value: 8.8e-51
+                              portal   5 nieslsfPkQrvpasKktkewkkkcvdyviaeglsn.......kdkeelqkaydllngkldeedykyvlnpynik 72 
+                                         ni  +++P Q++p+sKktk+w+++c+dyvi+++l         +++ee+q++ydl+n++++e+d+kyv+np++++
+  sample-1_10_102032|726|29_28_27_26   3 NI--NQMPIQKLPMSKKTKDWQESCIDYVIGRSLGGsrngnnrTRREEMQTYYDLYNSIYNEKDLKYVTNPFKQQ 75 
+                                         55..89****************************9999****99******************************* PP
+
+                              portal  73 dgnfPatirdydiikpiidrliGEyikrpfdfkVvatdpeavseieaekkqellqylqqe 132
+                                         dg+ Pa+++dy+iikp+id+l+GE++krpf+f+Vv+t++ a+se+++ +kq l++y+  +
+  sample-1_10_102032|726|29_28_27_26  76 DGF-PAMAQDYNIIKPKIDLLLGEETKRPFNFRVVRTSDIAASEMQDRAKQLLIDYISGY 134
+                                         ***.****************************************************9765 PP
+
+  == domain 2  score: 682.9 bits;  conditional E-value: 1.3e-208
+                              portal 246 rrkymskqqIideyydkLtekdlekLeeiyekssstsssydvrknvdsye.ikteivnkledaerelpkdenare 319
+                                         r + ms+++++d+ ydk++ek+l++L +++++ s+++ +++vrk++ +y+ ikt+ +n++++    +p+d+    
+  sample-1_10_102032|726|29_28_27_26 140 RSMNMSVTELYDRLYDKMSEKQLNQLLDMMDQASKGGINPEVRKTSLDYThIKTHAINGFSS----NPFDS---- 206
+                                         789**********************************************************5....9****.... PP
+
+                              portal 320 insglieVyhvvWksekkigiltyid.etGeveeeivdEdYklnkelG.dieiewewilqvwegvriGediYika 392
+                                           ++ ++V+h++Wks+kkig++t+id e+Ge++e +vdE+Yk   e+G + ++ew+wi +vweg+r+Ged+Yi++
+  sample-1_10_102032|726|29_28_27_26 207 --TNSVKVWHCCWKSFKKIGFVTIIDpELGEPKEYQVDESYK---ETGmELNVEWKWITEVWEGYRAGEDLYIGI 276
+                                         ..****************************************...****************************** PP
+
+                              portal 393 rpieyqrrsadnpssckLpynGivellknskpfSlvdrvkplqylyniltyrrenaiaknkgkvvvldvlliPks 467
+                                         +p eyq+ s+dnp+s++Lpy+G+v++++ns+p+Slv+++kplqy+y++l+yr+e+a+a++kgkvv++d+++iPks
+  sample-1_10_102032|726|29_28_27_26 277 QPLEYQYTSSDNPNSQRLPYTGVVYNNTNSRPRSLVSMMKPLQYMYIVLWYRLELAMARDKGKVVNMDITQIPKS 351
+                                         *************************************************************************** PP
+
+                              portal 468 lgedvekwlayakadGvlviDdseeg.....regkkpsklnqirvldttmanyIqqliqliqkieqeaseivgvt 537
+                                         +++dv kw++y++a+Gv++i+++eeg     reg+kps++n   ++ ++man+I+q+i+l++kie + sei+gv+
+  sample-1_10_102032|726|29_28_27_26 352 MNIDVSKWMHYLSALGVNFINPYEEGwdipgREGGKPSQFN---SDYSSMANTIDQYINLMDKIESMLSEISGVS 423
+                                         ****************************9999999998877...5889*************************** PP
+
+                              portal 538 pqrlGqianregvgnvergvnqssmiteilfeifdqvkkrdlealLdtaKlawkdglk.gsyyikddgsraflsl 611
+                                         +qr+G+i+++e+vgnver+v+qs++ite++f+++ qvk+++l++lL+ta++awkdg+k  ++yi+dd++rafl+l
+  sample-1_10_102032|726|29_28_27_26 424 KQREGSISSNELVGNVERSVVQSAHITEPWFWTHSQVKRECLTMLLNTARWAWKDGSKtHLQYILDDATRAFLTL 498
+                                         *******************************************************87769*************** PP
+
+                              portal 612 dvdsftledydifvknsskeqekleqlkqlafsaaqnGadlddaaeaitsdnlaeikkkiekaeekrreeeqqmq 686
+                                         + d++ +ed+dif+++++k+q+ +e+lkql+++a+qnGa+l+d+ae+it+dn+++ik+++e++e+kr+e++q+m+
+  sample-1_10_102032|726|29_28_27_26 499 S-DDMLYEDFDIFIEDTTKNQQYIETLKQLMQPAMQNGASLLDIAEIITMDNISMIKSRLEEIEQKRMEQQQAME 572
+                                         *.************************************************************************* PP
+
+                              portal 687 qlqqqlqqqlqqlqqqkkqaelelkeaqkele.....kdndtkievakina.......................a 733
+                                         q+q++ +qq +q+q++ k++el+ kea+++le     +dn+tki+va++na                       +
+  sample-1_10_102032|726|29_28_27_26 573 QAQAEREQQAIQMQNEIKEEELMIKEAEMDLEkykidQDNATKITVAQLNAyrgaenmdqrwkwtyqilveiaqQ 647
+                                         ************************************************************************886 PP
+
+                              portal 734 kqaieeqklssdekskq.....kerkeeakkeledkklelekkkleleka..kaerdaklkreqlkdktaknNki 801
+                                          + ++e+k +sde+skq     k+r++++kke+edkk +le++++++e++  +a+++a+++re lk+kta +Nk+
+  sample-1_10_102032|726|29_28_27_26 648 GIGMAERKQASDEASKQfefnaKIREQKMKKEIEDKKNQLERERMDHEMKlqAAKDKAAMERERLKAKTAIKNKV 722
+                                         6777888888999998899999***************************************************** PP
+
+                              portal 802 kaek 805
+                                         ++ek
+  sample-1_10_102032|726|29_28_27_26 723 TGEK 726
+                                         9886 PP
+
+>> VP00410  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  138.7   1.9   4.3e-44   1.8e-43       4     133 ..       2     133 ..       1     140 [. 0.95
+   2 !  541.8  38.6  5.3e-166  2.3e-165     248     786 ..     140     703 ..     137     721 .. 0.91
+
+  Alignments for each domain:
+  == domain 1  score: 138.7 bits;  conditional E-value: 4.3e-44
+                             VP00410   4 skntqfPkqklsaskKtkkWrkecidavinlsnass...ssrnskkkkkenydlynGeideedykyvlnpynsee 75 
+                                         ++ +q+P qkl++skKtk+W+++cid+vi++s   s   ++r ++++++++ydlyn +++e+d+kyv+np+++ +
+  sample-1_10_102032|726|29_28_27_26   2 NNINQMPIQKLPMSKKTKDWQESCIDYVIGRSLGGSrngNNRTRREEMQTYYDLYNSIYNEKDLKYVTNPFKQ-Q 75 
+                                         5689***************************998888899999******************************.* PP
+
+                             VP00410  76 kefPAklrnydIikpiidlLlGEeikrpfnfqVvatnpdavsrkeeekkemlkeyleq 133
+                                         ++fPA  ++y+Iikp+idlLlGEe+krpfnf+Vv+t+  a s+ ++  k+ l +y+  
+  sample-1_10_102032|726|29_28_27_26  76 DGFPAMAQDYNIIKPKIDLLLGEETKRPFNFRVVRTSDIAASEMQDRAKQLLIDYISG 133
+                                         ****************************************************999875 PP
+
+  == domain 2  score: 541.8 bits;  conditional E-value: 5.3e-166
+                             VP00410 248 erkymsineiiDefydeLtdkdidkLe.lsnnsetesrtspssneldsyeleegketsedsksnskdsssdsegl 321
+                                         + + ms+ e++D+ yd++++k++++L  ++++ +++  +   ++++ +y  +     + +  ++++++  ds++ 
+  sample-1_10_102032|726|29_28_27_26 140 RSMNMSVTELYDRLYDKMSEKQLNQLLdMMDQASKGGINPEVRKTSLDYTHI-----KTHAINGFSSNPFDSTNS 209
+                                         6799***********************5444444443333333333334333.....346779999999****** PP
+
+                             VP00410 322 ieVvhvvWKslrkigiltyiD.etGevqekiVdEdYkldkeegdkieweWvnevWEgtkiggdiyvkirpipvqr 395
+                                         ++V+h++WKs++kig++t iD e Ge++e  VdE+Yk +  e  ++ew W+ evWEg++ g+d+y++i+p+++q+
+  sample-1_10_102032|726|29_28_27_26 210 VKVWHCCWKSFKKIGFVTIIDpELGEPKEYQVDESYKETGMEL-NVEWKWITEVWEGYRAGEDLYIGIQPLEYQY 283
+                                         *************************************999885.******************************* PP
+
+                             VP00410 396 rsidnpskcklpynGiiynnnnskaiSlvdrlkpyqylYnivmyrlelaiaknkgkillldlsqiPks..wdlek 468
+                                         +s dnp++ +lpy G++ynn+ns++ Slv+++kp qy+Y +++yrlela+a++kgk++++d++qiPks  +d++k
+  sample-1_10_102032|726|29_28_27_26 284 TSSDNPNSQRLPYTGVVYNNTNSRPRSLVSMMKPLQYMYIVLWYRLELAMARDKGKVVNMDITQIPKSmnIDVSK 358
+                                         ********************************************************************999**** PP
+
+                             VP00410 469 wlyyaeadGilvidssee....kGsqlaklnqikvlDlslsnyIqqliqLlesikqeaeelvGvsrqReGqiaar 539
+                                         w++y+ a G+ +i+++ee     G + +k  q++    s++n+I q+i+L+++i+ ++ e++Gvs+qReG i+++
+  sample-1_10_102032|726|29_28_27_26 359 WMHYLSALGVNFINPYEEgwdiPGREGGKPSQFNSDYSSMANTIDQYINLMDKIESMLSEISGVSKQREGSISSN 433
+                                         *********************955555555556665567************************************ PP
+
+                             VP00410 540 egvGtteravvqSshiteelfrkhdkvkervLqalldtaklawkdg..kklsYvlddgskafldidgesfaesdy 612
+                                         e+vG++er+vvqS hite++f++h++vk ++L++ll+ta+ awkdg    l+Y+ldd ++afl +  +++ ++d+
+  sample-1_10_102032|726|29_28_27_26 434 ELVGNVERSVVQSAHITEPWFWTHSQVKRECLTMLLNTARWAWKDGskTHLQYILDDATRAFLTLS-DDMLYEDF 507
+                                         **********************************************88889***************.9999**** PP
+
+                             VP00410 613 gvfvsnsakdqekleqlkqLaqaalQngaelsdvaeildsdsiaeikkklekaeeaqqeleqqqqqaqqqqqqaq 687
+                                         ++f+++ +k q+ +e+lkqL+q+a+Qnga+l d+aei++ d+i+ ik+ le++e++++e++q+++qaq++ +q++
+  sample-1_10_102032|726|29_28_27_26 508 DIFIEDTTKNQQYIETLKQLMQPAMQNGASLLDIAEIITMDNISMIKSRLEEIEQKRMEQQQAMEQAQAEREQQA 582
+                                         *************************************************************************** PP
+
+                             VP00410 688 lqaeqekeq.......akmelekeqaeldrqtkiqvaeikaeakkedndenakde...............edeee 740
+                                          q+++e ++       a+m+lek+++++d+ tki+va+++a    e++d++ k +               e++++
+  sample-1_10_102032|726|29_28_27_26 583 IQMQNEIKEeelmikeAEMDLEKYKIDQDNATKITVAQLNAYRGAENMDQRWKWTyqilveiaqqgigmaERKQA 657
+                                         ******9999*********************************99999999999999999999999998733333 PP
+
+                             VP00410 741 lkkeaeeeklelerqklaadeekkkkklelkrkklakeekkakkkk 786
+                                          ++ +++ +++ + ++ ++++e ++kk++l+r++++ e+k + +k 
+  sample-1_10_102032|726|29_28_27_26 658 SDEASKQFEFNAKIREQKMKKEIEDKKNQLERERMDHEMKLQAAKD 703
+                                         3333346677777777778888888888888888888888876654 PP
+
+>> VP02684  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !    5.3   0.7     0.001    0.0045      24     143 ..      49     171 ..      45     175 .. 0.76
+   2 !  114.4  12.4   9.8e-37   4.1e-36     297     693 ..     253     646 ..     232     648 .. 0.87
+   3 ?   -6.4  12.3       3.4        15     635     702 ..     653     720 ..     641     725 .. 0.49
+
+  Alignments for each domain:
+  == domain 1  score: 5.3 bits;  conditional E-value: 0.001
+                             VP02684  24 lqKaynYYngkrdaeqfryLeenyGi..gtptsveftPlikkhvDalvgeylelpillkisCKDseTisnI.tRe 95 
+                                         +q  y+ Yn+  + +  +y+ + +    g p   +   +ik  +D l+ge  + p + ++    +   s++ +R 
+  sample-1_10_102032|726|29_28_27_26  49 MQTYYDLYNSIYNEKDLKYVTNPFKQqdGFPAMAQDYNIIKPKIDLLLGEETKRPFNFRVVRTSDIAASEMqDRA 123
+                                         556666666666666666666655432255677777789********************99888888888736** PP
+
+                             VP02684  96 KqLkIs..kevykylkkhLknsilalldgkeitDkliekelnkliedide 143
+                                         KqL I+  +  y+  ++ ++ s+ +l d   + Dk+ ek+ln+l + +d+
+  sample-1_10_102032|726|29_28_27_26 124 KQLLIDyiSGYYNEQTRSMNMSVTELYD--RLYDKMSEKQLNQLLDMMDQ 171
+                                         *****84456777777888888888855..579***********998886 PP
+
+  == domain 2  score: 114.4 bits;  conditional E-value: 9.8e-37
+                             VP02684 297 evewiedfvleRyegvkiGeeiyilrgkdekvirskdkptlcslsvnGvyflnrsnePyslvlacaeLqdkydll 371
+                                         +vew  ++++e +eg + Ge++yi  +  e    s+d+p+  +l   Gv + n +++P slv   ++Lq +y +l
+  sample-1_10_102032|726|29_28_27_26 253 NVEW--KWITEVWEGYRAGEDLYIGIQPLEYQYTSSDNPNSQRLPYTGVVYNNTNSRPRSLVSMMKPLQYMYIVL 325
+                                         5666..7888999***********************************************************999 PP
+
+                             VP02684 372 tfyRdnlianSGtvGdwlDlsklPeaLGedlterlqkwlaykK.kGvalldssqeg......aienntifngfdd 439
+                                         ++  +  +a   ++   +D++++P+ +       + kw+ y    Gv++++  +eg      +  +   fn  d 
+  sample-1_10_102032|726|29_28_27_26 326 WYRLELAMARDKGKVVNMDITQIPKSMNI----DVSKWMHYLSaLGVNFINPYEEGwdipgrEGGKPSQFNS-DY 395
+                                         988888899888888999******97665....578999996516************876664445555666.55 PP
+
+                             VP02684 440 tvkaqaiqaiqlaiqsveqqassitgvfrerlngieqrdavsnvkvgvknsliitKqyfqqmdliskeilydsln 514
+                                         +  a++i +    ++++e   s i+gv ++r   i  ++ v nv+ +v +s +it  +f +   +++e l+ +ln
+  sample-1_10_102032|726|29_28_27_26 396 SSMANTIDQYINLMDKIESMLSEISGVSKQREGSISSNELVGNVERSVVQSAHITEPWFWTHSQVKRECLTMLLN 470
+                                         567999*99999*************************************************************** PP
+
+                             VP02684 515 lakivykkGltGtl..iLgdkyqkvftalpeyftvtdfdihieesseavkelekikalkvelikagkadpdiive 587
+                                          a+ ++k+G +  l  iL d+ ++ f  l ++    dfdi ie++++  + +e++k+l+  ++++g +  d i e
+  sample-1_10_102032|726|29_28_27_26 471 TARWAWKDGSKTHLqyILDDA-TRAFLTLSDDMLYEDFDIFIEDTTKNQQYIETLKQLMQPAMQNGASLLD-IAE 543
+                                         *********999876578775.567777888889********************************96666.579 PP
+
+                             VP02684 588 altaksltelkrkvkkalkkkkeennqlqqlqqqleqlqkqlqqlqqelqqaqnkieslneakleieqqkvesev 662
+                                         ++t ++++ +k+++++  +k+ e++++++q+q + eq   q+ q+q+e+++ +  i+   ea++++e+ k+++++
+  sample-1_10_102032|726|29_28_27_26 544 IITMDNISMIKSRLEEIEQKRMEQQQAMEQAQAEREQ---QAIQMQNEIKEEELMIK---EAEMDLEKYKIDQDN 612
+                                         *************999999999999999999988888...88899999988887776...899************ PP
+
+                             VP02684 663 kielykargdkdykessadakkk...rleieiaq 693
+                                           ++ +a+ +     +++d+  k   ++ +eiaq
+  sample-1_10_102032|726|29_28_27_26 613 ATKITVAQLNAYRGAENMDQRWKwtyQILVEIAQ 646
+                                         9999999999998888999877654566666665 PP
+
+  == domain 3  score: -6.4 bits;  conditional E-value: 3.4
+                             VP02684 635 elqqaqnkieslneakleieqqkvesevkielykargdkdykessadakkkrleieiaqllDknpynd 702
+                                         e +qa+++++++ e + +i +qk++ e + + ++ + ++  +e +++a k +  +e   l  k+  ++
+  sample-1_10_102032|726|29_28_27_26 653 ERKQASDEASKQFEFNAKIREQKMKKEIEDKKNQLERERMDHEMKLQAAKDKAAMERERLKAKTAIKN 720
+                                         34444555555555555555555555554444444444444444444444444444444444444444 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (726 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         7  (0.411765); expected 0.3 (0.02)
+Passed bias filter:                        4  (0.235294); expected 0.3 (0.02)
+Passed Vit filter:                         4  (0.235294); expected 0.0 (0.001)
+Passed Fwd filter:                         4  (0.235294); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               4  [number of targets reported over threshold]
+# CPU time: 0.12u 0.00s 00:00:00.12 Elapsed: 00:00:00.13
+# Mc/sec: 57.98
+//
+Query:       sample-1_10_102032|580|32_31_30  [L=580]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+     3e-300  987.2  20.7   1.3e-230  757.1   3.2    3.0  3  VP02579   
+   2.4e-217  713.7  20.3   3.3e-170  557.8   5.4    3.0  3  TerL      
+   1.2e-177  582.2  17.1   6.9e-151  493.8   8.9    3.1  2  VP00412   
+    1.2e-77  251.6  12.0    6.9e-66  212.7   2.3    2.3  2  VP02686   
+
+
+Domain annotation for each model (and alignments):
+>> VP02579  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  140.8   2.2     9e-45   3.8e-44       1      85 [.       1      85 [.       1      92 [. 0.96
+   2 !  757.1   3.2  3.1e-231  1.3e-230     186     584 ..      92     500 ..      85     505 .. 0.98
+   3 !  100.7   1.2   1.3e-32   5.3e-32     608     684 .]     505     580 .]     502     580 .] 0.98
+
+  Alignments for each domain:
+  == domain 1  score: 140.8 bits;  conditional E-value: 9e-45
+                          VP02579  1 mvdfnkkiknsdkfrqaalaflktgsyclapkgtseyvkfWdeekdrcinGytaddGdfisGynyfylnycPiqriveke 80
+                                     mvdfnkki+ns+kfr +al+f++tgsyc++p+gtsey+kfWdee++rc++GytaddGdfisGynyfylnycPi+riv+++
+  sample-1_10_102032|580|32_31_30  1 MVDFNKKIVNSNKFRGPALQFIATGSYCVYPEGTSEYFKFWDEESKRCVDGYTADDGDFISGYNYFYLNYCPISRIVNHI 80
+                                     9******************************************************************************* PP
+
+                          VP02579 81 vkdkk 85
+                                     ++d++
+  sample-1_10_102032|580|32_31_30 81 TTDES 85
+                                     99965 PP
+
+  == domain 2  score: 757.1 bits;  conditional E-value: 3.1e-231
+                          VP02579 186 kkrsvntelrrragllvkdeyGnkielGykseiiGvtlkdnPdkvrGkkaklilfeeaGsfseleaawqiarPsveqd 263
+                                       krsvnt++rrrag+++kd+yGn ielGykseiiGvtlkdnPd+vrGkka+li+fee+Gsfsel+aawqiarPsve d
+  sample-1_10_102032|580|32_31_30  92 EKRSVNTQMRRRAGFYTKDDYGNIIELGYKSEIIGVTLKDNPDVVRGKKANLIMFEEGGSFSELGAAWQIARPSVEVD 169
+                                      69**************************************************************************** PP
+
+                          VP02579 264 gvafgllivfgtggdegssletlkelfynPdaynvlefdniWdegaeekkcgffvPqytnldirdeegkrlymdedGn 341
+                                      g+afg++iv+gtggdegs++et+k++fynPd+yn+l+fdniWde+a+++kcgffvPqytnldirde+gkr+ymdedGn
+  sample-1_10_102032|580|32_31_30 170 GIAFGTMIVWGTGGDEGSAFETMKDMFYNPDGYNCLGFDNIWDESATTNKCGFFVPQYTNLDIRDEKGKRIYMDEDGN 247
+                                      ****************************************************************************** PP
+
+                          VP02579 342 tlkekaleyileerkkvieeatssqaidryvaerpitPaeallelggnifPkkelqeqlarirtnkklqnlkqvgdlv 419
+                                      t+++k+leyil+er+ vi++at+++a+dryvaerpitPaea+le++gnifPkkelqeql+ +rtnkklqn+kqvgdlv
+  sample-1_10_102032|580|32_31_30 248 TYRKKSLEYILAERQVVITNATNNAAVDRYVAERPITPAEAMLEFNGNIFPKKELQEQLSLLRTNKKLQNHKQVGDLV 325
+                                      ****************************************************************************** PP
+
+                          VP02579 420 lesdgslkwvekksgditeyplkk..........eddptGsiviwehPvkdaplGlyiaGvdpydhdesgtnslGstl 487
+                                      ++ dgslkwv+kk+gdit+ypl++          +ddptGsiviwehP+kda++GlyiaG+d+yd+des+t+slGs++
+  sample-1_10_102032|580|32_31_30 326 WQPDGSLKWVIKKTGDITHYPLRTkrdevtgasvGDDPTGSIVIWEHPNKDASAGLYIAGIDSYDYDESSTTSLGSCF 403
+                                      **********************9999******999******************************************* PP
+
+                          VP02579 488 iykrvqdfeeysdiivaeytGrPktaeeyyenvrklllyynarilyenerkGifpyftnkhcdylladqPdiisdivk 565
+                                      iykrvq++e+ysdiivaeytGrPk+ae++yenvrkll+yynar++yen++kGif+yftnkhcdylladqPdii+div+
+  sample-1_10_102032|580|32_31_30 404 IYKRVQSIEQYSDIIVAEYTGRPKSAEDFYENVRKLLIYYNARAMYENQNKGIFVYFTNKHCDYLLADQPDIINDIVS 481
+                                      ****************************************************************************** PP
+
+                          VP02579 566 nskvqrkkGchmnkqikqy 584
+                                      nskv+rkkGchmnk+  + 
+  sample-1_10_102032|580|32_31_30 482 NSKVNRKKGCHMNKHRLSS 500
+                                      *************986555 PP
+
+  == domain 3  score: 100.7 bits;  conditional E-value: 1.3e-32
+                          VP02579 608 lseplleelieyndkgnvdrviallqvmiyreqlynvkvkekkeenkekelfevPlfskewfeddesaeddleiytf 684
+                                      +seplleeli++nd+ nvdrv+al+qvmiyreqlynvkvke k+en++++lfe+P+f++ewf+dde+  d++e+y+f
+  sample-1_10_102032|580|32_31_30 505 MSEPLLEELIAANDVVNVDRVMALTQVMIYREQLYNVKVKEIKKENRNRVLFEGPIFTQEWFRDDEA-IDNIEAYMF 580
+                                      8*****************************************************************9.899***998 PP
+
+>> TerL  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  110.4   2.0   1.5e-35   6.2e-35      81     164 ..       5      88 ..       1      95 [. 0.89
+   2 !  557.8   5.4  7.7e-171  3.3e-170     259     659 ..      90     496 ..      85     502 .. 0.98
+   3 !   56.0   0.4   4.3e-19   1.8e-18     692     760 ..     506     572 ..     505     580 .] 0.91
+
+  Alignments for each domain:
+  == domain 1  score: 110.4 bits;  conditional E-value: 1.5e-35
+                             TerL  81 eglivntelFreaadtyektgkYteypedskeyrkFwkeeadRcinGytasdgerItGdhYffLNYyrierldeekvk 158
+                                      +++ivn+++Fr +a+++ +tg+Y+ ype+++ey kFw+ee +Rc++Gyta+dg++I+G++Yf+LNY++i r++++ ++
+  sample-1_10_102032|580|32_31_30   5 NKKIVNSNKFRGPALQFIATGSYCVYPEGTSEYFKFWDEESKRCVDGYTADDGDFISGYNYFYLNYCPISRIVNHITT 82 
+                                      569**********************************************************************99888 PP
+
+                             TerL 159 kkeekk 164
+                                      ++++k 
+  sample-1_10_102032|580|32_31_30  83 DESRKY 88 
+                                      744333 PP
+
+  == domain 2  score: 557.8 bits;  conditional E-value: 7.7e-171
+                             TerL 259 wgrkrlsntemrkrlGykvk.n.gnekevgwkseiigvsakdnpdkarGkraklilfEEaGsfpnlkkawdvtepsve 334
+                                      ++ kr++nt+mr+r+G+ +k + gn +e g+kseiigv++kdnpd +rGk+a+li+fEE Gsf++l +aw++++psve
+  sample-1_10_102032|580|32_31_30  90 GEEKRSVNTQMRRRAGFYTKdDyGNIIELGYKSEIIGVTLKDNPDVVRGKKANLIMFEEGGSFSELGAAWQIARPSVE 167
+                                      5678999*************659******************************************************* PP
+
+                             TerL 335 tggiafGtliawGTGGdeganlegleeifynPkgynvlpfenvwdkdarnevcgfFiPaytnleg..eigrrkylDed 410
+                                      ++giafGt+i+wGTGGdeg+++e+++++fynP+gyn+l f+n+wd+ a++++cgfF+P+ytnl++  e+g+r y+Ded
+  sample-1_10_102032|580|32_31_30 168 VDGIAFGTMIVWGTGGDEGSAFETMKDMFYNPDGYNCLGFDNIWDESATTNKCGFFVPQYTNLDIrdEKGKRIYMDED 245
+                                      ****************************************************************************** PP
+
+                             TerL 411 GnsdlekaleeileeRekvkknakdsaaylryvaeraltpaEaflstgeNiFpseelteqlarlrtnkklk.kkqvGd 487
+                                      Gn+  +k+le+il eR+ v+ na+++aa++ryvaer++tpaEa+l++++NiFp++el+eql+ lrtnkkl+ +kqvGd
+  sample-1_10_102032|580|32_31_30 246 GNTYRKKSLEYILAERQVVITNATNNAAVDRYVAERPITPAEAMLEFNGNIFPKKELQEQLSLLRTNKKLQnHKQVGD 323
+                                      ****************************************************************************** PP
+
+                             TerL 488 lvldksgkvefkskkeieeditgvplkkn..........edphGkiriwehPikdedgevpkglYvagiDpydidkse 555
+                                      lv++ +g+++++ kk+  +dit++pl+ +          +dp+G+i+iwehP kd+      glY+agiD+yd d+s 
+  sample-1_10_102032|580|32_31_30 324 LVWQPDGSLKWVIKKT--GDITHYPLRTKrdevtgasvgDDPTGSIVIWEHPNKDA----SAGLYIAGIDSYDYDES- 394
+                                      ****************..*********999999999999****************8....89***************. PP
+
+                             TerL 556 vtdtnslgSifVkkraqefdlykdkiVAeYtgRpdtleeayeivrkLllyYNakalvEnnrkelvsyfkkkkalklLa 633
+                                        +t+slgS+f++kr+q++++y+d+iVAeYtgRp+++e++ye+vrkLl+yYNa+a++En++k+++ yf++k++++lLa
+  sample-1_10_102032|580|32_31_30 395 --STTSLGSCFIYKRVQSIEQYSDIIVAEYTGRPKSAEDFYENVRKLLIYYNARAMYENQNKGIFVYFTNKHCDYLLA 470
+                                      ..99************************************************************************** PP
+
+                             TerL 634 drpetlkdikvkskvnkkyGvnatka 659
+                                      d+p++++di+ +skvn+k+G++++k 
+  sample-1_10_102032|580|32_31_30 471 DQPDIINDIVSNSKVNRKKGCHMNKH 496
+                                      ************************95 PP
+
+  == domain 3  score: 56.0 bits;  conditional E-value: 4.3e-19
+                             TerL 692 seelLeElikyndegnfDrvsalimamiyreelykrevkskkkenkekkdklfednifkreydsedese 760
+                                      se+lLeEli+ nd  n+Drv+al ++miyre+ly+++vk+ kken+  ++ lfe +if++e++++de+ 
+  sample-1_10_102032|580|32_31_30 506 SEPLLEELIAANDVVNVDRVMALTQVMIYREQLYNVKVKEIKKENR--NRVLFEGPIFTQEWFRDDEAI 572
+                                      89********************************************..78*************977543 PP
+
+>> VP00412  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   83.5   1.5   2.1e-27   9.1e-27      47     125 ..       2      81 ..       1      91 [. 0.91
+   2 !  493.8   8.9  1.6e-151  6.9e-151     222     709 ..      92     568 ..      85     575 .. 0.94
+
+  Alignments for each domain:
+  == domain 1  score: 83.5 bits;  conditional E-value: 2.1e-27
+                          VP00412  47 idekkkfvntekfreaainfekhgtytdlkpgskeyrefwkeekkRcleGy.ekggvritGehYfYlNycrIertkee 123
+                                      +d++kk+vn++kfr  a +f ++g y+ +++g++ey +fw+ee kRc+ Gy +++g++i+G++YfYlNyc+I r +++
+  sample-1_10_102032|580|32_31_30   2 VDFNKKIVNSNKFRGPALQFIATGSYCVYPEGTSEYFKFWDEESKRCVDGYtADDGDFISGYNYFYLNYCPISRIVNH 79 
+                                      68999**********************************************88999*****************99886 PP
+
+                          VP00412 124 ke 125
+                                        
+  sample-1_10_102032|580|32_31_30  80 IT 81 
+                                      44 PP
+
+  == domain 2  score: 493.8 bits;  conditional E-value: 1.6e-151
+                          VP00412 222 kgrlkdsemhirsgYkkkee.gkekekGykSeilsvslkdnpdkarGkraelivfEEaGkfpnLlkayevtepsvedg 298
+                                      ++r ++++m  r+g+  k++ g+ +e GykSei++v+lkdnpd +rGk+a+li+fEE G+f++L +a+++++psve +
+  sample-1_10_102032|580|32_31_30  92 EKRSVNTQMRRRAGFYTKDDyGNIIELGYKSEIIGVTLKDNPDVVRGKKANLIMFEEGGSFSELGAAWQIARPSVEVD 169
+                                      5677889*******9999988********************************************************* PP
+
+                          VP00412 299 siktGliivfGTgGdeeagfadfeemFynPeaynllsfeNvwDegsegekcgfFvpayknleg........fidkdGn 368
+                                      +i +G++iv+GTgGde+++f++++ mFynP+ yn+l f+N+wDe +  +kcgfFvp+y nl+         ++d+dGn
+  sample-1_10_102032|580|32_31_30 170 GIAFGTMIVWGTGGDEGSAFETMKDMFYNPDGYNCLGFDNIWDESATTNKCGFFVPQYTNLDIrdekgkriYMDEDGN 247
+                                      *************************************************************9999************* PP
+
+                          VP00412 369 Slkekalekieeerek.kkkakdksaydkyiaekPltpsEaflstgeniFpseeLkeqlnklkadkkykdlgtvgele 445
+                                      + ++k+le+i +er+    +a++++a+d+y+ae+P+tp+Ea+l+ ++niFp++eL+eql+ l+++kk++++++vg+l+
+  sample-1_10_102032|580|32_31_30 248 TYRKKSLEYILAERQVvITNATNNAAVDRYVAERPITPAEAMLEFNGNIFPKKELQEQLSLLRTNKKLQNHKQVGDLV 325
+                                      ****************************************************************************** PP
+
+                          VP00412 446 ideegkvefkpdedlkpikkfplkkn..........ddkeGcvviyehPvkdksgeipkglYiigvDpYdqDksttnS 513
+                                      ++ +g+++++  +++ +i+ +pl+ +          dd++G +vi+ehP    ++++  glYi+g+D+Yd D+s+t+S
+  sample-1_10_102032|580|32_31_30 326 WQPDGSLKWVI-KKTGDITHYPLRTKrdevtgasvgDDPTGSIVIWEHP----NKDASAGLYIAGIDSYDYDESSTTS 398
+                                      *********98.666689999988763333333333689**********....6789********************* PP
+
+                          VP00412 514 lgsalVikrfnnfskpkdriVAeYvGRPetaeefyenvrklavyYnakilvEnnrgeiisYfkrkkalklLaeqpeil 591
+                                      lgs++++kr+++++++ d+iVAeY+GRP++ae+fyenvrkl+ yYna+ ++En++++i+ Yf++k++ +lLa+qp+i+
+  sample-1_10_102032|580|32_31_30 399 LGSCFIYKRVQSIEQYSDIIVAEYTGRPKSAEDFYENVRKLLIYYNARAMYENQNKGIFVYFTNKHCDYLLADQPDII 476
+                                      ****************************************************************************** PP
+
+                          VP00412 592 ddkevkkskvsrsyGihmtkevkkqgeellkewLleeigkkedGkeilnleriysialLeElikynkkgNfDrvsalm 669
+                                      +d +v++skv+r++G+hm+k + + g                           +s +lLeEli+ n+  N Drv+al 
+  sample-1_10_102032|580|32_31_30 477 ND-IVSNSKVNRKKGCHMNKHRLSSGDG------------------------DMSEPLLEELIAANDVVNVDRVMALT 529
+                                      **.9***************998776653........................368899******************** PP
+
+                          VP00412 670 llmihteellyekeveeekekksedsifkrnfnkkkkkkk 709
+                                      ++mi++e+ ly+ +v+e k+++++   f+  ++++++++ 
+  sample-1_10_102032|580|32_31_30 530 QVMIYREQ-LYNVKVKEIKKENRNRVLFEGPIFTQEWFRD 568
+                                      ********.**************99999999999998865 PP
+
+>> VP02686  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   43.4   3.1   2.6e-15   1.1e-14      98     160 ..      17      80 ..       9      89 .. 0.82
+   2 !  212.7   2.3   1.6e-66   6.9e-66     256     620 ..      89     476 ..      78     494 .. 0.84
+
+  Alignments for each domain:
+  == domain 1  score: 43.4 bits;  conditional E-value: 2.6e-15
+                          VP02686  98 arevyertgkYceypkkskkyndfWkeqykrCkeGytvn.gYritGdnYfflnfYrlktvsdkk 160
+                                       +  + +tg+Yc yp+++ +y +fW+e+ krC +Gyt + g  i G nYf+ln+  ++ + ++ 
+  sample-1_10_102032|580|32_31_30  17 PALQFIATGSYCVYPEGTSEYFKFWDEESKRCVDGYTADdGDFISGYNYFYLNYCPISRIVNHI 80 
+                                      5566889******************************962678***********9888775554 PP
+
+  == domain 2  score: 212.7 bits;  conditional E-value: 1.6e-66
+                          VP02686 256 lkklrqkidnakqkrasklkken....vesGfmseiegiv.adkprkiRGdRvdlLlyeEaGsnpvlkkafiqgdaLv 328
+                                      + + ++ +++++++ra+ ++k++    +e G++sei g++  d+p+ +RG++++l+++eE Gs + l  a+  ++  v
+  sample-1_10_102032|580|32_31_30  89 MGEEKRSVNTQMRRRAGFYTKDDygniIELGYKSEIIGVTlKDNPDVVRGKKANLIMFEEGGSFSELGAAWQIARPSV 166
+                                      55667899**************999999**********973699********************************** PP
+
+                          VP02686 329 eiqGkrvGiklalGtgGDkgpaleGlakifedPkaynvLpykhnytedgeevltgfFiPaykivl......keeyvDk 400
+                                      e++G  +G+++++GtgGD+g+a+e ++++f++P++yn L++ + + e+ ++   gfF+P y+ +       k+ y+D+
+  sample-1_10_102032|580|32_31_30 167 EVDGIAFGTMIVWGTGGDEGSAFETMKDMFYNPDGYNCLGFDNIWDESATTNKCGFFVPQYTNLDirdekgKRIYMDE 244
+                                      *************************************************************9876566666677**** PP
+
+                          VP02686 401 RGvtntekakkyyeeeReklladpkdll...kycaEycftpeealaleGdnkFnkvliaeqlaqirvkklgp.kpev. 473
+                                       G t ++k  +y  +eR+ +++++ +     +y aE+  tp ea++    n+F k  + eql+ +r +k+ + + +v 
+  sample-1_10_102032|580|32_31_30 245 DGNTYRKKSLEYILAERQVVITNATNNAavdRYVAERPITPAEAMLEFNGNIFPKKELQEQLSLLRTNKKLQnHKQVg 322
+                                      ******************998776544312279*********************************988766345551 PP
+
+                          VP02686 474 .......galeyklknnkete........eniekvklienkngkvkilEePirdeegeelknlYvaGiDsiDiGaedt 536
+                                             g+l++ +k+  + +        +++++  + +++ g ++i E+P +d        lY+aGiDs D  ++  
+  sample-1_10_102032|580|32_31_30 323 dlvwqpdGSLKWVIKKTGDIThyplrtkrDEVTGASVGDDPTGSIVIWEHPNKD----ASAGLYIAGIDSYDYDES-- 394
+                                      111111145666665543221223333348999999***************988....5678**********8544.. PP
+
+                          VP02686 537 seetkdvsdfcivikkRafGlee..pkyvaiYkdRPrdireaykialklleyYnckallEatkisiltyfrekkkenl 612
+                                      s++    s     i kR+  +e+    +va Y  RP+  ++ y++  kll yYn++a+ E+   +i  yf +k+++ l
+  sample-1_10_102032|580|32_31_30 395 STT-SLGS---CFIYKRVQSIEQysDIIVAEYTGRPKSAEDFYENVRKLLIYYNARAMYENQNKGIFVYFTNKHCDYL 468
+                                      443.3344...34899999998622469*************************************************9 PP
+
+                          VP02686 613 lmkRPrat 620
+                                      l   P   
+  sample-1_10_102032|580|32_31_30 469 LADQPDII 476
+                                      99999654 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (580 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         4  (0.235294); expected 0.3 (0.02)
+Passed bias filter:                        4  (0.235294); expected 0.3 (0.02)
+Passed Vit filter:                         4  (0.235294); expected 0.0 (0.001)
+Passed Fwd filter:                         4  (0.235294); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               4  [number of targets reported over threshold]
+# CPU time: 0.09u 0.01s 00:00:00.10 Elapsed: 00:00:00.10
+# Mc/sec: 58.86
+//
+Query:       sample-1_10_102032|491|20  [L=491]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+   3.2e-295  969.1   0.7   3.6e-295  968.9   0.7    1.0  1  VP02584   
+   1.5e-257  844.9   0.2   1.6e-257  844.8   0.2    1.0  1  VP02211   
+   1.3e-198  650.4   0.2   1.5e-198  650.2   0.2    1.0  1  MCP       
+    4.1e-94  305.9   0.1      5e-94  305.6   0.1    1.0  1  VP02204   
+    7.4e-78  251.9   0.0    9.8e-78  251.5   0.0    1.0  1  VP02208   
+    1.2e-69  225.0   0.1    1.4e-69  224.8   0.1    1.0  1  VP02209   
+    3.5e-20   62.1   0.0    4.8e-20   61.6   0.0    1.1  1  VP02696   
+    5.9e-05   12.0   0.1    0.00011   11.1   0.1    1.4  1  VP02190   
+
+
+Domain annotation for each model (and alignments):
+>> VP02584  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  968.9   0.7  1.7e-295  3.6e-295       1     489 [.       1     489 [.       1     490 [. 1.00
+
+  Alignments for each domain:
+  == domain 1  score: 968.9 bits;  conditional E-value: 1.7e-295
+                    VP02584   1 mdnnilnnlqlykgkrlsdlvdenkisnalkqkPkevsqvlsyvfgtkdsgystsldlltGGlGnvltidkpsyeWsvmidadr 84 
+                                mdnnilnnl+lykgk++sdl+d++kis+a++q+P++v++vlsyvfgtkd+gy+tsld+ltGGlGnv+tid+ps+eW+vmidadr
+  sample-1_10_102032|491|20   1 MDNNILNNLVLYKGKWFSDLIDTAKISAASQQNPYQVATVLSYVFGTKDNGYNTSLDMLTGGLGNVMTIDQPSWEWNVMIDADR 84 
+                                9*********************************************************************************** PP
+
+                    VP02584  85 avtirsakanGaeitaasaaGlgntpivlvleeklfgpgailelddkeyqvrvsgapyqdgnlwvytvfvadGdsdsyipgeyl 168
+                                avtir+ak+nGa+it++s+aGlgntpi+l+le+++fgp+a+le+ddke+qvrv+gapyqdgnlwvyt+fvadG+++syip+e+l
+  sample-1_10_102032|491|20  85 AVTIRDAKWNGAAITDDSTAGLGNTPIMLWLEDNWFGPTAVLEFDDKEFQVRVAGAPYQDGNLWVYTCFVADGQPTSYIPAELL 168
+                                ************************************************************************************ PP
+
+                    VP02584 169 lagkqvsrlasayeeysdeadilnyntelklrnylttvrlkyditGsaystvlaialkdPktGkksylWadyqeWkalrewkkr 252
+                                ++g+qvsrlasa+eeys+e+dilnynt++k+rnyltt+r++yditGsaystv+aial+dPktGkksylWadyqeW+alrew+kr
+  sample-1_10_102032|491|20 169 KPGCQVSRLASAVEEYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMAIALQDPKTGKKSYLWADYQEWVALREWYKR 252
+                                ************************************************************************************ PP
+
+                    VP02584 253 lerallysksnvnkdGtfnlkGtngrpvvigaGlleqiaPsnrryyteltaelledflfdlsynvlgtnerkfvaltGemGlre 336
+                                +er l+y+ksnvnkdG++nlkGtngrpv+igaGlleqiaPsnrryyt+ltaelledflfdlsynvlgtnerkfvaltGemG+re
+  sample-1_10_102032|491|20 253 CERFLVYMKSNVNKDGSCNLKGTNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGEMGIRE 336
+                                ************************************************************************************ PP
+
+                    VP02584 337 fdrvlkekvatlnlidtkfvtGsGqnltlGGqfttykmtnGieltlkllplyddttynrklhPvtkkPlesyrltfldlgrrdG 420
+                                fdr+lkekv+++nlidt+fvtGsG++lt+GGqf+tykmtnGieltlk++plydd+tynrklhPvt+kPlesyr+tfldlgrrdG
+  sample-1_10_102032|491|20 337 FDRILKEKVVNMNLIDTVFVTGSGDSLTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTLKPLESYRMTFLDLGRRDG 420
+                                ************************************************************************************ PP
+
+                    VP02584 421 eanivkvvrkdrefvqwvtggsvspsgyakskntlrsnakdGysvhflgevgimlrdpracGelildve 489
+                                eanivkvvrkdrefv+w+tgg+v psgy ks+ntlrsn+kdGy+v+flge+gimlrdpracGeli+d+e
+  sample-1_10_102032|491|20 421 EANIVKVVRKDREFVTWTTGGAVLPSGYGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIMDCE 489
+                                *******************************************************************97 PP
+
+>> VP02211  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  844.8   0.2  7.7e-258  1.6e-257       2     489 ..       1     489 [.       1     490 [. 1.00
+
+  Alignments for each domain:
+  == domain 1  score: 844.8 bits;  conditional E-value: 7.7e-258
+                    VP02211   2 mensilnklqlykgkrlsglvdenmlsnalltePeevstvlsyvfgtkdeg..taldlltgGlGntltidnreyeWeveidder 83 
+                                m+n+iln+l lykgk++s+l+d+ ++s+a +++P++v+tvlsyvfgtkd+g  t+ld+ltgGlGn++tid++++eW+v+id++r
+  sample-1_10_102032|491|20   1 MDNNILNNLVLYKGKWFSDLIDTAKISAASQQNPYQVATVLSYVFGTKDNGynTSLDMLTGGLGNVMTIDQPSWEWNVMIDADR 84 
+                                789*************************************************9******************************* PP
+
+                    VP02211  84 avtirsaksegaeitaaataGlnntpiqlvleekwfgpgailelDdkeyqvrvseepyqdgseyvytvviadgdpksyidaeyl 167
+                                avtir+ak++ga+it+++taGl+ntpi+l+le++wfgp+a+le+Ddke+qvrv+++pyqdg+ +vyt+++adg+p+syi+ae+l
+  sample-1_10_102032|491|20  85 AVTIRDAKWNGAAITDDSTAGLGNTPIMLWLEDNWFGPTAVLEFDDKEFQVRVAGAPYQDGNLWVYTCFVADGQPTSYIPAELL 168
+                                ************************************************************************************ PP
+
+                    VP02211 168 lagkqvsregsayeeyseeadiinystplklrnslttlRlkyditgsAasdvlvialkdpetgkssylWadyqeWkalrewykr 251
+                                + g+qvsr +sa+eeysee+di+ny+t++k+rn+ltt+R +yditgsA+s+v++ial+dp+tgk+sylWadyqeW alrewykr
+  sample-1_10_102032|491|20 169 KPGCQVSRLASAVEEYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMAIALQDPKTGKKSYLWADYQEWVALREWYKR 252
+                                ************************************************************************************ PP
+
+                    VP02211 252 iersllysksnanadGtvklkGkngrpvyegaGlreqiapanrryYteLtaelledflldLsYnvlgtnerkFvaltGemGlre 335
+                                +er l+y ksn+n+dG+++lkG+ngrpv++gaGl+eqiap+nrryYt+Ltaelledfl+dLsYnvlgtnerkFvaltGemG+re
+  sample-1_10_102032|491|20 253 CERFLVYMKSNVNKDGSCNLKGTNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGEMGIRE 336
+                                ************************************************************************************ PP
+
+                    VP02211 336 fdrvlkekaaelnlvdtkFvtGsGqnLtlgGqFktykmlnGieltlKelplyDdtvrnRqlHpvtkkPlesYrftlldlgtrdG 419
+                                fdr+lkek+ ++nl+dt+FvtGsG++Lt+gGqFktykm+nGieltlK +plyDd+++nR+lHpvt kPlesYr+t+ldlg+rdG
+  sample-1_10_102032|491|20 337 FDRILKEKVVNMNLIDTVFVTGSGDSLTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTLKPLESYRMTFLDLGRRDG 420
+                                ************************************************************************************ PP
+
+                    VP02211 420 eanivkvvkkdrefvqWvvagsvsPysgvaksistlrsnakDGYsvhflsEvgimlkdPracGelileve 489
+                                eanivkvv+kdrefv+W+++g+v P sg+ ksi+tlrsn+kDGY+v fl+E+giml+dPracGeli++ e
+  sample-1_10_102032|491|20 421 EANIVKVVRKDREFVTWTTGGAVLP-SGYGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIMDCE 489
+                                *************************.*****************************************976 PP
+
+>> MCP  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  650.2   0.2  7.1e-199  1.5e-198       2     485 ..       5     488 ..       4     489 .. 0.99
+
+  Alignments for each domain:
+  == domain 1  score: 650.2 bits;  conditional E-value: 7.1e-199
+                        MCP   2 llknlrvirkkrfdtrgytdenkllnlqlqkPeelngilsylygekddk...tldflteglgnvatksidsvqyeWkvmgrskk 82 
+                                +l+nl+++++k+f  ++++d+ k++++++q+P++++++lsy++g+kd++   +ld+lt+glgnv+t+  d++++eW+vm+++++
+  sample-1_10_102032|491|20   5 ILNNLVLYKGKWF--SDLIDTAKISAASQQNPYQVATVLSYVFGTKDNGyntSLDMLTGGLGNVMTI--DQPSWEWNVMIDADR 84 
+                                89***********..*********************************9******************..*************** PP
+
+                        MCP  83 tvpiveakt......attkpGaggseielvfeenwfqeqdvliiddgkqqvriqgdpgrkadngwvytvklidgdpssyidlek 160
+                                +v+i++ak+       ++++G+g+++i+l++e+nwf++ +vl++dd+++qvr+ g+p++++ n wvyt++++dg+p+syi++e 
+  sample-1_10_102032|491|20  85 AVTIRDAKWngaaitDDSTAGLGNTPIMLWLEDNWFGPTAVLEFDDKEFQVRVAGAPYQDG-NLWVYTCFVADGQPTSYIPAEL 167
+                                *********9876644*********************************************.9********************* PP
+
+                        MCP 161 lqaGkrtsflanaveElseegnrsnvsgpekmrnqlttiRlskeitgnaantvleiafkdeknGktsklWmneeekqlerefrk 244
+                                l++G+++s+la+aveE+seeg+++n+++++kmrn+lttiR++++itg+a++tv++ia++d+k+Gk+s+lW++++e+ ++re++k
+  sample-1_10_102032|491|20 168 LKPGCQVSRLASAVEEYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMAIALQDPKTGKKSYLWADYQEWVALREWYK 251
+                                ************************************************************************************ PP
+
+                        MCP 245 akeeallfsksNrdknGkitlkdekngrpIpigaGlleqierankryYnkltlelledaladlsekdldtterkfvlltGeggi 328
+                                ++e+ l+++ksN++k+G+++lk+ +ngrp++igaGlleqi+++n+ryY++lt+elled+l+dls++ l+t+erkfv+ltGe+gi
+  sample-1_10_102032|491|20 252 RCERFLVYMKSNVNKDGSCNLKG-TNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGEMGI 334
+                                ***********************.9*********************************************************** PP
+
+                        MCP 329 refqralkekaatwktittllgskeikgsgdalslGaqfnkYktanGntvtvkvdplfDketkngelhPvtg.PitsyraiflD 411
+                                ref+r+lkek+ +++    l+++++++gsgd+l++G+qf++Yk++nG+++t+k++pl+D+ t+n++lhPvt  P++syr++flD
+  sample-1_10_102032|491|20 335 REFDRILKEKVVNMN----LIDTVFVTGSGDSLTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTLkPLESYRMTFLD 414
+                                ***************....9**************************************************************** PP
+
+                        MCP 412 ltstngepnIqkvkrkgreyvagvikGvvlPagwggaesgvvStpkdgakvevlgssGiqvlnptrsfiLelal 485
+                                l++++ge+nI+kv+rk+re+v++ + G vlP+g+g++ ++ +S+ kdg++v +lg++Gi++++p+++++L+++ 
+  sample-1_10_102032|491|20 415 LGRRDGEANIVKVVRKDREFVTWTTGGAVLPSGYGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIMDC 488
+                                ***********************************************************************985 PP
+
+>> VP02204  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  305.6   0.1   2.4e-94     5e-94       7     482 ..       6     487 ..       2     489 .. 0.91
+
+  Alignments for each domain:
+  == domain 1  score: 305.6 bits;  conditional E-value: 2.4e-94
+                    VP02204   7 qsklvtkemewhanltelnhlGaallakpaklekkldrlftaeryadnp.ltsvlkGmgkeeeieslewewelkgantrplvvv 89 
+                                 ++lv  + +w ++l ++ ++ aa   +p +++++l+ +f ++    n  l   + G g+  +i+  +wew+++  + r +++ 
+  sample-1_10_102032|491|20   6 LNNLVLYKGKWFSDLIDTAKISAASQQNPYQVATVLSYVFGTKDNGYNTsLDMLTGGLGNVMTIDQPSWEWNVMIDADRAVTIR 89 
+                                5899999*********************************99997777615555567899******************998876 PP
+
+                    VP02204  90 enveaa.....nttpGkaksefrikldedWykpgdvisPgtsnkkyqvrvqeevvkdGdgylyvvrlvsddpaaflpakylkaG 168
+                                ++  ++     ++t G +++++++ l+++W+ p+ v+  +  +k++qvrv  ++ +dG+ ++y+  +   +p++++pa++lk+G
+  sample-1_10_102032|491|20  90 DAKWNGaaitdDSTAGLGNTPIMLWLEDNWFGPTAVLEFD--DKEFQVRVAGAPYQDGNLWVYTCFVADGQPTSYIPAELLKPG 171
+                                6543334788899************************985..**************************9*************** PP
+
+                    VP02204 169 vqWaklfsqyeeaaeqsGsttyslPiklrnrlsklrkeykvtgdaaeevlavaipdsk.GkvhksWlkyaeveyWqqwyreler 251
+                                 q ++l s  ee +e +   +y + +k+rn l+++r +y +tg+a ++v+a+a++d k Gk    W  y e    + wy+  er
+  sample-1_10_102032|491|20 172 CQVSRLASAVEEYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMAIALQDPKtGKKSYLWADYQEWVALREWYKRCER 255
+                                ********************************************************763777777******************* PP
+
+                    VP02204 252 glWysrste......tvlGanGrpvrtgpGvqelledshvhrysqltaklieeylldifysrvkpgkgrkikaftGeyGmlafh 329
+                                 l y +s+        ++G+nGrpv+ g+G+ e+++ s + +y++lta+l+e++l d+ y  +  ++ rk +a tGe+G+ +f 
+  sample-1_10_102032|491|20 256 FLVYMKSNVnkdgscNLKGTNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNE-RKFVALTGEMGIREFD 338
+                                ****99864222333689******************************************9887766.**************** PP
+
+                    VP02204 330 raiqdkaeksgfikvvelfidkekseyhsnalefGyqfvkykmanGaelelvhnPlyddreinfeidpvtgfPlesqritfldf 413
+                                r +++k+ +  +i +  +f++++++      l fG+qf  ykm+nG+el+l + Plydd   n +++pvt  Ples r+tfld+
+  sample-1_10_102032|491|20 339 RILKEKVVNMNLIDT--VFVTGSGDS-----LTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTLKPLESYRMTFLDL 415
+                                *****9998888865..688877766.....***************************************************** PP
+
+                    VP02204 414 sGeggesniklvkkkdgyklgyvsG...lqgPygpnkgglmahagdyyemhvekqeGlhiedvtrcGelils 482
+                                +  +ge+ni  v +kd   +++ +G   l + yg +   l ++++d y+++   ++G+ + d   cGeli++
+  sample-1_10_102032|491|20 416 GRRDGEANIVKVVRKDREFVTWTTGgavLPSGYGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIMD 487
+                                *********99999999999999873333467999999999*****************************85 PP
+
+>> VP02208  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  251.5   0.0   4.6e-78   9.8e-78       5     495 ..       7     486 ..       4     489 .. 0.90
+
+  Alignments for each domain:
+  == domain 1  score: 251.5 bits;  conditional E-value: 4.6e-78
+                    VP02208   5 skfqmteakawkglttknhlgaifqkkpqkasnlmvqllaanrg...ktLdtlLsqfptkeldsdddftWdligsskrnipLve 85 
+                                +++   + k +++l+ + +++a  q++p +++++++ ++ ++ +   ++Ld l   +   +  ++  + W+++  ++r + + +
+  sample-1_10_102032|491|20   7 NNLVLYKGKWFSDLIDTAKISAASQQNPYQVATVLSYVFGTKDNgynTSLDMLTGGLGNVMTIDQPSWEWNVMIDADRAVTIRD 90 
+                                566777888999****************999999999887654324477888888888888888899***************** PP
+
+                    VP02208  86 arvedgavvtaatdnvGagteefeLvFpedwFadgevivGeknevYplrilgdpreeGtnavYkvellggdtd.gipaeeLlag 168
+                                a++ +ga++t +++++G g++++ L  +++wF  + v+  + ++ +++r+ g p+++G+ +vY++ ++ g+ + +ipae L +g
+  sample-1_10_102032|491|20  91 AKW-NGAAIT-DDSTAGLGNTPIMLWLEDNWFGPTAVLEFD-DKEFQVRVAGAPYQDGNLWVYTCFVADGQPTsYIPAELLKPG 171
+                                ***.9999*9.999***********************9988.5789************************9999********** PP
+
+                    VP02208 169 krFsveyapVekelSrkvgdvrftspvsmrnefstiRiqhkvpGnmlnkklavgipvvdeegkkkvvksmWmhyvdweleqqfs 252
+                                 + s  ++ Ve e S++++ +++++ ++mrn ++tiRi+  ++G+ ++  +a++++  d  +++k+   +W +y++w   +++ 
+  sample-1_10_102032|491|20 172 CQVSRLASAVE-EYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMAIALQ--D-PKTGKKSY-LWADYQEWVALREWY 250
+                                **********9.68**********************************88876654..4.55555555.8************** PP
+
+                    VP02208 253 deknkllafgrsnrnanGeylnigksGevikqGaGlreqmevsntlyYnefslklledaLleLsegkldfdeRkfvlrTGerGa 336
+                                +  +++l++ +sn n++G+   +g  G+ +  GaGl eq+  sn  yY++ + +lled L++Ls + l+++eRkfv  TGe+G 
+  sample-1_10_102032|491|20 251 KRCERFLVYMKSNVNKDGSCNLKGTNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGEMGI 334
+                                ************************************************************************************ PP
+
+                    VP02208 337 vqfhkavenevsgwtalqlnadalgvvkktssklhenalsagfqfveylapngvkvkvevdplydDkvrnkilhpeg.gvaeSy 419
+                                 +f++ ++++v            ++++ ++  + +  +l++g qf  y+  ng++++++  plydD + n+ lhp    + eSy
+  sample-1_10_102032|491|20 335 REFDRILKEKVVN----------MNLIDTVFVTGSGDSLTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTlKPLESY 408
+                                *******999963..........3344444444456799************************************9879***** PP
+
+                    VP02208 420 rydildiG.tedepNiqkvavkgqeeirgYewGlrnPFt.gqvgnevmssdeDsatihkmatlGvvvlDptrtaslip 495
+                                r+  ld+G  ++e+Ni kv  k++e ++  + G   P   g+  n+  s+ +D++t+  + ++G+++ Dp  + +li 
+  sample-1_10_102032|491|20 409 RMTFLDLGrRDGEANIVKVVRKDREFVTWTTGGAVLPSGyGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIM 486
+                                ********9999*******99998877666666666754144446899**********************99988875 PP
+
+>> VP02209  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  224.8   0.1   6.4e-70   1.4e-69       9     501 ..       7     486 ..       1     489 [. 0.88
+
+  Alignments for each domain:
+  == domain 1  score: 224.8 bits;  conditional E-value: 6.4e-70
+                    VP02209   9 fplqkyepkdwsglttenhlgalfqqkPqliskvieriykvnlg..ddlvsfln.kf.PvkeldddreyeWmlqGadekNiplv 88 
+                                 +l +y++k +s l+  +++ a  qq+P ++ +v++ ++ +  +  +  +++l      v+++d +  +eW ++  +++ + + 
+  sample-1_10_102032|491|20   7 NNLVLYKGKWFSDLIDTAKISAASQQNPYQVATVLSYVFGTKDNgyNTSLDMLTgGLgNVMTID-QPSWEWNVMIDADRAVTIR 89 
+                                56789*********************************98753312333444431441355665.889**************** PP
+
+                    VP02209  89 kaedeagnaiaaltaaskvGangerFylvFseklFeetevivGekPddykllvkkdpvqeaggrfkyevelvtgdpelfvpaee 172
+                                +a+ + g+a   +t+ s++G++++  +l+ +++ F  t v+  ++  +++++v   p q+++  ++y++ +  g+p+ ++pae 
+  sample-1_10_102032|491|20  90 DAKWN-GAA---ITDDSTAGLGNTPIMLWLEDNWFGPTAVLEFDD-KEFQVRVAGAPYQDGNL-WVYTCFVADGQPTSYIPAEL 167
+                                99877.665...678999************************999.9********88877666.******************** PP
+
+                    VP02209 173 laagtrwSkeYslveqtlSkrgsdvsftspfrmenrlSmirkkyevpGnmiekgknePlafafsdqkgktettWlnkldlefkk 256
+                                l +g + S+  s ve + S++g  +++ ++f+m n l +ir +y + G+  +   +  +a++   + gk++  W +++++++ +
+  sample-1_10_102032|491|20 168 LKPGCQVSRLASAVE-EYSEEGDILNYNTHFKMRNYLTTIRINYDITGSAYSTVMA--IALQD-PKTGKKSYLWADYQEWVALR 247
+                                *********999998.57******************************98765444..44443.56899999************ PP
+
+                    VP02209 257 qfrrekarlllyGksnrradgtyankgdsgyeikaGaGlreqiapsNllyYntfnldelvelaldlsvGklaedkRklvlstGE 340
+                                +  +   r+l+y ksn ++dg+   kg +g  +  GaGl eqiapsN+ yY++   + l ++++dls   l  ++Rk+v  tGE
+  sample-1_10_102032|491|20 248 EWYKRCERFLVYMKSNVNKDGSCNLKGTNGRPVFIGAGLLEQIAPSNRRYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGE 331
+                                ************************************************************************************ PP
+
+                    VP02209 341 yGlkeiskaieekagaqilskltsnnrlavlkggnklslkegqfvkyedinGiklelmiipmyDdpvrnkkrhPdG.GlveSrr 423
+                                 G+ e+ + ++ek  +    +l++  ++ v+ g ++  +  gqf  y++ nGi+l+l + p yDd  +n+k hP     +eS+r
+  sample-1_10_102032|491|20 332 MGIREFDRILKEKVVN---MNLID--TVFVT-GSGDSLTFGGQFKTYKMTNGIELTLKYFPLYDDVTYNRKLHPVTlKPLESYR 409
+                                ************9988...33333..33333.3344444478*********************************9899***** PP
+
+                    VP02209 424 ltimdfGtangepniqrvrvkgqdeifayipGlRdpfspggkgspkmvassvDgyevhkakiggirvenplkvgelip 501
+                                +t +d G  +ge+ni +v  k+++   ++  G     s +gk+   + +   Dgy+v     +gi++++p   geli+
+  sample-1_10_102032|491|20 410 MTFLDLGRRDGEANIVKVVRKDREF-VTWTTGGAVLPSGYGKSINTLRSNGKDGYTVFFLGEMGIMLRDPRACGELIM 486
+                                ******************8888765.5555555444588999999**************************9999986 PP
+
+>> VP02696  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   61.6   0.0   2.3e-20   4.8e-20      93     370 ..     102     375 ..      53     386 .. 0.84
+
+  Alignments for each domain:
+  == domain 1  score: 61.6 bits;  conditional E-value: 2.3e-20
+                    VP02696  93 eedGangteivlafkenyYqkydifkieksrqqvivvsrPvrksdnywevvvrlidnDyssvlDldacqvGdttrFlsnakPel 176
+                                ++ G ++t i+l +++n++    ++  ++ + qv v   P++   n w +++ + d    s +  +  ++G +   l+ a  e+
+  sample-1_10_102032|491|20 102 STAGLGNTPIMLWLEDNWFGPTAVLEFDDKEFQVRVAGAPYQ-DGNLWVYTCFVADGQPTSYIPAELLKPGCQVSRLASAVEEY 184
+                                4568899*********************************86.5789************************************* PP
+
+                    VP02696 177 heegyvkyqsnvekhrnfitthradvsys.akyaamedvfikigkgee.sekvyklekaekelldnflaarnnallfaktnvdk 258
+                                +eeg +       k+rn++tt+r++ + + ++y +     i + + ++ + ++   + +e   l+++ +  ++ l++ k+nv+k
+  sample-1_10_102032|491|20 185 SEEGDILNYNTHFKMRNYLTTIRINYDITgSAYSTVMA--IALQDPKTgKKSYLWADYQEWVALREWYKRCERFLVYMKSNVNK 266
+                                ****987777788***********99987356665543..44445455344455567788899********************* PP
+
+                    VP02696 259 ngkatisdpetgrpivigdgiipqierfaskyvynkltvevfetalaamveksekptgnkyvficnekmwaevqrvlsewlakf 342
+                                +g  ++     grp++ig g++ qi        y++lt+e++e  l  ++         k+v+++ e   +e +r+l+e + ++
+  sample-1_10_102032|491|20 267 DGSCNLKG-TNGRPVFIGAGLLEQIAPSNR-RYYTHLTAELLEDFLFDLSYNVLGTNERKFVALTGEMGIREFDRILKEKVVNM 348
+                                *****998.69**************87655.569*****************99999999************************* PP
+
+                    VP02696 343 ktegtylyskaangyvkvGatfqsYefa 370
+                                +   t ++  ++ + +  G  f++Y+++
+  sample-1_10_102032|491|20 349 NLIDT-VFVTGSGDSLTFGGQFKTYKMT 375
+                                **999.57899**************986 PP
+
+>> VP02190  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   11.1   0.1   5.3e-05   0.00011     178     258 ..     198     277 ..     172     281 .. 0.87
+
+  Alignments for each domain:
+  == domain 1  score: 11.1 bits;  conditional E-value: 5.3e-05
+                    VP02190 178 kysnspiiikdkyeisgsdvaqigwveveten.gasGylWylkeeeetrlrFedklEmtllegeraaaasaaakagarGteG 258
+                                k  n+ ++i+ +y+i+gs     + +  + ++ g++ ylW +++e  + +++  + E  l+  +++ ++ ++   + +Gt+G
+  sample-1_10_102032|491|20 198 KMRNYLTTIRINYDITGSAYSTVMAIALQDPKtGKKSYLWADYQEWVALREWYKRCERFLVYMKSNVNKDGSC--NLKGTNG 277
+                                5689***************9999999987654278899*******************9999999999997774..8999998 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (491 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         8  (0.470588); expected 0.3 (0.02)
+Passed bias filter:                        8  (0.470588); expected 0.3 (0.02)
+Passed Vit filter:                         8  (0.470588); expected 0.0 (0.001)
+Passed Fwd filter:                         8  (0.470588); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               8  [number of targets reported over threshold]
+# CPU time: 0.04u 0.01s 00:00:00.05 Elapsed: 00:00:00.04
+# Mc/sec: 125.40
+//
+[ok]

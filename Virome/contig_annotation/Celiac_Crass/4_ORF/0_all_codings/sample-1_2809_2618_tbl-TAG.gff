@@ -1,0 +1,6 @@
+##gff-version  3
+# Sequence Data: seqnum=1;seqlen=2618;seqhdr="sample-1_2809_2618"
+# Model Data: version=Prodigal.v2.6.3;run_type=Metagenomic;model="0|Mycoplasma_bovis_PG45|B|29.3|4|1";gc_cont=29.30;transl_table=4;uses_sd=1
+sample-1_2809_2618	Prodigal_v2.6.3	CDS	213	578	38.0	+	0	ID=1_1;partial=00;start_type=ATG;rbs_motif=GGAG/GAGG;rbs_spacer=5-10bp;gc_cont=0.317;conf=99.98;score=37.96;cscore=18.33;sscore=19.64;rscore=11.23;uscore=4.47;tscore=3.94;
+sample-1_2809_2618	Prodigal_v2.6.3	CDS	550	1020	47.9	+	0	ID=1_2;partial=00;start_type=ATG;rbs_motif=None;rbs_spacer=None;gc_cont=0.329;conf=100.00;score=47.86;cscore=47.96;sscore=-0.10;rscore=-5.22;uscore=1.18;tscore=3.94;
+sample-1_2809_2618	Prodigal_v2.6.3	CDS	1139	2308	231.5	+	0	ID=1_3;partial=00;start_type=ATG;rbs_motif=AGGAG;rbs_spacer=5-10bp;gc_cont=0.357;conf=99.99;score=231.53;cscore=211.68;sscore=19.85;rscore=13.71;uscore=2.20;tscore=3.94;

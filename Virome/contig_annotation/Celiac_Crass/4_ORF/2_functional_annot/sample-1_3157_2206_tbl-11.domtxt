@@ -1,0 +1,17 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_3157_2206|735|1 -            735 portal               -            808  2.1e-282  925.0  22.8   1   1  2.3e-282  2.3e-282  924.9  22.8    55   765     1   734     1   735 0.98 -
+sample-1_3157_2206|735|1 -            735 VP00410              -            789  8.9e-241  787.1  24.0   1   1    1e-240    1e-240  787.0  24.0    58   785     2   734     1   735 0.96 -
+sample-1_3157_2206|735|1 -            735 VP02585              -            853         0 1302.3  23.3   1   1         0         0 1302.2  23.3    60   796     1   735     1   735 1.00 -
+sample-1_3157_2206|735|1 -            735 VP02684              -            708   2.9e-35  107.6  13.2   1   1   5.7e-35   5.7e-35  106.6  13.2    62   682    32   685    22   691 0.78 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_3157_2206_tbl-11.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_3157_2206_tbl-11.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_3157_2206_tbl-11.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_3157_2206_tbl-11.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:32 2025
+# [ok]

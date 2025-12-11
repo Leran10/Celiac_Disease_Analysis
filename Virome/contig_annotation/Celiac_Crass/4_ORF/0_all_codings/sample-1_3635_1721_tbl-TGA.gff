@@ -1,0 +1,7 @@
+##gff-version  3
+# Sequence Data: seqnum=1;seqlen=1721;seqhdr="sample-1_3635_1721"
+# Model Data: version=Prodigal.v2.6.3;run_type=Metagenomic;model="24|Ignisphaera_aggregans_DSM_17230|A|35.7|11|1";gc_cont=35.70;transl_table=11;uses_sd=1
+sample-1_3635_1721	Prodigal_v2.6.3	CDS	2	73	1.1	+	0	ID=1_1;partial=10;start_type=Edge;rbs_motif=None;rbs_spacer=None;gc_cont=0.347;conf=56.09;score=1.07;cscore=-2.15;sscore=3.22;rscore=0.00;uscore=0.00;tscore=3.22;
+sample-1_3635_1721	Prodigal_v2.6.3	CDS	556	849	41.1	-	0	ID=1_2;partial=00;start_type=TTG;rbs_motif=GGA/GAG/AGG;rbs_spacer=5-10bp;gc_cont=0.418;conf=99.99;score=41.13;cscore=40.47;sscore=0.66;rscore=3.82;uscore=1.07;tscore=-4.23;
+sample-1_3635_1721	Prodigal_v2.6.3	CDS	1015	1272	26.2	-	0	ID=1_3;partial=00;start_type=ATG;rbs_motif=None;rbs_spacer=None;gc_cont=0.357;conf=99.72;score=25.58;cscore=26.28;sscore=-0.70;rscore=-2.97;uscore=1.04;tscore=1.88;
+sample-1_3635_1721	Prodigal_v2.6.3	CDS	1494	1655	27.1	-	0	ID=1_4;partial=00;start_type=ATG;rbs_motif=AGxAGG/AGGxGG;rbs_spacer=3-4bp;gc_cont=0.364;conf=99.80;score=27.09;cscore=23.58;sscore=3.51;rscore=4.10;uscore=-1.78;tscore=1.20;

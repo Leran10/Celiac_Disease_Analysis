@@ -1,0 +1,74 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2087_3578_tbl-TAG_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2087_3578_tbl-TAG_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2087_3578_tbl-TAG_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_2087_3578|28|6  [L=28]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    6.5e-13   38.0   0.0    6.7e-13   38.0   0.0    1.0  1  VP02584   
+    2.6e-12   36.0   0.0    2.7e-12   36.0   0.0    1.0  1  VP02211   
+    2.8e-07   19.4   0.0    2.8e-07   19.4   0.0    1.0  1  MCP       
+
+
+Domain annotation for each model (and alignments):
+>> VP02584  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   38.0   0.0   1.2e-13   6.7e-13     463     489 ..       1      27 [.       1      27 [. 0.97
+
+  Alignments for each domain:
+  == domain 1  score: 38.0 bits;  conditional E-value: 1.2e-13
+                  VP02584 463 ysvhflgevgimlrdpracGelildve 489
+                              y+v+flge+gimlrdpracGeli+++e
+  sample-1_2087_3578|28|6   1 YTVFFLGEMGIMLRDPRACGELIMEAE 27 
+                              9***********************986 PP
+
+>> VP02211  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   36.0   0.0   4.7e-13   2.7e-12     463     489 ..       1      27 [.       1      27 [. 0.96
+
+  Alignments for each domain:
+  == domain 1  score: 36.0 bits;  conditional E-value: 4.7e-13
+                  VP02211 463 YsvhflsEvgimlkdPracGelileve 489
+                              Y+v fl+E+giml+dPracGeli+e+e
+  sample-1_2087_3578|28|6   1 YTVFFLGEMGIMLRDPRACGELIMEAE 27 
+                              99**********************985 PP
+
+>> MCP  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   19.4   0.0     5e-08   2.8e-07     460     485 ..       1      26 [.       1      27 [. 0.94
+
+  Alignments for each domain:
+  == domain 1  score: 19.4 bits;  conditional E-value: 5e-08
+                      MCP 460 akvevlgssGiqvlnptrsfiLelal 485
+                              ++v +lg++Gi++++p+++++L++++
+  sample-1_2087_3578|28|6   1 YTVFFLGEMGIMLRDPRACGELIMEA 26 
+                              6899********************97 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (28 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         5  (0.294118); expected 0.3 (0.02)
+Passed bias filter:                        5  (0.294118); expected 0.3 (0.02)
+Passed Vit filter:                         4  (0.235294); expected 0.0 (0.001)
+Passed Fwd filter:                         3  (0.176471); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               3  [number of targets reported over threshold]
+# CPU time: 0.00u 0.00s 00:00:00.00 Elapsed: 00:00:00.00
+# Mc/sec: 98.52
+//
+[ok]

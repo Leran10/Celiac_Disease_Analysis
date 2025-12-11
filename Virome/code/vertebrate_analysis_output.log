@@ -1,0 +1,33 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+Loading required package: limma
+Welcome to emmeans.
+Caution: You lose important information if you filter this package's results.
+See '? untidy'
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:data.table’:
+
+    transpose
+
+Error in fread("~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/") : 
+  File '~/Handley Lab Dropbox/16S/Celiac/Vertebrate_contigs/' is a directory. Not yet implemented.
+Calls: fread -> stopf -> raise_condition -> signal
+Execution halted

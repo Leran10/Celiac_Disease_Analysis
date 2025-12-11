@@ -1,0 +1,87 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_3423_1921|31|1  [L=31]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    5.7e-16   48.1   0.1    5.9e-16   48.1   0.1    1.0  1  VP02211   
+    1.7e-15   46.5   0.0    1.7e-15   46.5   0.0    1.0  1  VP02584   
+    6.4e-09   24.8   0.0    6.6e-09   24.8   0.0    1.0  1  MCP       
+    2.3e-05   13.0   0.0    2.3e-05   12.9   0.0    1.0  1  VP02209   
+
+
+Domain annotation for each model (and alignments):
+>> VP02211  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   48.1   0.1   1.4e-16   5.9e-16     461     490 .]       1      30 [.       1      30 [. 0.97
+
+  Alignments for each domain:
+  == domain 1  score: 48.1 bits;  conditional E-value: 1.4e-16
+                  VP02211 461 DGYsvhflsEvgimlkdPracGelileved 490
+                              DGYsvhfl+E+giml+dPracGeli+eved
+  sample-1_3423_1921|31|1   1 DGYSVHFLGEMGIMLRDPRACGELIMEVED 30 
+                              9**************************985 PP
+
+>> VP02584  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   46.5   0.0   4.1e-16   1.7e-15     461     490 .]       1      30 [.       1      30 [. 0.97
+
+  Alignments for each domain:
+  == domain 1  score: 46.5 bits;  conditional E-value: 4.1e-16
+                  VP02584 461 dGysvhflgevgimlrdpracGelildved 490
+                              dGysvhflge+gimlrdpracGeli++ved
+  sample-1_3423_1921|31|1   1 DGYSVHFLGEMGIMLRDPRACGELIMEVED 30 
+                              9**************************986 PP
+
+>> MCP  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   24.8   0.0   1.5e-09   6.6e-09     458     485 ..       1      28 [.       1      29 [. 0.96
+
+  Alignments for each domain:
+  == domain 1  score: 24.8 bits;  conditional E-value: 1.5e-09
+                      MCP 458 dgakvevlgssGiqvlnptrsfiLelal 485
+                              dg++v++lg++Gi++++p+++++L++++
+  sample-1_3423_1921|31|1   1 DGYSVHFLGEMGIMLRDPRACGELIMEV 28 
+                              89************************97 PP
+
+>> VP02209  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   12.9   0.0   5.5e-06   2.3e-05     476     503 ..       1      28 [.       1      29 [. 0.96
+
+  Alignments for each domain:
+  == domain 1  score: 12.9 bits;  conditional E-value: 5.5e-06
+                  VP02209 476 Dgyevhkakiggirvenplkvgelipsi 503
+                              Dgy+vh    +gi++++p   geli+++
+  sample-1_3423_1921|31|1   1 DGYSVHFLGEMGIMLRDPRACGELIMEV 28 
+                              9***********************9988 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (31 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         6  (0.352941); expected 0.3 (0.02)
+Passed bias filter:                        6  (0.352941); expected 0.3 (0.02)
+Passed Vit filter:                         6  (0.352941); expected 0.0 (0.001)
+Passed Fwd filter:                         4  (0.235294); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               4  [number of targets reported over threshold]
+# CPU time: 0.00u 0.00s 00:00:00.00 Elapsed: 00:00:00.00
+# Mc/sec: 95.56
+//
+[ok]

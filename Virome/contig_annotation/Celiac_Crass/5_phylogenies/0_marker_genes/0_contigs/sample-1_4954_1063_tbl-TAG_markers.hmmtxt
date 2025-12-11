@@ -1,0 +1,168 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4954_1063_tbl-TAG_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4954_1063_tbl-TAG_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_4954_1063_tbl-TAG_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_4954_1063|289|1  [L=289]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+   6.1e-159  520.7   7.0   6.7e-159  520.6   7.0    1.0  1  VP02585   
+   6.9e-111  361.8   7.4   8.3e-111  361.5   7.4    1.0  1  portal    
+    1.8e-96  314.0   6.5    2.1e-96  313.8   6.5    1.0  1  VP00410   
+
+
+Domain annotation for each model (and alignments):
+>> VP02585  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  520.6   7.0  1.2e-159  6.7e-159      16     301 ..       1     285 [.       1     289 [] 0.98
+
+  Alignments for each domain:
+  == domain 1  score: 520.6 bits;  conditional E-value: 1.2e-159
+                   VP02585  16 lskkteeWkedcvdyiigesaaansngnnrtrveelqtyydlynsiynekdlkyvtnPfkvdDgfPataqdyniirPkidlllGe 100
+                               +skkt+eWke+cvdyiig+s a+++ngn+r+r+ee+qtyydlynsiynekdlkyvtnPfk+dDgfPataqdynii+PkidlllGe
+  sample-1_4954_1063|289|1   1 MSKKTKEWKESCVDYIIGHS-ASSRNGNSRSREEEMQTYYDLYNSIYNEKDLKYVTNPFKQDDGFPATAQDYNIIKPKIDLLLGE 84 
+                               79******************.999************************************************************* PP
+
+                   VP02585 101 etkrPlnfkvvrtsdeaaselqekakqmlldyiqaaimskldpeeqqryqealqsGeimpPeeiqkyltkdykDiaeetayhsLk 185
+                               etkrP+nf+vvrtsd+a+s+lq+kakq+l+dy+qa+imskl+peeq+ryqealqsGeim+Pe+iqkyltkdykDiae +a+hsL+
+  sample-1_4954_1063|289|1  85 ETKRPFNFRVVRTSDIATSDLQDKAKQLLIDYVQASIMSKLGPEEQARYQEALQSGEIMTPEQIQKYLTKDYKDIAEIAAQHSLN 169
+                               ************************************************************************************* PP
+
+                   VP02585 186 ylknklnikheflkgykDaliageeiyyvGiengePylervnPltfsydksedlefiedaswCcekmilsvaeiyDrfydkldek 270
+                               ylk+kln++hef+kg+kDaliageeiyyvG+ ngePy+ervnPl fsy++s+dlefi++aswCc+km++s++eiyDrfydk++ek
+  sample-1_4954_1063|289|1 170 YLKQKLNVTHEFFKGWKDALIAGEEIYYVGVINGEPYVERVNPLSFSYEQSADLEFIHEASWCCRKMNMSATEIYDRFYDKMSEK 254
+                               ************************************************************************************* PP
+
+                   VP02585 271 dlnellellddtskgglnpevrkssvDdyeh 301
+                               +lnell+++dd ++gglnp+vr +++ ++ h
+  sample-1_4954_1063|289|1 255 QLNELLDMMDDGTRGGLNPQVRLTTSLTFYH 285
+                               *********************9988777776 PP
+
+>> portal  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  361.5   7.4  1.5e-111  8.3e-111      18     290 ..       1     278 [.       1     285 [. 0.99
+
+  Alignments for each domain:
+  == domain 1  score: 361.5 bits;  conditional E-value: 1.5e-111
+                    portal  18 asKktkewkkkcvdyviaeglsn......kdkeelqkaydllngkldeedykyvlnpynikdgnfPatirdydiikpiidrliGE 96 
+                               +sKktkewk++cvdy+i+++ s+      +++ee+q++ydl+n++++e+d+kyv+np++++dg+ Pat++dy+iikp+id+l+GE
+  sample-1_4954_1063|289|1   1 MSKKTKEWKESCVDYIIGHSASSrngnsrSREEEMQTYYDLYNSIYNEKDLKYVTNPFKQDDGF-PATAQDYNIIKPKIDLLLGE 84 
+                               79********************99****9***********************************.******************** PP
+
+                    portal  97 yikrpfdfkVvatdpeavseieaekkqellqylqqelankiqeeeaqrveqqlpskeimdpekiikelnkdyideaeiqaqnlLn 181
+                               ++krpf+f+Vv+t++ a+s+ ++++kq l++y+q+ +++k+ +ee++r++++l+s+eim+pe+i+k+l+kdy+d+aei+aq++Ln
+  sample-1_4954_1063|289|1  85 ETKRPFNFRVVRTSDIATSDLQDKAKQLLIDYVQASIMSKLGPEEQARYQEALQSGEIMTPEQIQKYLTKDYKDIAEIAAQHSLN 169
+                               ************************************************************************************* PP
+
+                    portal 182 ylkksldlkekfakaffdllitGeeyyyvdvrggevilevvnplevfieknndsefvedsdmvvrrkymskqqIideyydkLtek 266
+                               ylk++l+++++f k+++d+li+Gee+yyv+v +ge+++e+vnpl +++e++ d ef++++++++r++ ms+++I+d++ydk++ek
+  sample-1_4954_1063|289|1 170 YLKQKLNVTHEFFKGWKDALIAGEEIYYVGVINGEPYVERVNPLSFSYEQSADLEFIHEASWCCRKMNMSATEIYDRFYDKMSEK 254
+                               ************************************************************************************* PP
+
+                    portal 267 dlekLeeiyekssstsssydvrkn 290
+                               +l++L +++++ ++++ +++vr++
+  sample-1_4954_1063|289|1 255 QLNELLDMMDDGTRGGLNPQVRLT 278
+                               ************999999999876 PP
+
+>> VP00410  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  313.8   6.5   3.6e-97   2.1e-96      17     280 ..       2     267 ..       1     286 [. 0.97
+
+  Alignments for each domain:
+  == domain 1  score: 313.8 bits;  conditional E-value: 3.6e-97
+                   VP00410  17 skKtkkWrkecidavinlsnass..ssrnskkkkkenydlynGeideedykyvlnpynseekefPAklrnydIikpiidlLlGEe 99 
+                               skKtk+W ++c+d++i++s +s+  +sr++ ++++++ydlyn +++e+d+kyv+np+++  ++fPA+ ++y+Iikp+idlLlGEe
+  sample-1_4954_1063|289|1   2 SKKTKEWKESCVDYIIGHSASSRngNSRSREEEMQTYYDLYNSIYNEKDLKYVTNPFKQ-DDGFPATAQDYNIIKPKIDLLLGEE 85 
+                               8******************9988999*********************************.************************* PP
+
+                   VP00410 100 ikrpfnfqVvatnpdavsrkeeekkemlkeyleqeiqneiqqeqeqgvqtgqqseqqedpeeiekyfnedyqDdreiqaqklLey 184
+                               +krpfnf+Vv+t+  a+s  +++ k+ l +y+++ i++++ +e+++ +q+  qs ++++pe+i+ky ++dy+D++ei aq+ L+y
+  sample-1_4954_1063|289|1  86 TKRPFNFRVVRTSDIATSDLQDKAKQLLIDYVQASIMSKLGPEEQARYQEALQSGEIMTPEQIQKYLTKDYKDIAEIAAQHSLNY 170
+                               ************************************************************************************* PP
+
+                   VP00410 185 likkldlkekfqkgffdllvtgeeyyyvevvngepvvervnPlevdydkdpdseyieDadwiverkymsineiiDefydeLtdkd 269
+                               l++kl++  +f kg++d+l++gee+yyv+v+ngep+vervnPl+++y+++ d+e+i +a+w+++++ ms+ ei+D+fyd++++k+
+  sample-1_4954_1063|289|1 171 LKQKLNVTHEFFKGWKDALIAGEEIYYVGVINGEPYVERVNPLSFSYEQSADLEFIHEASWCCRKMNMSATEIYDRFYDKMSEKQ 255
+                               ************************************************************************************* PP
+
+                   VP00410 270 idkLe.lsnnse 280
+                               +++L  ++++++
+  sample-1_4954_1063|289|1 256 LNELLdMMDDGT 267
+                               *****5555544 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (289 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         6  (0.352941); expected 0.3 (0.02)
+Passed bias filter:                        3  (0.176471); expected 0.3 (0.02)
+Passed Vit filter:                         3  (0.176471); expected 0.0 (0.001)
+Passed Fwd filter:                         3  (0.176471); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               3  [number of targets reported over threshold]
+# CPU time: 0.01u 0.00s 00:00:00.01 Elapsed: 00:00:00.01
+# Mc/sec: 175.12
+//
+Query:       sample-1_4954_1063|51|2  [L=51]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    1.3e-12   36.6   0.1    1.4e-12   36.6   0.1    1.0  1  VP02579   
+    4.2e-06   15.1   0.1    4.2e-06   15.1   0.1    1.0  1  TerL      
+
+
+Domain annotation for each model (and alignments):
+>> VP02579  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   36.6   0.1   1.6e-13   1.4e-12     637     684 .]       1      50 [.       1      50 [. 0.93
+
+  Alignments for each domain:
+  == domain 1  score: 36.6 bits;  conditional E-value: 1.6e-13
+                  VP02579 637 yreqlynvkvkekkeenkekelfevPlfskewfeddes..aeddleiytf 684
+                              y+eql+n++vkek++en+++ lf++P+f+++w ++ ++    +d+++ytf
+  sample-1_4954_1063|51|2   1 YKEQLHNLVVKEKTKENRNRILFDGPIFAQQWSDEPSMpnLFNDSNTYTF 50 
+                              89********************************9998767788999987 PP
+
+>> TerL  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   15.1   0.1   4.9e-07   4.2e-06     720     760 ..       1      39 [.       1      50 [. 0.79
+
+  Alignments for each domain:
+  == domain 1  score: 15.1 bits;  conditional E-value: 4.9e-07
+                     TerL 720 yreelykrevkskkkenkekkdklfednifkreydsedese 760
+                              y+e+l +  vk+k ken+  ++ lf+ +if++++ +e ++ 
+  sample-1_4954_1063|51|2   1 YKEQLHNLVVKEKTKENR--NRILFDGPIFAQQWSDEPSMP 39 
+                              6899**************..78*************954433 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (51 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         2  (0.117647); expected 0.3 (0.02)
+Passed bias filter:                        2  (0.117647); expected 0.3 (0.02)
+Passed Vit filter:                         2  (0.117647); expected 0.0 (0.001)
+Passed Fwd filter:                         2  (0.117647); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               2  [number of targets reported over threshold]
+# CPU time: 0.00u 0.00s 00:00:00.00 Elapsed: 00:00:00.00
+# Mc/sec: 202.49
+//
+[ok]

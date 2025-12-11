@@ -1,0 +1,123 @@
+LOCUS       BK032524                3007 bp    DNA     linear   ENV 15-JUN-2021
+DEFINITION  MAG TPA_asm: Anelloviridae sp. ctUGs1, partial genome.
+ACCESSION   BK032524
+VERSION     BK032524.1
+DBLINK      BioProject: PRJNA524703, PRJNA573942
+            BioSample: SAMN11031422
+            Sequence Read Archive: SRR8653020, SRR9670928
+KEYWORDS    ENV; Metagenome Assembled Genome; MAG; Third Party Data; TPA;
+            TPA:assembly.
+SOURCE      Anelloviridae sp. ctUGs1 (Human Metagenome)
+  ORGANISM  Anelloviridae sp. ctUGs1
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae.
+REFERENCE   1  (bases 1 to 3007)
+  AUTHORS   Tisza,M.J. and Buck,C.B.
+  TITLE     A catalog of tens of thousands of viruses from human metagenomes
+            reveals hidden associations with chronic diseases
+  JOURNAL   Proc Natl Acad Sci U S A 118 (23) (2021)
+   PUBMED   34083435
+REFERENCE   2  (bases 1 to 3007)
+  AUTHORS   Tisza,M.J. and Buck,C.B.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (14-APR-2021) Lab of Cellular Oncology, National Cancer
+            Institute, 37 Convent Dr., Bethesda, MD 20814, USA
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: MEGAHIT v. 1.2.9
+            Genome Coverage       :: 77.9790x
+            Sequencing Technology :: Illumina
+            Annotation Pipeline   :: Cenote-Taker2
+            URL                   :: https://github.com/mtisza1/Cenote-Taker2
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..3007
+                     /organism="Anelloviridae sp. ctUGs1"
+                     /mol_type="genomic DNA"
+                     /isolate="ctUGs1"
+                     /isolation_source="Human metagenome"
+                     /db_xref="taxon:2828020"
+                     /environmental_sample
+                     /geo_loc_name="USA"
+                     /collection_date="2020-01-03"
+                     /metagenome_source="Human Metagenome"
+                     /note="genome binned from sequencing reads available in
+                     SRX5450615,SRX6431326;
+                     metagenomic"
+     CDS             <1..447
+                     /inference="protein motif:CDD:251643"
+                     /codon_start=1
+                     /product="TT viral ORF2"
+                     /protein_id="DAF45898.1"
+                     /translation="ISLAERARNLNILFYRCVPKVSETTVVKGQFGLDQSGGTGKKLK
+                     YFILQMSSCYKPTFYNTQGKQNQWINDIHCTHDLWCSCDHTIKHLLLALAEKEEIIPV
+                     TTEQKRSILKCLSTTEDLITETVDKGDIDELALDAIFAEDLTEDTG"
+     CDS             570..2345
+                     /inference="protein motif:CDD:281022"
+                     /codon_start=1
+                     /product="TT viral orf 1"
+                     /protein_id="DAF45899.1"
+                     /translation="MYEKSTVPFHWPGGGSFSVSQYTLDVLYDMHKTCRNWWTGSNED
+                     LPLCRYKGCELKFYQCNYVDYIVKVINELPATSNKLTYPSTQPNMMLMAQNKHIIASK
+                     QNRKKRKPYTKLKVPPPPQFQNKWYFTSDLYKIPLMHIHATAANLTNPYVKPQNLSNN
+                     ITFWGINTQSIQNKAFQTQDTFWPFKKLGTLQYYFYYHTQGTETKSEDFKIADLIPLT
+                     NPKRNTHGFSYNDLRQTSRPEFKQYIQKWQDYAGNPFYKDINDNIDDIYFSLRSPTYI
+                     QSKATESSFNENTKWKDINESPTAQPLTPFNEPIFIPFQYNPEKDTGEDTEVYLVNNR
+                     DGHGWDNPGISEITLTGFPLWIILWGYIDFQKNLKKAINIDTEYILVFKSKFTQRPKA
+                     YPIVIINESFIQGNSPYENKPLPEDETKWYPMVQYQTQTQNKILSVGPFAPNNPDCKS
+                     DNICMYYKFKFEWGGTPPKHITVENPTHQIQYPVPSNEHETNSLQSPGQAPESILYSF
+                     DFRHGDYTTAALSRITKDWPIKETVSTLTEPTKRQLLQQAFQFLQDSEEKQEKKEKEM
+                     QNIINQLRNQQQRYRQQIIELTTQM"
+ORIGIN      
+        1 atcagtctgg cggaacgggc aagaaactta aatattttat tttacagatg tgtgccgaag
+       61 gtgagtgaaa ccaccgtagt caaggggcaa ttcgggctag atcagtctgg cggaacgggc
+      121 aagaaactta aatattttat tttacagatg tcaagctgtt ataaaccaac attctacaat
+      181 actcaaggaa aacaaaacca atggattaat gatattcact gtacccacga cctctggtgc
+      241 agctgcgacc acaccattaa acatctccta ctagcacttg cagaaaaaga agaaattatt
+      301 ccagtaacta cagaacaaaa aagaagcatc ttaaaatgcc tttctactac cgaagacctt
+      361 attacagaaa ccgtcgacaa aggagatata gacgagctcg ccttagacgc tattttcgcc
+      421 gaagacctta cagaagatac tgggtaagca acccttataa caaactaact ataaaacaat
+      481 ggtcaccacc atataaaaag acttgctata taaaaggaca atgctgcatt atttactata
+      541 acaatgagag acttggttgg aattctacca tgtatgaaaa aagtactgtg ccatttcact
+      601 ggccgggagg cgggtctttt agtgtaagcc aatatacttt agatgtatta tatgatatgc
+      661 ataaaacttg tagaaactgg tggacaggaa gtaatgaaga cttaccatta tgtagatata
+      721 aaggctgtga acttaagttt tatcaatgta actatgtaga ttatattgtt aaagttataa
+      781 atgaactgcc agcaactagc aacaaactaa catatccatc aacacaacca aatatgatgc
+      841 taatggcaca aaacaaacac ataatagcaa gcaaacaaaa cagaaaaaaa agaaaaccat
+      901 acacaaaact aaaagtacca ccaccaccac aatttcagaa caaatggtac ttcacaagtg
+      961 acttatacaa aataccactt atgcacatac atgcaacagc cgccaaccta acaaacccat
+     1021 atgtaaaacc ccaaaactta tcgaacaata taacattttg gggaattaac acacaatcta
+     1081 tacaaaacaa agcatttcaa acacaagaca cattttggcc atttaaaaaa cttggtacat
+     1141 tacaatacta tttttactat catacacaag gaacagagac aaaatcagaa gactttaaaa
+     1201 tagcagacct tataccacta acaaacccaa aaagaaacac ccacggcttt tcttacaatg
+     1261 acctaagaca aacatcaaga ccagaattta aacaatacat acaaaaatgg caagactatg
+     1321 caggtaatcc gttttacaaa gacataaatg acaatataga tgacatatac ttttctttaa
+     1381 gatcaccaac atatattcaa agcaaagcca cagaatcatc atttaatgaa aacacaaagt
+     1441 ggaaagacat aaatgaatca ccaacagcac aaccattaac accatttaat gaaccaatat
+     1501 ttataccatt tcaatataac ccagaaaaag acacaggaga agacactgaa gtatacttag
+     1561 taaacaatag agacggacac gggtgggaca acccaggaat ttcagaaata acattaacag
+     1621 gattcccctt atggattata ctatggggat atattgactt tcaaaaaaat ttaaagaaag
+     1681 caataaacat agacacagaa tacatactag tatttaaaag caaattcaca cagagaccaa
+     1741 aagcataccc aatagtaatt ataaatgaat catttataca aggaaacagt ccatacgaaa
+     1801 acaaaccact accagaagat gaaactaaat ggtatccaat ggtacaatac caaacacaaa
+     1861 cacaaaacaa aatactatca gtaggaccat ttgcacctaa caatccagat tgtaaaagtg
+     1921 ataacatttg tatgtattat aaatttaaat ttgaatgggg aggaacccca cctaaacata
+     1981 ttactgttga aaatccaacc catcagatac agtatcccgt gcccagtaac gagcatgaaa
+     2041 caaattcgtt acagagtcca gggcaagccc cagaatcaat cctatactca ttcgacttca
+     2101 gacacgggga ctacacaaca gcagctttat caagaattac taaagactgg ccaattaaag
+     2161 aaactgtttc tacacttaca gaaccaacaa aaagacaact actacaacaa gcattccagt
+     2221 tcctacaaga cagcgaggaa aagcaggaga aaaaagaaaa agagatgcag aacatcatca
+     2281 accagctcag aaaccagcag cagcgataca gacagcaaat aatagaattg acaactcaaa
+     2341 tgtaaatttt ctatgcatta aaaaagtaaa attgtttgaa actactgaaa caaaaaaccg
+     2401 taaatttact aaggaagaat ttgtaacaga acttgagtta agtaaatgga tgaaaagacc
+     2461 ccctagatac tatgtaaaag accctccatt ttatccctgg ttgccaccag aacccattgt
+     2521 aaactttgac cttaactatc aataaacaag gccagcaaat attcacttag tggagtccat
+     2581 ttatttaatt taaacttaaa taaacggtca ccgcctccct aatacgcagg cgcacaaggg
+     2641 ggctccgccc ccttaaaccc ccaagggggc tccgccccct taaaccccca agggggctcc
+     2701 gcccccttaa acccccttat taatattcaa caggaaaacc acctaatttg aattgccgac
+     2761 cacaaaccgt cacttagttc ccctttttgc acatacttcc ccttttgctc attattattc
+     2821 attaagttaa ttagtagtca gtgtaattcc ggggaggagc caaaagacta tataatcaag
+     2881 tacacttccg aatggctgag tttatgccgc cagacggaga cgggatcact tcagtgactc
+     2941 caggctgatc ttgggcgggt gccgaaggtg agtgaaacca ccgtagtcaa ggggcaattc
+     3001 gggctag
+//
+

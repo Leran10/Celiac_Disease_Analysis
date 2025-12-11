@@ -47,6 +47,7 @@ vv.foi <- as_tibble(fread("~/Handley Lab Dropbox/16S/Celiac/tables/Vertebrate_vi
                    mutate(sampleID_mod = ifelse(sampleID_mod %like% "_6Y",gsub("_6Y","_72M",sampleID_mod),
                                            ifelse(sampleID_mod %like% "_7Y",gsub("_7Y","_84M",sampleID_mod),sampleID_mod)))
 
+
 ```
 
 
@@ -64,6 +65,7 @@ count.species <- count.raw %>%
                  droplevels() %>%
                  filter(lineage != "NA;NA;NA;NA;NA;NA;NA") %>%
                  column_to_rownames("lineage")
+
 
 
 # OTU = otu_table(count.species, taxa_are_rows = TRUE)
@@ -113,6 +115,9 @@ abundance.table.all.species <- merge(metadata.final %>% column_to_rownames("samp
                               filter(feeding_first_year != "Unknown") %>%
                               filter(Age.at.Solid.Introduction..months. != "Unknown") %>%
                               filter(Age.at.Gluten.Introduction..months. != "Unknown")
+
+View(abundance.table.all.species)
+write.csv(abundance.table.all.species,"~/Handley\ Lab\ Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/Vertebrate_viruses/data/abundance.table.all.species.csv")
 
 
 # ---------------------------------genus level------------------------------------------#

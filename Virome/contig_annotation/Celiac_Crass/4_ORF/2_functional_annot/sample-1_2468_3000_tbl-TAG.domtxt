@@ -1,0 +1,20 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_2468_3000|236|1 -            236 portal               -            808   2.2e-92  297.5   7.1   1   1   1.2e-92   2.5e-92  297.3   7.1    18   246     1   236     1   236 0.99 -
+sample-1_2468_3000|694|2 -            694 TerL                 -            780  5.8e-290  950.7  20.9   1   1  3.3e-290  6.5e-290  950.6  20.9    81   760     5   685     1   693 0.98 -
+sample-1_2468_3000|236|1 -            236 VP00410              -            789   1.2e-81  261.9   6.4   1   1   6.6e-82   1.3e-81  261.7   6.4    17   247     2   235     1   236 0.98 -
+sample-1_2468_3000|694|2 -            694 VP00412              -            717  8.6e-241  787.9  19.3   1   1  5.4e-241  1.1e-240  787.5  19.3    47   709     2   681     1   688 0.96 -
+sample-1_2468_3000|694|2 -            694 VP02579              -            684         0 1292.5  20.1   1   1         0         0 1292.3  20.1     1   684     1   693     1   693 1.00 -
+sample-1_2468_3000|236|1 -            236 VP02585              -            853    2e-138  449.8   6.3   1   1  1.1e-138  2.3e-138  449.6   6.3    16   250     1   236     1   236 0.99 -
+sample-1_2468_3000|694|2 -            694 VP02686              -            761  9.7e-104  334.8  13.4   1   1  7.4e-104  1.5e-103  334.1  13.4    92   709    11   665     3   684 0.85 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_2468_3000_tbl-TAG.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_2468_3000_tbl-TAG.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_2468_3000_tbl-TAG.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_2468_3000_tbl-TAG.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:33 2025
+# [ok]

@@ -1,0 +1,1015 @@
+---
+title: "Celiac_phage_phrog_PA_abundance_analysis"
+output: html_document
+date: "2025-10-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(edgeR)
+library(glmmTMB)
+library(broom.mixed)  # tidy() for mixed models
+library(dplyr)
+library(purrr)
+library(tibble)
+library(tidyr)  # for pivot_longer
+library(lme4)  # for glmer
+library(geepack)  # for GEE
+library(brms)  # for Bayesian models
+library(limma)
+```
+
+
+
+
+
+# load phrog file
+```{r}
+
+# remember to filter out NA but keep "NO_PHTOG"
+phrog <- read_delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/data_correct/total/phold_per_cds_predictions.tsv") %>%
+         select(`cds_id`,`phrog`) %>%
+         column_to_rownames("cds_id") %>%
+         filter(!is.na(phrog))
+
+```
+
+
+
+# Load total data
+```{r load and clean metadata}
+
+# Total cohort
+total.phrog.abundance.clean_0.75_0.03 <- read.csv("data/total/total.phrog.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(total.phrog.abundance.clean_0.75_0.03) <- gsub("X","",colnames(total.phrog.abundance.clean_0.75_0.03))
+
+total.phrog.metadata.clean_0.75_0.03 <- read.csv("data/total/total.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+# Check if column names of abundance table is consistent with row names of the metadata table
+stopifnot(identical(colnames(total.phrog.abundance.clean_0.75_0.03), rownames(total.phrog.metadata.clean_0.75_0.03)))
+
+# Clean metadata
+# Prepare correct variable format
+total.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(total.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(total.phrog.metadata.clean_0.75_0.03$feeding_first_year)
+
+total.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(total.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+table(total.phrog.metadata.clean_0.75_0.03$HLA.Category)
+
+total.phrog.metadata.clean_0.75_0.03$Sex <- factor(total.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+table(total.phrog.metadata.clean_0.75_0.03$Sex)
+
+total.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(total.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+table(total.phrog.metadata.clean_0.75_0.03$Delivery.Mode)
+
+total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+table(total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+
+total.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(total.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+table(total.phrog.metadata.clean_0.75_0.03$Dx.Status)
+
+total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+table(total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined)
+
+```
+
+# Load US data
+```{r create clean abundance tables for three cohorts}
+
+# US cohort
+US.phrog.abundance.clean_0.75_0.03 <- read.csv("data/US/US.phrog.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(US.phrog.abundance.clean_0.75_0.03) <- gsub("X","",colnames(US.phrog.abundance.clean_0.75_0.03))
+
+US.phrog.metadata.clean_0.75_0.03 <- read.csv("data/US/US.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+# Set factor levels for US cohort to match total cohort
+US.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(US.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+US.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(US.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+US.phrog.metadata.clean_0.75_0.03$Sex <- factor(US.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+US.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(US.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+US.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(US.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+US.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(US.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+US.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(US.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+# Italy cohort
+Italy.phrog.abundance.clean_0.75_0.03 <- read.csv("data/Italy/Italy.phrog.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(Italy.phrog.abundance.clean_0.75_0.03) <- gsub("X","",colnames(Italy.phrog.abundance.clean_0.75_0.03))
+
+Italy.phrog.metadata.clean_0.75_0.03 <- read.csv("data/Italy/Italy.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+# Set factor levels for Italy cohort to match total cohort
+Italy.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(Italy.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+Italy.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(Italy.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+Italy.phrog.metadata.clean_0.75_0.03$Sex <- factor(Italy.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+Italy.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(Italy.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+Italy.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+Italy.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(Italy.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+Italy.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(Italy.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+```
+
+# Create PA (Presence/Absence) data from abundance data
+```{r create PA data}
+
+# Create PA data for all cohorts
+total.PA <- (total.phrog.abundance.clean_0.75_0.03 > 0) * 1
+US.PA <- (US.phrog.abundance.clean_0.75_0.03 > 0) * 1  
+Italy.PA <- (Italy.phrog.abundance.clean_0.75_0.03 > 0) * 1
+
+# Convert to long format for modeling
+total_pa_long <- total.PA %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(total.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+US_pa_long <- US.PA %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(US.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+Italy_pa_long <- Italy.PA %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(Italy.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+```
+
+# PA Model 1: glmmTMB with Logit Link
+
+## Total cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_total}
+# Fit model for each phrog using total cohort data
+total_glmmTMB_logit_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_glmmTMB_logit_results, "../phrog_Contig_phrog_compositional/phrog_results/total_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_US}
+# Fit model for each phrog using US cohort data
+US_glmmTMB_logit_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmmTMB_logit_results, "../phrog_Contig_phrog_compositional/phrog_results/US_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_Italy}
+# Fit model for each phrog using Italy cohort data
+Italy_glmmTMB_logit_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmmTMB_logit_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+```
+
+
+# PA Model 2: glmmTMB with Complementary Log-Log Link
+
+## Total cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_total}
+# Fit model for each phrog using total cohort data
+total_glmmTMB_cloglog_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_glmmTMB_cloglog_results, "../phrog_Contig_phrog_compositional/phrog_results/total_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_US}
+# Fit model for each phrog using US cohort data
+US_glmmTMB_cloglog_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmmTMB_cloglog_results, "../phrog_Contig_phrog_compositional/phrog_results/US_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmmTMB cloglog
+```{r PA_glmmTMB_cloglog_Italy}
+# Fit model for each phrog using Italy cohort data
+Italy_glmmTMB_cloglog_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "cloglog"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmmTMB_cloglog_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_PA_glmmTMB_cloglog_results.csv", row.names = FALSE)
+```
+
+
+# PA Model 3: glmer (Mixed-effects logistic)
+When: You want a second mixed-model engine (very standard).
+Why: Solid optimizer, good diagnostics; similar results to glmmTMB on many datasets.
+Pros: Widely used; good default.
+Cons: No alternative links beyond logit; no zero-inflation (not needed for binary anyway).
+
+## Total cohort - glmer
+```{r PA_glmer_total}
+library(lme4)
+
+# Fit model for each phrog using total cohort data
+total_glmer_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_glmer_results, "../phrog_Contig_phrog_compositional/phrog_results/total_PA_glmer_results.csv", row.names = FALSE)
+```
+
+## US cohort - glmer
+```{r PA_glmer_US}
+# Fit model for each phrog using US cohort data
+US_glmer_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_glmer_results, "../phrog_Contig_phrog_compositional/phrog_results/US_PA_glmer_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - glmer
+```{r PA_glmer_Italy}
+# Fit model for each phrog using Italy cohort data
+Italy_glmer_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmer(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+              HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+              family = binomial(link = "logit"), data = .x,
+              control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)))
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_glmer_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_PA_glmer_results.csv", row.names = FALSE)
+```
+
+
+# PA Model 4: GEE (population-averaged logistic)
+When: Repeated measures (patientID), convergence issues with random effects, want robust SEs.
+Pros: Fewer failures than GLMM; interprets as average effect.
+Pros: Robust sandwich SEs; simple to fit.
+Cons: No subject-specific effects (interpretation is population-average); no random slopes.
+
+## Total cohort - GEE
+```{r PA_GEE_total}
+library(geepack)
+
+# Fit model for each phrog using total cohort data
+total_gee_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_gee_results, "../phrog_Contig_phrog_compositional/phrog_results/total_PA_GEE_results.csv", row.names = FALSE)
+```
+
+## US cohort - GEE
+```{r PA_GEE_US}
+# Fit model for each phrog using US cohort data
+US_gee_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_gee_results, "../phrog_Contig_phrog_compositional/phrog_results/US_PA_GEE_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - GEE
+```{r PA_GEE_Italy}
+# Fit model for each phrog using Italy cohort data
+Italy_gee_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        geeglm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+               HLA.Category + feeding_first_year + Delivery.Mode,
+               id = patientID, family = binomial, corstr = "exchangeable", data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_gee_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_PA_GEE_results.csv", row.names = FALSE)
+```
+
+
+# PA Model 5: Bayesian mixed-effects logistic (brms/Stan)
+When: Ultra-sparse, separation, or you want partial pooling with priors (more stable).
+Why: Priors stabilize estimates; rich inference (CIs/ORs); handles complex structures.
+Pros: Very stable with sparsity; full posteriors; can change link (e.g., cloglog).
+Cons: Slower; requires MCMC checks (R̂, ESS, pp-checks).
+
+## Total cohort - Bayesian brms
+```{r PA_brms_total}
+library(brms)
+
+# Fit model for each phrog using total cohort data
+total_brms_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_brms_results, "../phrog_Contig_phrog_compositional/phrog_results/total_PA_brms_results.csv", row.names = FALSE)
+```
+
+## US cohort - Bayesian brms
+```{r PA_brms_US}
+# Fit model for each phrog using US cohort data
+US_brms_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_brms_results, "../phrog_Contig_phrog_compositional/phrog_results/US_PA_brms_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Bayesian brms
+```{r PA_brms_Italy}
+# Fit model for each phrog using Italy cohort data
+Italy_brms_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        brm(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+            HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+            family = bernoulli(link = "logit"), data = .x,
+            prior = c(
+              set_prior("normal(0, 1)", class = "b"),     # fixed effects
+              set_prior("exponential(2)", class = "sd")   # random-effect SDs
+            ),
+            cores = 4, chains = 4, iter = 2000, refresh = 0)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_brms_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_PA_brms_results.csv", row.names = FALSE)
+```
+
+
+# A) Count GLMMs (per-phrog), with random effects
+
+# Abundance Model 1: Negative Binomial GLMM — workhorse
+
+## Total cohort - Negative Binomial GLMM
+```{r abundance_NB_total}
+library(edgeR)
+library(glmmTMB)
+
+# Prepare DGEList and normalization for total cohort
+total.y <- DGEList(counts = total.phrog.abundance.clean_0.75_0.03, samples = total.phrog.metadata.clean_0.75_0.03)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+total.lib_eff <- with(total.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+total_abundance_long <- total.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(total.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(total.lib_eff[sample_id]))
+
+# Fit NB model for each phrog
+total_nb_results <- total_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_nb_results, "../phrog_Contig_phrog_compositional/phrog_results/total_abundance_NB_results.csv", row.names = FALSE)
+```
+
+## US cohort - Negative Binomial GLMM
+```{r abundance_NB_US}
+# Prepare DGEList and normalization for US cohort
+US.y <- DGEList(counts = US.phrog.abundance.clean_0.75_0.03, samples = US.phrog.metadata.clean_0.75_0.03)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+US.lib_eff <- with(US.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+US_abundance_long <- US.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(US.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(US.lib_eff[sample_id]))
+
+# Fit NB model for each phrog
+US_nb_results <- US_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_nb_results, "../phrog_Contig_phrog_compositional/phrog_results/US_abundance_NB_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Negative Binomial GLMM
+```{r abundance_NB_Italy}
+# Prepare DGEList and normalization for Italy cohort
+Italy.y <- DGEList(counts = Italy.phrog.abundance.clean_0.75_0.03, samples = Italy.phrog.metadata.clean_0.75_0.03)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+Italy.lib_eff <- with(Italy.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+Italy_abundance_long <- Italy.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(Italy.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(offset = log(Italy.lib_eff[sample_id]))
+
+# Fit NB model for each phrog
+Italy_nb_results <- Italy_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_nb_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_abundance_NB_results.csv", row.names = FALSE)
+```
+
+
+# Abundance Model 2: Hurdle Negative Binomial GLMM — excess zeros, two-part
+
+## Total cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_total}
+# Fit Hurdle NB model for each phrog using total cohort data
+total_hurdle_results <- total_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_hurdle_results, "../phrog_Contig_phrog_compositional/phrog_results/total_abundance_hurdle_results.csv", row.names = FALSE)
+```
+
+## US cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_US}
+# Fit Hurdle NB model for each phrog using US cohort data
+US_hurdle_results <- US_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_hurdle_results, "../phrog_Contig_phrog_compositional/phrog_results/US_abundance_hurdle_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Hurdle Negative Binomial GLMM
+```{r abundance_hurdle_Italy}
+# Fit Hurdle NB model for each phrog using Italy cohort data
+Italy_hurdle_results <- Italy_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = truncated_nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_hurdle_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_abundance_hurdle_results.csv", row.names = FALSE)
+```
+
+
+# Abundance Model 3: Zero-Inflated NB GLMM — structural zeros
+
+## Total cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_total}
+# Fit Zero-Inflated NB model for each phrog using total cohort data
+total_zinb_results <- total_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(total_zinb_results, "../phrog_Contig_phrog_compositional/phrog_results/total_abundance_ZINB_results.csv", row.names = FALSE)
+```
+
+## US cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_US}
+# Fit Zero-Inflated NB model for each phrog using US cohort data
+US_zinb_results <- US_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(US_zinb_results, "../phrog_Contig_phrog_compositional/phrog_results/US_abundance_ZINB_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - Zero-Inflated NB GLMM
+```{r abundance_ZINB_Italy}
+# Fit Zero-Inflated NB model for each phrog using Italy cohort data
+Italy_zinb_results <- Italy_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                ziformula = ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                           HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+# Save results
+write.csv(Italy_zinb_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_abundance_ZINB_results.csv", row.names = FALSE)
+```
+
+
+# B) Voom / Linear Mixed Models on log-counts (rate scale)
+
+# Abundance Model 4: limma-voom + duplicateCorrelation — fast, empirical Bayes
+
+## Total cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_total}
+library(limma)
+library(edgeR)
+
+# Prepare design matrix for total cohort
+total_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                            HLA.Category + feeding_first_year + Delivery.Mode, 
+                            data = total.phrog.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+total_v <- voom(total.y, total_design, plot = FALSE)
+
+# Calculate duplicate correlation
+total_cphrogit <- duplicateCorrelation(total_v, total_design, block = total.phrog.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+total_v2 <- voom(total.y, total_design, plot = FALSE, 
+                 block = total.phrog.metadata.clean_0.75_0.03$patientID, 
+                 correlation = total_cphrogit$consensus)
+
+# Fit linear model
+total_voom_fit <- lmFit(total_v2, total_design, 
+                       block = total.phrog.metadata.clean_0.75_0.03$patientID, 
+                       correlation = total_cphrogit$consensus)
+total_voom_fit <- eBayes(total_voom_fit)
+
+# Extract results for all coefficients
+total_voom_results <- topTable(total_voom_fit, number = Inf) %>%
+  rownames_to_column("phrog_id") %>%
+  mutate(cohort = "total")
+
+# Save results
+write.csv(total_voom_results, "../phrog_Contig_phrog_compositional/phrog_results/total_abundance_voom_results.csv", row.names = FALSE)
+```
+
+## US cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_US}
+# Prepare design matrix for US cohort
+US_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                         HLA.Category + feeding_first_year + Delivery.Mode, 
+                         data = US.phrog.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+US_v <- voom(US.y, US_design, plot = FALSE)
+
+# Calculate duplicate correlation
+US_cphrogit <- duplicateCorrelation(US_v, US_design, block = US.phrog.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+US_v2 <- voom(US.y, US_design, plot = FALSE, 
+              block = US.phrog.metadata.clean_0.75_0.03$patientID, 
+              correlation = US_cphrogit$consensus)
+
+# Fit linear model
+US_voom_fit <- lmFit(US_v2, US_design, 
+                     block = US.phrog.metadata.clean_0.75_0.03$patientID, 
+                     correlation = US_cphrogit$consensus)
+US_voom_fit <- eBayes(US_voom_fit)
+
+# Extract results for all coefficients
+US_voom_results <- topTable(US_voom_fit, number = Inf) %>%
+  rownames_to_column("phrog_id") %>%
+  mutate(cohort = "US")
+
+# Save results
+write.csv(US_voom_results, "../phrog_Contig_phrog_compositional/phrog_results/US_abundance_voom_results.csv", row.names = FALSE)
+```
+
+## Italy cohort - limma-voom + duplicateCorrelation
+```{r abundance_voom_Italy}
+# Prepare design matrix for Italy cohort
+Italy_design <- model.matrix(~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                            HLA.Category + feeding_first_year + Delivery.Mode, 
+                            data = Italy.phrog.metadata.clean_0.75_0.03)
+
+# Apply voom transformation
+Italy_v <- voom(Italy.y, Italy_design, plot = FALSE)
+
+# Calculate duplicate correlation
+Italy_cphrogit <- duplicateCorrelation(Italy_v, Italy_design, block = Italy.phrog.metadata.clean_0.75_0.03$patientID)
+
+# Re-apply voom with correlation
+Italy_v2 <- voom(Italy.y, Italy_design, plot = FALSE, 
+                 block = Italy.phrog.metadata.clean_0.75_0.03$patientID, 
+                 correlation = Italy_cphrogit$consensus)
+
+# Fit linear model
+Italy_voom_fit <- lmFit(Italy_v2, Italy_design, 
+                       block = Italy.phrog.metadata.clean_0.75_0.03$patientID, 
+                       correlation = Italy_cphrogit$consensus)
+Italy_voom_fit <- eBayes(Italy_voom_fit)
+
+# Extract results for all coefficients
+Italy_voom_results <- topTable(Italy_voom_fit, number = Inf) %>%
+  rownames_to_column("phrog_id") %>%
+  mutate(cohort = "Italy")
+
+# Save results
+write.csv(Italy_voom_results, "../phrog_Contig_phrog_compositional/phrog_results/Italy_abundance_voom_results.csv", row.names = FALSE)
+```
+
+
+
+

@@ -1,0 +1,80 @@
+# hmmscan :: search sequence(s) against a profile database
+# HMMER 3.3.2 (Nov 2020); http://hmmer.org/
+# Copyright (C) 2020 Howard Hughes Medical Institute.
+# Freely distributed under the BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:             results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2895_2535_tbl-TAG_markers.faa
+# target HMM database:             resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# output directed to file:         results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2895_2535_tbl-TAG_markers.hmmtxt
+# per-dom hits tabular output:     results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2895_2535_tbl-TAG_markers.domtxt
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       sample-1_2895_2535|87|5  [L=87]
+Scores for complete sequence (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Model    Description
+    ------- ------ -----    ------- ------ -----   ---- --  -------- -----------
+    1.9e-20   62.6  19.3    2.1e-20   62.4  19.3    1.0  1  VP02585   
+    5.7e-12   34.6  19.5    6.4e-12   34.4  19.5    1.0  1  portal    
+  ------ inclusion threshold ------
+      0.023    2.7  20.8      0.023    2.7  20.8    1.0  1  VP00410   
+
+
+Domain annotation for each model (and alignments):
+>> VP02585  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   62.4  19.3   3.6e-21   2.1e-20     752     848 ..       1      86 [.       1      86 [. 0.98
+
+  Alignments for each domain:
+  == domain 1  score: 62.4 bits;  conditional E-value: 3.6e-21
+                  VP02585 752 pdpieiakqaleeqklasdaaskqlelelkareaeakkeiekkkiqkklelekeklelekekleeekelqkqkdeaalereklkak 837
+                              pd++eia qalee+k+as++askq+e+++k re++ kkeie+kki+           lek+kl+++k++qkqkd+aalere++ka+
+  sample-1_2895_2535|87|5   1 PDTMEIAAQALEERKQASEEASKQFEFNAKMREQQLKKEIEDKKIE-----------LEKQKLQAQKDIQKQKDDAALERERIKAR 75 
+                              699*****************************************99...........***************************** PP
+
+                  VP02585 838 talknkvkgek 848
+                              talknkv+gek
+  sample-1_2895_2535|87|5  76 TALKNKVAGEK 86 
+                              *********97 PP
+
+>> portal  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !   34.4  19.5   1.1e-12   6.4e-12     730     805 ..       4      86 ..       2      86 .. 0.94
+
+  Alignments for each domain:
+  == domain 1  score: 34.4 bits;  conditional E-value: 1.1e-12
+                   portal 730 inaakqaieeqklssdekskq.....kerkeeakkeledkklelekkkleleka..kaerdaklkreqlkdktaknNkikaek 805
+                              ++ a qa+ee+k +s+e+skq     k+r+++ kke+edkk+elek+kl+++k   k+++da+l+re +k++ta +Nk+ +ek
+  sample-1_2895_2535|87|5   4 MEIAAQALEERKQASEEASKQfefnaKMREQQLKKEIEDKKIELEKQKLQAQKDiqKQKDDAALERERIKARTALKNKVAGEK 86 
+                              55678999**********99999*99***************************999***********************9876 PP
+
+>> VP00410  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 ?    2.7  20.8    0.0041     0.023     688     753 ..      12      79 ..       2      86 .. 0.30
+
+  Alignments for each domain:
+  == domain 1  score: 2.7 bits;  conditional E-value: 0.0041
+                  VP00410 688 lqaeqekeq..akmelekeqaeldrqtkiqvaeikaeakkedndenakdeedeeelkkeaeeeklele 753
+                              ++ +q++e+  ++ e+ ++ +e++ +++i+ ++i++e++k +++++ ++++d+++l++e+ +++++l+
+  sample-1_2895_2535|87|5  12 EERKQASEEasKQFEFNAKMREQQLKKEIEDKKIELEKQKLQAQKDIQKQKDDAALERERIKARTALK 79 
+                              11222222211222222222222222222333333333333333333333333333333333333333 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query sequence(s):                         1  (87 residues searched)
+Target model(s):                          17  (10431 nodes)
+Passed MSV filter:                         5  (0.294118); expected 0.3 (0.02)
+Passed bias filter:                        4  (0.235294); expected 0.3 (0.02)
+Passed Vit filter:                         3  (0.176471); expected 0.0 (0.001)
+Passed Fwd filter:                         3  (0.176471); expected 0.0 (1e-05)
+Initial search space (Z):                 17  [actual number of targets]
+Domain search space  (domZ):               3  [number of targets reported over threshold]
+# CPU time: 0.00u 0.00s 00:00:00.00 Elapsed: 00:00:00.00
+# Mc/sec: 103.17
+//
+[ok]

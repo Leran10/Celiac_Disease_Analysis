@@ -1,0 +1,93 @@
+LOCUS       KJ452215                2028 bp    DNA     linear   VRL 27-AUG-2014
+DEFINITION  Gyrovirus 4 strain G14, complete genome.
+ACCESSION   KJ452215
+VERSION     KJ452215.1
+KEYWORDS    .
+SOURCE      Gyrovirus 4
+  ORGANISM  Gyrovirus 4
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Gyrovirus; Gyrovirus
+            homsa3.
+REFERENCE   1  (bases 1 to 2028)
+  AUTHORS   Feher,E., Pazar,P., Kovacs,E., Farkas,S.L., Lengyel,G., Jakab,F.,
+            Martella,V. and Banyai,K.
+  TITLE     Molecular detection and characterization of human gyroviruses
+            identified in the ferret fecal virome
+  JOURNAL   Arch. Virol. (2014) In press
+   PUBMED   25119678
+  REMARK    Publication Status: Available-Online prior to print
+REFERENCE   2  (bases 1 to 2028)
+  AUTHORS   Feher,E., Lengyel,G. and Banyai,K.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (14-FEB-2014) Pathogen Discovery, Institute for
+            Veterinary Medical Research Centre for Agricultural Research
+            Hungarian Academy of Sciences, 21 Hungaria krt, Budapest, Pest
+            1143, Hungary
+COMMENT     ##Assembly-Data-START##
+            Sequencing Technology :: Sanger dideoxy sequencing
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2028
+                     /organism="Gyrovirus 4"
+                     /mol_type="genomic DNA"
+                     /strain="G14"
+                     /host="Mustela putorius furo"
+                     /db_xref="taxon:1214955"
+                     /geo_loc_name="Hungary"
+                     /collection_date="2011"
+     CDS             512..1165
+                     /codon_start=1
+                     /product="VP2"
+                     /protein_id="AIL23491.1"
+                     /translation="MGSPDHRFSAVPHDLLDSVCPKWRQVCFNYSIACWLTECRVSHS
+                     RVCRCTSFRNHWFQLEGRPVSTVEVGVQTDPGDLEQQPSGTSTAEIGPRVDAARRLLS
+                     SISFKRDACRALEGAPKPKRRKRGDARKEFLRRYRAGEETESDVEWDSFVEWSDSDGD
+                     PGVDCMRGGVGGGIIREDRMGGGIAAEGTGGGTGDTAGTPFLKLLSGGFTSSTQGHM"
+     CDS             970..2028
+                     /codon_start=1
+                     /product="VP1"
+                     /protein_id="AIL23492.1"
+                     /translation="MVRFRRRPWGRLYAWRRGGWHYKRRPYGRWYRSGRYRRGYRRHR
+                     RYAFSKAFKRRFYIQHPGSYVVRRTKPYNSMKVFFQGVIFVNNAVYQSGQAETSAFRV
+                     YSIELSLRNLLLAYYTQYVSGGPGWMGTSSAKVNVSPLDWWRWAYIRMFPAPDQRVFA
+                     NGTRPTDVQLYNYFCQWQLFRHIKTDFRVLNTDVTNTADVRILASLLTQDSYWQVQNK
+                     TSADLSQLRFPSFAELSAWGAQWSFTPGQKSVSGRSFNHHSMKGTNDPRGEPWKTLTP
+                     LQHQQISDINWVFGTLFLAEFSNFTVLNEYNTENRALAATGLSETWSLVKVRSLFEFG
+                     NQQYLLADSVRFTSHLPT"
+ORIGIN      
+        1 gcctttgtat acttacatat cgttggttac cacgccttgt ggcgtttgtc gcgctgggtg
+       61 atgattttaa taagaaaatg ttgaggagcg agcctccgga ggaggcgagc gacgtctctg
+      121 tgtacacgct aataaacagg atgttctcag ccgtgtggtt ttgcctgtgg tttcctgtca
+      181 cacgcgccct gattggtgga gggggggggt tagggggggg aggcgcgaag cccctccccc
+      241 cctctcattg gttcacgtca tttcgtgggc cgtcctatgg cagggtactt attgccgtgt
+      301 actaccggtc ggcagtaggt attctgccag agacggagtg cgagcagtca gcgagctgga
+      361 gggtctggtg agtgcgcaca ccgctcgggg cagtgaattt ttgcttattg caaaaagagg
+      421 ggcttattgg gctagagcgg tctctggccg gggcttaacc aagtgtcttt cttgcatgtc
+      481 tgtttcttta gtgttgtaag gctctcgggg tatgggcagc cctgaccatc gctttagtgc
+      541 tgttcctcat gatctgttgg atagtgtgtg tccgaagtgg agacaggtct gtttcaacta
+      601 cagtatagca tgttggctga cggagtgtcg agtgtctcac agcagggtgt gccggtgcac
+      661 gagcttcagg aatcattggt ttcagttgga ggggaggccg gtttcaacgg tagaagtcgg
+      721 tgtgcaaaca gaccctgggg atctcgaaca gcagccttct ggtacctcca ctgcagagat
+      781 tgggccaaga gtcgacgccg cgcggagatt attgagttct atctcgttca aaagagacgc
+      841 ttgccgagct ttggagggag cacctaagcc aaagagaaga aagagaggtg atgcacgaaa
+      901 ggagtttctg aggagatatc gagcgggtga ggagactgaa tctgatgttg agtgggacag
+      961 ttttgtggaa tggtcagatt cagacggaga ccctggggtc gattgtatgc gtggaggcgt
+     1021 ggggggtggc attataagag aagaccgtat gggaggtggt atcgcagcgg aaggtaccgg
+     1081 agggggtacc ggagacaccg caggtacgcc ttttctaaag cttttaagcg gaggttttac
+     1141 atccagcacc cagggtcata tgtagtgaga agaactaagc cttataactc gatgaaagtg
+     1201 ttttttcagg gtgtcatatt tgttaacaat gccgtatatc agtctggaca ggctgaaact
+     1261 tctgctttta gggtatatag tattgagctg tcgcttagaa atttgctgct tgcttattat
+     1321 acacaatatg tatctggggg accggggtgg atgggtacta gcagtgctaa agttaatgtt
+     1381 agtccgcttg attggtggag gtgggcatat attagaatgt ttccagctcc tgatcagaga
+     1441 gtgtttgcaa atggaactag gccgacagac gtgcaactgt ataactattt ttgtcagtgg
+     1501 caattgttta ggcatataaa aactgacttt agagtgttaa atacagatgt tacaaacaca
+     1561 gcagatgtga gaattttagc aagtctgtta actcaagata gttattggca ggtgcagaac
+     1621 aagacttctg cagacttgag tcagttgagg ttcccaagct ttgcagagtt gtcggcttgg
+     1681 ggtgctcagt ggtcttttac accgggtcaa aagagtgtaa gtggaaggag ttttaaccat
+     1741 cattcaatga aggggactaa tgacccaagg ggagagccgt ggaagacttt gacccctttg
+     1801 cagcatcaac agatcagcga cattaactgg gtattcggta cattgtttct cgcggaattt
+     1861 agtaacttta ctgtgttaaa cgaatacaat actgaaaata gagcgttagc ggctaccggt
+     1921 ctgagtgaaa cttggagcct tgtgaaggtg agaagccttt ttgagttcgg taatcagcag
+     1981 tatttgctgg ccgattcagt aaggttcact tctcatctac ctacctga
+//
+

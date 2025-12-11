@@ -1,0 +1,92 @@
+LOCUS       PV013274                2579 bp    DNA     linear   VRL 18-MAR-2025
+DEFINITION  Betatorquevirus homini13 isolate GE-1982-24-0457 ORF1 gene,
+            complete cds.
+ACCESSION   PV013274
+VERSION     PV013274.1
+KEYWORDS    .
+SOURCE      Betatorquevirus homini13
+  ORGANISM  Betatorquevirus homini13
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Betatorquevirus.
+REFERENCE   1  (bases 1 to 2579)
+  AUTHORS   Laubscher,F., Chudzinski,V., Cordey,S. and L'Huillier,A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-JAN-2025) Laboratory of Virology, University
+            Hospitals of Geneva, Rue Gabrielle-Perret-Gentil 4, Geneva, Geneva
+            1205, Switzerland
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: IDBA-UD v. 1.1.3
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2579
+                     /organism="Betatorquevirus homini13"
+                     /mol_type="genomic DNA"
+                     /isolate="GE-1982-24-0457"
+                     /isolation_source="blood"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:3052001"
+                     /geo_loc_name="Switzerland"
+     CDS             281..2329
+                     /codon_start=1
+                     /product="ORF1"
+                     /protein_id="XPU79176.1"
+                     /translation="MPWRRWRRRRWYRRPRNYYWRPRKIIRRRYRRRRVRIPKKLKRL
+                     HITQWQPSKIRQCNIKGLMCLFLCNKNRLGHNLAIYNNSIVPQHLPGGGGFSIYQFTL
+                     ENLYTMHEYCRNWWTQTNNMLPLVRYVNCTLKIYQSEDVDIVFRYNTHPPLYSTQLTY
+                     PSMQPSMLMLLKNSLLIPSKKTHTIKKGYRKLRIHPPNLMQNKWYFQQDLSTKPLLVT
+                     HCVAASFDHYYISTQSLSNNATVPILNTALFQNRHFDHKSPDPYHAQQLGTQKIYLYA
+                     TYAVPTTDGQVDPKELILLGESKKYTPGLTYTEYLRTTKVTGDKWQNYLQHINIYQGN
+                     PFHNHYLNTNGDEYHTLTLYQFAASGTEDWTTPYGAKTHTESQIPTKTQGLVELHNPF
+                     VYFTRYNPNSDNGSSNKTFLLPNFKPEHGWDPPTNTHLTLEGFPLYIQWWGFVDFQKQ
+                     QHEVTNIDTSQIFATNTDTLHGAPQSVPCFVPLNQDFIEGRSPHEPGVNQLDVNRWYP
+                     MVQHQELAINNLLASGPGTAKLNGKETVEAKMAYTFRFKFGGNPPPMVDLKDPTKQPV
+                     YPMPNNNISTNSLQDPTISPELFLYNFDQRRDFLTKQATERMQKYQETKKPIFTDATT
+                     TPGPPAILHQTLQTSEDETSDSEKEEEEILNKLLKQRKKQQQLKQRIRQLLAQHNTNI
+                     "
+ORIGIN      
+        1 ggtgagtgaa accaccgtag tctaggggca attcgggcta gatcagtctg gcggaacggg
+       61 caagaaactt aaaactattt tattttttag atatgacatc taactacaaa ccaacatata
+      121 tgaccagcaa tgcttctcaa aaacaacttc taaataccat tgttggaaac cacgacctaa
+      181 tttgtggctg cgacgaacca ctaaagcacg tcgcctgttt aatttttgaa aaagctcaac
+      241 caaccaactt tactgaaaaa gaaaagaaaa caattaaaaa atgccttgga gaagatggag
+      301 gagacgccga tggtaccgaa gacctcggaa ttactactgg agacctagaa aaattattcg
+      361 cagaagatac cgccgacgac gggtaagaat cccaaaaaaa ctaaaaagac tacatataac
+      421 ccaatggcaa ccaagcaaaa taagacagtg taatataaaa ggacttatgt gcttgtttct
+      481 ttgcaacaaa aatagactgg gacataatct tgcaatttat aataactcaa ttgtacctca
+      541 gcacttgccg ggtggggggg gatttagtat atatcaattt actcttgaaa acttgtatac
+      601 tatgcatgaa tactgtagaa actggtggac tcaaactaat aatatgttac ctttagtaag
+      661 atatgtaaac tgtactttaa aaatatatca aagtgaagat gttgatatag tattcagata
+      721 caacacacat ccaccactat attcaactca gctaacatat ccatcaatgc aaccatctat
+      781 gctaatgcta ctaaaaaaca gcttacttat accaagcaaa aaaacacaca caattaaaaa
+      841 aggatacaga aaattaagaa tacacccacc aaacttaatg caaaacaaat ggtactttca
+      901 acaagacctg agcacaaaac cattacttgt aactcactgc gtagccgcta gctttgatca
+      961 ctattatata tccacacaaa gcctgagtaa taatgccaca gtacctatac taaacacagc
+     1021 actttttcaa aatagacatt ttgaccataa atcaccagac ccataccacg cacaacaatt
+     1081 aggaacacaa aaaatatacc tatatgccac ttatgctgta cctacaacag acggacaagt
+     1141 agacccaaaa gaactaatat tactaggaga atcaaagaaa tacacaccag gactaacata
+     1201 cacagaatac ttaagaacaa ctaaagttac cggagacaaa tggcaaaatt acctacaaca
+     1261 cataaacata tatcaaggaa atccattcca caaccactat ctaaacacca acggagacga
+     1321 ataccacaca ttaacattat atcaatttgc agcctcaggc actgaagact ggactacacc
+     1381 atacggagca aaaacgcaca cagaatctca aattcccact aaaacacagg gccttgtaga
+     1441 actccacaat ccctttgtat atttcactag atacaatcca aactctgata atggaagctc
+     1501 aaacaaaaca tttttactac caaactttaa accagaacat ggatgggacc cacctacaaa
+     1561 cactcactta acattagaag gatttccttt atatatacaa tggtggggat ttgtagactt
+     1621 ccaaaaacaa caacatgagg ttactaacat agacaccagt caaatatttg caacaaacac
+     1681 agacactcta cacggagcac cacaatcagt accatgcttt gttccactaa accaagactt
+     1741 tattgaagga agatcaccac atgaaccagg tgttaatcaa ttagatgtta atagatggta
+     1801 tcctatggta caacaccaag aattagcaat aaacaactta ttagcctcag gtccaggtac
+     1861 agcaaaacta aatggtaaag aaactgtaga agctaaaatg gcctatactt ttcgttttaa
+     1921 gtttggagga aatccaccac caatggttga cctcaaagac cctacaaaac aacctgtata
+     1981 ccctatgccc aataacaaca tcagcacaaa ttcgttacag gatccaacaa tctctcccga
+     2041 gttattcctc tacaactttg accaaagacg agactttctt acaaaacaag ctacagaaag
+     2101 aatgcaaaaa taccaagaaa ctaaaaaacc tattttcaca gatgcaacaa caactccagg
+     2161 acccccagca atactccacc aaacactcca gacatcagag gacgaaacat cggactcgga
+     2221 aaaagaggag gaggagatac tcaacaagct cctcaagcag cgaaaaaagc agcaacaact
+     2281 caagcagcga atccgacaac tactagcaca acacaacaca aatatataat aaaacaaaac
+     2341 acagtaactg tacaattatt tcctactgaa tccccaaaca gaagaatgac tccttccgaa
+     2401 tttgaggatg aactgttttg ggctaaaatg tttagaaggc ctcctagata ctatattaaa
+     2461 gacaaaccct tttatccata tgtacctacc aatgaacaat gtaaggtaaa ctttgacctt
+     2521 aattaccctt aataaaggcc agcattgatt cacttatcgg tgtccattta tttaagtta
+//
+

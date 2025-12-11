@@ -1,0 +1,19 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name            accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#    ------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_4061_1441|437|1 -            437 MCP                  -            486  8.2e-140  452.4   0.5   1   1  9.9e-140  9.9e-140  452.1   0.5    71   484     6   432     3   434 0.98 -
+sample-1_4061_1441|437|1 -            437 VP02204              -            484   3.7e-58  183.3   0.2   1   1   4.8e-58   4.8e-58  182.9   0.2    73   480     6   430     3   432 0.86 -
+sample-1_4061_1441|437|1 -            437 VP02208              -            499    8e-234  762.4   0.4   1   1    9e-234    9e-234  762.2   0.4    66   499     4   435     1   435 0.99 -
+sample-1_4061_1441|437|1 -            437 VP02209              -            504    1e-110  356.5   0.7   1   1  1.1e-110  1.1e-110  356.3   0.7    71   503     5   433     1   434 0.91 -
+sample-1_4061_1441|437|1 -            437 VP02211              -            490     7e-63  198.8   0.1   1   1   9.3e-63   9.3e-63  198.4   0.1    71   485     5   430     3   434 0.91 -
+sample-1_4061_1441|437|1 -            437 VP02584              -            490     2e-53  167.5   0.1   1   1   2.7e-53   2.7e-53  167.1   0.1    72   480     5   425     3   433 0.84 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_4061_1441_tbl-11.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_4061_1441_tbl-11.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_4061_1441_tbl-11.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_4061_1441_tbl-11.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:36 2025
+# [ok]

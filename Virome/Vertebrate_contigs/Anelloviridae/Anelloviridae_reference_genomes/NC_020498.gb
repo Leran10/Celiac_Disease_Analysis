@@ -1,0 +1,141 @@
+LOCUS       NC_020498               2912 bp    DNA     circular VRL 13-AUG-2018
+DEFINITION  TTV-like mini virus isolate TTMV_LY1, complete genome.
+ACCESSION   NC_020498
+VERSION     NC_020498.1
+DBLINK      Project: 193982
+            BioProject: PRJNA485481
+KEYWORDS    RefSeq.
+SOURCE      TTV-like mini virus (TTMV)
+  ORGANISM  TTV-like mini virus
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Betatorquevirus.
+REFERENCE   1  (bases 1 to 2912)
+  AUTHORS   Galmes,J., Li,Y., Rajoharison,A., Ren,L., Dollet,S., Richard,N.,
+            Vernet,G., Javouhey,E., Wang,J., Telles,J.N. and
+            Paranhos-Baccala,G.
+  TITLE     Potential implication of new torque teno mini viruses in
+            parapneumonic empyema in children
+  JOURNAL   Eur. Respir. J. (2012) In press
+   PUBMED   23060626
+  REMARK    Publication Status: Available-Online prior to print
+REFERENCE   2  (bases 1 to 2912)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (17-MAR-2013) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+REFERENCE   3  (bases 1 to 2912)
+  AUTHORS   Galmes,J., Li,S., Rajoharison,A., Telles,J.-N. and Baccala,G.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (05-JUN-2012) Laboratoire des Pathogenes Emergents,
+            Fondation Merieux, 21 Avenue Tony Garnier, Lyon Cedex 07 69365,
+            France
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence is identical to JX134044.
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..2912
+                     /organism="TTV-like mini virus"
+                     /mol_type="genomic DNA"
+                     /isolate="TTMV_LY1"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:93678"
+                     /geo_loc_name="France"
+                     /collection_date="04-Apr-2007"
+     gene            343..633
+                     /locus_tag="J363_gp1"
+                     /db_xref="GeneID:14757607"
+     CDS             343..633
+                     /locus_tag="J363_gp1"
+                     /note="ORF2"
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="YP_007518449.1"
+                     /db_xref="GeneID:14757607"
+                     /translation="MFKSPTYLTTKGKNNALINCFVGDHDLLCSCNNPAYHCLQILAT
+                     TLAPQLKQEEKQQIIQCLGGTDAVATTRGDEEIGLEDLEKLFTEDTEEDAAG"
+     gene            522..2540
+                     /locus_tag="J363_gp2"
+                     /db_xref="GeneID:14757606"
+     CDS             522..2540
+                     /locus_tag="J363_gp2"
+                     /note="ORF1"
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="YP_007518450.1"
+                     /db_xref="GeneID:14757606"
+                     /translation="MPWWYRRRSYNPWRRRNWFRRPRKTIYRRYRRRRRWVRRKPFYK
+                     RKIKRLNIVEWQPKSIRKCRIKGMLCLFQTTEDRLSYNFDMYEESIIPEKLPGGGGFS
+                     IKNISLYALYQEHIHAHNIFTHTNTDRPLARYTGCSLKFYQSKDIDYVVTYSTSLPLR
+                     SSMGMYNSMQPSIHLMQQNKLIVPSKQTQKRRKPYIKKHISPPTQMKSQWYFQHNIAN
+                     IPLLMIRTTALTLDNYYIGSRQLSTNVTIHTLNTTYIQNRDWGDRNKTYYCQTLGTQR
+                     YFLYGTHSTAQNINDIKLQELIPLTNTQDYVQGFDWTEKDKHNITTYKEFLTKGAGNP
+                     FHAEWITAQNPVIHTANSPTQIEQIYTASTTTFQNKKLTDLPTPGYIFITPTVSLRYN
+                     PYKDLAERNKCYFVRSKINAHGWDPEQHQELINSDLPQWLLLFGYPDYIKRTQNFALV
+                     DTNYILVDHCPYTNPEKTPFIPLSTSFIEGRSPYSPSDTHEPDEEDQNRWYPCYQYQQ
+                     ESINSICLSGPGTPKIPKGITAEAKVKYSFNFKWGGDLPPMSTITNPTDQPTYVVPNN
+                     FNETTSLQNPTTRPEHFLYSFDERRGQLTEKATKRLLKDWETKETSLLSTEYRFAEPT
+                     QTQAPQEDPSSEEEEESNLFERLLRQRTKQLQLKRRIIQTLKDLQKLE"
+     gene            2203..2505
+                     /locus_tag="J363_gp3"
+                     /db_xref="GeneID:14757605"
+     CDS             2203..2505
+                     /locus_tag="J363_gp3"
+                     /note="ORF3"
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="YP_007518451.1"
+                     /db_xref="GeneID:14757605"
+                     /translation="MLFPITSMKQLRYRIQPPDQSTSCTPLTKGGDNLQKKLQNACLK
+                     TGKLKKLLYCLQNTDSRSQHKHKPHKRTRPRKKKKRATSSSDSSDSEPSSSSSSAE"
+ORIGIN      
+        1 taataaatat tcaacaggaa aaccacctaa tttaaattgc cgaccacaaa ccgtcactta
+       61 gttcctcttt ttccacaact tcctctttta ctaatgaata ttcatgtaat taattaataa
+      121 tcaccgtaat tccggggagg agcctttaaa ctataaaact aactacacat tcgaatggct
+      181 gagtttatgc cgccagacgg agacgggatc acttcagtga ctccaggctg atcaagggcg
+      241 ggtgccgaag gtgagtgaaa ccaccgtagt caaggggcaa ttcgggctag atcagtctgg
+      301 cggaacgggc aagaaactta aaatgtactt tattttacag aaatgttcaa atctccaaca
+      361 tacttaacaa ctaaaggcaa aaacaatgcc ttaatcaact gcttcgttgg agaccacgat
+      421 cttctgtgca gctgtaacaa tcctgcctac cattgcctcc aaatacttgc aactacctta
+      481 gcacctcaac taaaacaaga agaaaaacaa caaataatac aatgccttgg tggtacagac
+      541 gccgtagcta caacccgtgg agacgaagaa attggtttag aagacctaga aaaactattt
+      601 acagaagata cagaagaaga cgccgctggg taagaagaaa acctttttac aaacgtaaaa
+      661 ttaagagact aaatatagta gaatggcaac ctaaatcaat tagaaaatgt agaataaaag
+      721 gaatgctatg cttgtttcaa acgacagaag acagactgtc atataacttt gatatgtatg
+      781 aagagtctat tataccagaa aaactgccgg gagggggggg atttagcatt aagaatataa
+      841 gcttatatgc cttataccaa gaacacatac atgcacacaa catatttaca cacacaaaca
+      901 cagacagacc actagcaaga tacacaggct gttctttaaa attctaccaa agcaaagaca
+      961 tagactacgt agtaacatat tctacatcac tcccactaag aagctcaatg ggaatgtaca
+     1021 actccatgca accatccata catctaatgc aacaaaacaa actaattgta ccaagcaaac
+     1081 aaacacaaaa aagaagaaaa ccatatatta aaaaacatat atcaccacca acacaaatga
+     1141 aatctcaatg gtactttcaa cataacattg caaacatacc gctactaatg ataagaacca
+     1201 cagcattaac attagataat tactatatag gaagcagaca attaagtaca aatgtcacta
+     1261 tacatacact taacacaaca tacatccaaa acagagactg gggagacaga aataaaactt
+     1321 actactgcca aacattagga acacaaagat acttcctata tggaacacat tcaactgcac
+     1381 aaaatattaa tgacataaag ctacaagaac taataccttt aacaaacaca caagactatg
+     1441 tacaaggctt tgattggaca gaaaaagaca aacataacat aacaacctac aaagaattct
+     1501 taactaaagg agcaggaaat ccatttcacg cagaatggat aacagcacaa aacccagtaa
+     1561 tacacacagc aaacagtcct acacaaatag aacaaatata caccgcttca acaacaacat
+     1621 tccaaaacaa aaaactaaca gacctaccaa cgccaggata tatatttata actccaacag
+     1681 taagcttaag atacaaccca tacaaagacc tagcagaaag aaacaaatgc tactttgtaa
+     1741 gaagcaaaat aaatgcacac gggtgggacc cagaacaaca ccaagaatta ataaacagtg
+     1801 acctaccaca atggttacta ttatttggct acccagacta cataaaaaga acacaaaact
+     1861 ttgcattagt agacacaaat tacatactag tagaccactg cccatacaca aatccagaaa
+     1921 aaacaccatt tataccttta agcacatcat ttatagaagg tagaagccca tacagtcctt
+     1981 cagacacaca tgaaccagat gaagaagacc aaaacaggtg gtacccatgc taccaatatc
+     2041 aacaagaatc aataaattca atatgtctta gcggtccagg cacaccaaaa ataccaaaag
+     2101 gaataacagc agaagcaaaa gtaaaatatt cctttaattt taagtggggt ggtgacctac
+     2161 caccaatgtc tacaattaca aacccgacag accagccaac atatgttgtt cccaataact
+     2221 tcaatgaaac aacttcgtta cagaatccaa ccaccagacc agagcacttc ttgtactcct
+     2281 ttgacgaaag gaggggacaa cttacagaaa aagctacaaa acgcttgctt aaagactggg
+     2341 aaactaaaga aacttcttta ttgtctacag aatacagatt cgcggagcca acacaaacac
+     2401 aagccccaca agaggacccg tcctcggaag aagaagaaga gagcaacctc ttcgagcgac
+     2461 tcctccgaca gcgaaccaag cagctccagc tcaagcgcag aataatacaa acattgaaag
+     2521 acctacaaaa attagaataa ctaacagcaa aaacaccgtt tacctatttc cacctgaaca
+     2581 aaagaacaga agactaacac catgggaaat acaagaagac aaagaaatag ccaatttatt
+     2641 tggcagacca catagatact ttttaaaaga cattcctttc tattgggata tacccccaga
+     2701 gcctaaagta aactttgatt taaattttca ataaagaaat aaagggcaag gccccattaa
+     2761 ctcaaagtcg gtgtctacct ctttaagttt aactttacta aacggactcc gcctccctaa
+     2821 atttgggcgc caaaaggggg ctccgccccc ttaaacccca gggggctccg ccccctaaaa
+     2881 cccccaaggg ggctacgccc ccttacaccc cc
+//
+

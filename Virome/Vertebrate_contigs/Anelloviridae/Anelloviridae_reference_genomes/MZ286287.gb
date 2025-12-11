@@ -1,0 +1,98 @@
+LOCUS       MZ286287                2778 bp    DNA     circular VRL 21-JAN-2022
+DEFINITION  Anelloviridae sp. isolate SP56_C4, complete genome.
+ACCESSION   MZ286287
+VERSION     MZ286287.1
+KEYWORDS    .
+SOURCE      Anelloviridae sp.
+  ORGANISM  Anelloviridae sp.
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae.
+REFERENCE   1  (bases 1 to 2778)
+  AUTHORS   Cebria-Mendoza,M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (24-MAY-2021) I2SYSBIO, Universitat de Valencia, Calle
+            del Catedratico Agustin Escardino n9, Paterna, Valencia 46980,
+            Espana
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: SPAdes v. 3.14.0
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2778
+                     /organism="Anelloviridae sp."
+                     /mol_type="genomic DNA"
+                     /isolate="SP56_C4"
+                     /isolation_source="blood"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:2055263"
+                     /geo_loc_name="Spain"
+                     /collection_date="2019"
+     gene            485..2419
+                     /gene="ORF1"
+     CDS             485..2419
+                     /gene="ORF1"
+                     /codon_start=1
+                     /product="ORF1"
+                     /protein_id="UJI58652.1"
+                     /translation="MAPYRRKTWKNYRTKWRRRRFYRRRPTTTFRRRTRRHQRVRRRR
+                     HFRKKLKKITVKEWQPKTIKKCKIKGNIQLFVCGKMRLGHDYTNYKESFTPIAEPSGG
+                     PWSIQLFTLDALFTEYIKHRCIWTKTNQGLPLARYTGCSLTFYKSKHTDYIVTYSNCP
+                     PFTVTRDMYMNTQPVRQLLYKRKIIIPKLTHGSKKRYKKVKIKPPAFMSTKWYFQQDI
+                     CKTGLVLVTATACSLQQPYCPDDQISYNYTFYSLNTTMFQNPCFEKYGTQGYIPKMVQ
+                     GKEFHLFTTKPTTHDHPTKWQDVIPLANTNEYTEPVQTGKPSTWAEFTSKKYWENPFT
+                     WYVREHGDIYYTNTWPTESTYPQGTTNFVKLDDLFWEIRYNPDKDTGIGNKVYFKRNN
+                     DQEQGTIFDYPTKNELIIENFPLWLIFWGWIDFLARTVEMQEMFEHWFFIIETPFFWP
+                     KRERYILLDKYFVFPKDTQLTLHDKLKWHPKFEQQEEVQSLLAEAGPFSPKINNAESI
+                     QANMGYSFFFKWGGCPGNMEDIISPCNQERFPIPNTQQPGFTIQDPKTPKTHYIYKWD
+                     EKDGILTKKASKRLKTDSEHELFFTDETKLRPPVQTHETSEDEASETEESETPIQLQL
+                     QQLRHQYRQIQHEFQRLTQK"
+ORIGIN      
+        1 gctcaccaca aactgtcact actgcaacag gaaaccacaa aatttgcatt gccgaccaca
+       61 aacagtcaaa tgcaaattaa cttccctaat tcacaactaa cttccctaaa aattaattaa
+      121 taatcaccgt cacaagggga ggagacaact agctatataa ctaagtacac ttccgaatgg
+      181 ctgagtttat gccgccagac ggagacggga gaggagacta tcccggctga aattgggcgg
+      241 gtgccgaagg tgagtgaaac caccgtagtc aaggggcaat atgggcgatt tcagtctgga
+      301 ggaacgggca actaacttaa aatgctttgt tttagatgtc aagatatcta caaaacccta
+      361 cattatcacc aaaaggatta gaaagagaat ggatgaataa cattgttcaa acccacagcc
+      421 ttatttgctc ctgtaactcc gcatttactc atctacaaca tcttctacaa caacaagaca
+      481 acaaatggct ccttaccgaa gaaaaacctg gaaaaactac agaacaaaat ggagaagacg
+      541 acggttttac cgaaggagac ctacaactac ttttcgacgc agaacaagaa gacatcaaag
+      601 ggtaaggaga cgccgccatt ttagaaaaaa acttaaaaaa ataactgtta aagaatggca
+      661 acctaagact ataaaaaaat gtaaaattaa aggaaacata caactatttg tatgcggaaa
+      721 aatgagacta ggacatgact ataccaacta caaagaaagc tttactccaa tagcagaacc
+      781 ctccggaggg ccatggagca tacaactttt tacattagat gcattattca cagaatacat
+      841 aaaacacaga tgcatttgga caaaaacaaa ccaaggacta ccattagcaa gatacacagg
+      901 atgctctcta acattctata aatctaaaca cacagactac atagtaacat actcaaactg
+      961 tcctccattt acagtaacta gagacatgta tatgaacaca caaccagtga gacaattact
+     1021 atacaaaaga aaaataataa tacccaaact aacacacggc agcaaaaaaa gatacaaaaa
+     1081 agttaaaatt aaaccaccag catttatgtc cactaaatgg tactttcagc aagacatatg
+     1141 caaaacagga ctagtattag taacagccac agcatgctca cttcaacaac catactgtcc
+     1201 agacgaccaa atatcataca actatacatt ctatagctta aatacaacaa tgtttcaaaa
+     1261 cccatgcttt gaaaaatatg gaacacaagg ctacattcca aaaatggtac aaggaaaaga
+     1321 attccactta tttaccacaa aacctacaac acacgaccac ccaacaaaat ggcaagatgt
+     1381 tataccgcta gcaaacacaa atgaatacac agaaccagta caaacaggaa aaccaagtac
+     1441 atgggcagaa tttacttcta aaaaatactg ggaaaaccca tttacctggt atgttagaga
+     1501 acacggagac atttactaca caaacacatg gcctacagaa tccacatacc cacaaggcac
+     1561 aacaaacttt gtaaaactag atgacttatt ctgggaaata agatataacc cagacaaaga
+     1621 cacaggaata ggaaacaaag tatactttaa aagaaataat gaccaggaac aaggaacaat
+     1681 atttgactat cccacaaaaa atgaattaat aatagaaaac tttccactat ggctaatatt
+     1741 ctggggatgg atagactttt tagctagaac agtagaaatg caagaaatgt ttgaacactg
+     1801 gttctttatt atagaaacac cctttttctg gccaaaaaga gaaagataca tactactaga
+     1861 caaatacttt gtatttccaa aagacacaca gcttacatta catgacaaac taaagtggca
+     1921 tccaaaattt gaacaacaag aagaagtaca atccctacta gcagaagcag gcccattttc
+     1981 accaaaaatt aacaatgcag aatctataca agctaatatg ggctattcct ttttctttaa
+     2041 gtggggaggc tgccccggaa acatggaaga cattatctct ccatgcaacc aagaacgatt
+     2101 tcccatcccc aatacacagc aaccaggatt tacaatacaa gatccaaaaa caccaaaaac
+     2161 acattacatc tacaaatggg atgaaaaaga cggaattctc acaaaaaaag catctaaaag
+     2221 acttaaaaca gactctgaac acgaattatt ctttacagac gaaacaaagc tacgaccacc
+     2281 agtccaaaca cacgaaacat cagaggacga agcatcggag acggaagaaa gcgaaacgcc
+     2341 gatacagctc cagctccagc agctccgaca ccagtacaga cagatccagc acgagttcca
+     2401 gcgactaaca caaaaataaa aataattaaa ctagaaacta acatttttgg agagagacat
+     2461 gtaaaaaaca gacgtttaac accaaaagaa atggaagatg aacttagatt agcagccgcc
+     2521 tttaaaaggc gcccagtaag gtatatattt gataaaccta catgggactg gttaccccct
+     2581 gaacctcttg taaactttga cctgggtttc aataaacaag gcctgtacta attcactctc
+     2641 ggtgtccatt tatataagta aaaccttaat aaacatccac cgcctcccta aatttcaggc
+     2701 gccaaaaggg ggctccgccc ccttaaaccc caagggggct ccgcccccta acaccccgga
+     2761 aaccacaaaa ttaacatg
+//
+

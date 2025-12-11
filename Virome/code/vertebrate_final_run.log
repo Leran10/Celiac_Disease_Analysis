@@ -1,0 +1,74 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+Loading required package: limma
+Welcome to emmeans.
+Caution: You lose important information if you filter this package's results.
+See '? untidy'
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:data.table’:
+
+    transpose
+
+[1] 31264   327
+[1]   327 31264
+[1]   303 31291
+[1]   303 30582
+
+FALSE  TRUE 
+26946  3343 
+[1] 3343  303
+[1] "01_GEMM_006_60M" "01_GEMM_060_18M" "01_GEMM_061_84M" "01_GEMM_102_12M"
+[5] "01_GEMM_109_48M" "02_GEMM_006_30M" "02_GEMM_034_12M"
+[1] 3343  297
+[1] 297  26
+[1] TRUE
+Error in `select()`:
+ℹ In argument: `all_of(sample_all_0)`.
+Caused by error in `all_of()`:
+! Can't subset elements that don't exist.
+✖ Elements `NovaSeq_N981_I13300_39814_Celiac_Leonard_Stool_02_GEMM_021_36M`, `NovaSeq_N981_I13317_39831_Celiac_Leonard_Stool_02_GEMM_057_24M`, `NovaSeq_N982_I13323_39837_Celiac_Leonard_Stool_02_GEMM_077_12M`, and `NovaSeq_N983_I13417_39799_Leonard_Human_stool_Celiac_02_GEMM_006_60M` don't exist.
+Backtrace:
+     ▆
+  1. ├─US_vertebrate_contig_processed %>% ...
+  2. ├─dplyr::select(., -all_of(sample_all_0))
+  3. ├─dplyr:::select.data.frame(., -all_of(sample_all_0))
+  4. │ └─tidyselect::eval_select(expr(c(...)), data = .data, error_call = error_call)
+  5. │   └─tidyselect:::eval_select_impl(...)
+  6. │     ├─tidyselect:::with_subscript_errors(...)
+  7. │     │ └─base::withCallingHandlers(...)
+  8. │     └─tidyselect:::vars_select_eval(...)
+  9. │       └─tidyselect:::walk_data_tree(expr, data_mask, context_mask)
+ 10. │         └─tidyselect:::eval_c(expr, data_mask, context_mask)
+ 11. │           └─tidyselect:::reduce_sels(node, data_mask, context_mask, init = init)
+ 12. │             └─tidyselect:::walk_data_tree(new, data_mask, context_mask)
+ 13. │               └─tidyselect:::eval_context(expr, context_mask, call = error_call)
+ 14. │                 ├─tidyselect:::with_chained_errors(...)
+ 15. │                 │ └─base::withCallingHandlers(...)
+ 16. │                 └─rlang::eval_tidy(as_quosure(expr, env), context_mask)
+ 17. ├─tidyselect::all_of(sample_all_0)
+ 18. │ └─tidyselect:::as_indices_impl(x, vars = vars, strict = TRUE)
+ 19. │   └─tidyselect:::chr_as_locations(x, vars, call = call, arg = arg)
+ 20. │     └─vctrs::vec_as_location(...)
+ 21. └─vctrs (local) `<fn>`()
+ 22.   └─vctrs:::stop_subscript_oob(...)
+ 23.     └─vctrs:::stop_subscript(...)
+ 24.       └─rlang::abort(...)
+Execution halted

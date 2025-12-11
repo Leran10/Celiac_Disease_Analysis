@@ -1,0 +1,28 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VP02684              -            708 sample-1_3_171347|393|10 -            393  2.2e-175  574.8   6.2   1   1  5.7e-176  2.4e-175  574.7   6.2     2   366     2   392     1   392 0.96 -
+portal               -            808 sample-1_3_171347|393|10 -            393  2.4e-112  366.6   5.6   1   1  2.1e-111  8.7e-111  361.4   5.6    24   436     4   392     1   392 0.96 -
+VP00410              -            789 sample-1_3_171347|393|10 -            393     2e-42  135.2   6.2   1   2   1.6e-34     7e-34  107.0   5.4    43   284    19   266     4   324 0.82 -
+VP00410              -            789 sample-1_3_171347|393|10 -            393     2e-42  135.2   6.2   2   2   2.2e-10   9.3e-10   27.2   0.0   376   431   336   391   332   391 0.95 -
+VP02585              -            853 sample-1_3_171347|393|10 -            393   3.2e-13   38.6   4.6   1   2   1.3e-12   5.7e-12   34.5   3.8    79   286    50   265     5   282 0.79 -
+VP02585              -            853 sample-1_3_171347|393|10 -            393   3.2e-13   38.6   4.6   2   2    0.0048      0.02    2.9   0.0   374   426   335   387   318   391 0.91 -
+VP02686              -            761 sample-1_3_171347|781|7_8 -            781         0 1167.6  10.6   1   1         0         0 1163.5  10.6     2   734    26   779    25   781 0.97 -
+TerL                 -            780 sample-1_3_171347|781|7_8 -            781  4.7e-234  768.9  13.9   1   1  1.5e-234  6.4e-234  768.5  13.9    17   740    50   756     6   777 0.92 -
+VP00412              -            717 sample-1_3_171347|781|7_8 -            781  1.3e-110  360.6   4.4   1   2       0.3       1.3   -3.0   4.4   371   439     5    72     3    91 0.77 -
+VP00412              -            717 sample-1_3_171347|781|7_8 -            781  1.3e-110  360.6   4.4   2   2  3.1e-111  1.3e-110  360.6   4.4    58   669   126   711   115   755 0.89 -
+VP02579              -            684 sample-1_3_171347|781|7_8 -            781   1.6e-73  237.9   4.7   1   1   5.4e-74   2.3e-73  237.4   4.7    14   597   127   681   122   710 0.85 -
+VP02696              -            469 sample-1_3_171347|470|36 -            470  2.9e-263  863.6   2.5   1   1  7.7e-264  3.3e-263  863.4   2.5     1   468     1   468     1   469 1.00 -
+MCP                  -            486 sample-1_3_171347|470|36 -            470  2.7e-158  517.4   3.9   1   1  7.1e-159    3e-158  517.3   3.9     1   483     1   467     1   469 0.99 -
+VP02211              -            490 sample-1_3_171347|470|36 -            470     1e-15   47.3   1.2   1   1     3e-16   1.3e-15   47.0   1.2   103   382    95   377    28   386 0.81 -
+VP02584              -            490 sample-1_3_171347|470|36 -            470   1.9e-11   33.2   0.3   1   1   6.2e-12   2.6e-11   32.7   0.3   105   375    96   370    75   386 0.82 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3_171347_tbl-TGA_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3_171347_tbl-TGA_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3_171347_tbl-TGA_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3_171347_tbl-TGA_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:29 2025
+# [ok]

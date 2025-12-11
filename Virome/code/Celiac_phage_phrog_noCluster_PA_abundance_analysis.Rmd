@@ -1,0 +1,3214 @@
+---
+title: "Celiac_phage_phrog_noCluster_PA_abundance_analysis"
+output: html_document
+date: "2025-10-20"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(edgeR)
+library(glmmTMB)
+library(broom.mixed)  # tidy() for mixed models
+library(dplyr)
+library(purrr)
+library(tibble)
+```
+
+
+# Functions to extract timepoint-specific differential abundance/PA results with padjust values
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(broom.mixed)
+
+
+
+# Extract timepoint-specific interaction rows and add per-gene FDR
+extract_timepoint_results <- function(model_results,
+                                      model_name,
+                                      gene_col = "phrog_id",
+                                      adjust_method = "BH") {
+  if (is.null(model_results) || nrow(model_results) == 0) {
+    return(data.frame())
+  }
+
+  timepoint_results <- model_results %>%
+    # keep interaction terms of interest
+    filter(grepl("Dx.StatusCELIAC:onset_timeline_combined", term)) %>%
+    mutate(
+      timepoint = gsub("Dx.StatusCELIAC:onset_timeline_combined", "", term),
+      model     = model_name,
+      # safer than get(): pull from the data frame by name
+      gene      = .data[[gene_col]]
+    ) %>%
+    select(gene, timepoint, estimate, std.error, p.value, conf.low, conf.high, model) %>%
+    # per gene x model, adjust p across that gene's timepoints
+    group_by(gene, model) %>%
+    mutate(
+      p.adj = {
+        pv <- p.value
+        ok <- !is.na(pv)
+        out <- rep(NA_real_, length(pv))
+        if (any(ok)) out[ok] <- p.adjust(pv[ok], method = adjust_method)
+        out
+      },
+      n_tests_gene = n()  # handy to audit how many timepoints were tested for this gene
+    ) %>%
+    ungroup()
+
+  timepoint_results
+}
+
+# Apply to all result objects you keep in the workspace for a cohort
+extract_all_timepoints <- function(cohort_name, adjust_method = "BH") {
+  results_list <- list()
+
+  # PA models
+  try({
+    obj <- paste0(cohort_name, "_glmmTMB_logit_results")
+    if (exists(obj)) {
+      results_list[["PA_model1"]] <- extract_timepoint_results(
+        get(obj), "PA_glmmTMB_logit", gene_col = "phrog_id", adjust_method = adjust_method
+      )
+    }
+  }, silent = TRUE)
+
+  # Abundance models
+  try({
+    obj <- paste0(cohort_name, "_nb_results")
+    if (exists(obj)) {
+      results_list[["abundance_model1"]] <- extract_timepoint_results(
+        get(obj), "abundance_nbinom", gene_col = "phrog_id", adjust_method = adjust_method
+      )
+    }
+  }, silent = TRUE)
+
+  if (length(results_list) > 0) {
+    do.call(rbind, results_list)
+  } else {
+    data.frame()
+  }
+}
+
+
+```
+
+
+
+# load clean metadata
+```{r load and clean metadata}
+
+# check if column names of abundance table is consistent with row names of the metadata table
+stopifnot(identical(colnames(total.phrog.abundance.clean_0.75_0.03), rownames(total.phrog.metadata.clean_0.75_0.03)))
+
+# clean metadata
+# prepare correct variable format
+total.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(total.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+table(total.phrog.metadata.clean_0.75_0.03$feeding_first_year)
+# Breast_fed  Formula       Breastmilk_and_formula 
+#  100            40                    103
+total.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(total.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+table(total.phrog.metadata.clean_0.75_0.03$HLA.Category)
+# Standard Risk     High Risk   Low/No Risk 
+#      123            82            38
+total.phrog.metadata.clean_0.75_0.03$Sex <- factor(total.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+table(total.phrog.metadata.clean_0.75_0.03$Sex)
+# Female   Male 
+#    194     49 
+total.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(total.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+table(total.phrog.metadata.clean_0.75_0.03$Delivery.Mode)
+  # Vaginal C-Section 
+  #     180     63 
+total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+table(total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+ # 4  5  6  7  8  9 10 11 12 15 36 
+ # 4  9 46 64 32 27 29  7  1 15  9
+total.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(total.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+table(total.phrog.metadata.clean_0.75_0.03$Dx.Status)
+ # CELIAC CONTROL 
+ #    114    129 
+total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+table(total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined)
+# t0      t0-6     t0-12     t0-18     t0-24     t0-30     t0-36 t0-over42 
+# 53        20        40        19        23        25        27        36 
+
+
+```
+
+
+
+# load clean abundant table
+```{r create clean abundance tables for three cohorts}
+
+# total cohort
+total.orf.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/Orf/data/total/total.orf.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(total.orf.abundance.clean_0.75_0.03) <- gsub("X","",colnames(total.orf.abundance.clean_0.75_0.03))
+
+
+View(total.orf.abundance.clean_0.75_0.03)
+
+total.orf.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/Orf/data/total/total.orf.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+# 2419  306
+
+
+# Set factor levels for US cohort to match total cohort
+total.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(total.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+total.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(total.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+total.phrog.metadata.clean_0.75_0.03$Sex <- factor(total.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+total.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(total.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(total.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+total.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(total.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(total.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+
+
+
+
+# US cohort
+US.phrog.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/data/US/US.phrog.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(US.phrog.abundance.clean_0.75_0.03) <- gsub("X","",colnames(US.phrog.abundance.clean_0.75_0.03))
+
+
+US.phrog.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/data/US/US.phrog.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+
+dim(US.phrog.abundance.clean_0.75_0.03)
+# 4059  197
+
+# Set factor levels for US cohort to match total cohort
+US.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(US.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+US.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(US.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+US.phrog.metadata.clean_0.75_0.03$Sex <- factor(US.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+US.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(US.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+US.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(US.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+US.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(US.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+US.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(US.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+# Italy cohort
+Italy.phrog.abundance.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/data/Italy/Italy.phrog.abundance.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+colnames(Italy.phrog.abundance.clean_0.75_0.03) <- gsub("X","",colnames(Italy.phrog.abundance.clean_0.75_0.03))
+
+
+Italy.phrog.metadata.clean_0.75_0.03 <- read.csv("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/data/Italy/Italy.phrog.metadata.clean_0.75_0.03.csv") %>%
+                                          column_to_rownames("X")
+dim(Italy.phrog.abundance.clean_0.75_0.03)
+# 2901  111
+
+# Set factor levels for Italy cohort to match total cohort
+Italy.phrog.metadata.clean_0.75_0.03$feeding_first_year <- factor(Italy.phrog.metadata.clean_0.75_0.03$feeding_first_year,levels = c("Breast_fed","Formula","Breastmilk_and_formula"))
+Italy.phrog.metadata.clean_0.75_0.03$HLA.Category <- factor(Italy.phrog.metadata.clean_0.75_0.03$HLA.Category,levels = c("Standard Risk","High Risk","Low/No Risk"))
+Italy.phrog.metadata.clean_0.75_0.03$Sex <- factor(Italy.phrog.metadata.clean_0.75_0.03$Sex,levels = c("Female","Male"))
+Italy.phrog.metadata.clean_0.75_0.03$Delivery.Mode <- factor(Italy.phrog.metadata.clean_0.75_0.03$Delivery.Mode,levels = c("Vaginal","C-Section"))
+Italy.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months. <- as.numeric(Italy.phrog.metadata.clean_0.75_0.03$Age.at.Gluten.Introduction..months.)
+Italy.phrog.metadata.clean_0.75_0.03$Dx.Status <- factor(Italy.phrog.metadata.clean_0.75_0.03$Dx.Status,levels = c("CONTROL","CELIAC"))
+Italy.phrog.metadata.clean_0.75_0.03$onset_timeline_combined <- factor(Italy.phrog.metadata.clean_0.75_0.03$onset_timeline_combined,levels = c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42"))
+
+
+```
+
+
+# create total PA table
+```{r generate total PA table}
+
+total.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+total.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(total.phrog.abundance.clean_0.75_0.03) %in% rownames(total.phrog.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+total.phrog.metadata.clean_0.75_0.03 <- total.phrog.metadata.clean_0.75_0.03[colnames(total.phrog.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+total.y <- DGEList(counts = total.phrog.abundance.clean_0.75_0.03, samples = total.phrog.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+total.y <- total.y[rowSums(total.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robust for sparse data)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+total.cpm_mat <- edgeR::cpm(total.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+total.present_logical <- (total.cpm_mat >= total.target_cpm) & (total.y$counts >= total.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+total.PA <- matrix(
+  as.integer(total.present_logical),
+  nrow = nrow(total.present_logical),
+  ncol = ncol(total.present_logical),
+  dimnames = dimnames(total.present_logical)
+)
+
+dim(total.PA)
+# 2419  306
+
+```
+
+
+# create US PA table
+```{r generate US PA table}
+
+US.target_cpm  <- 0.5   # e.g., 0.25–1.0 for very sparse data
+US.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(US.phrog.abundance.clean_0.75_0.03) %in% rownames(US.phrog.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+US.phrog.metadata.clean_0.75_0.03 <- US.phrog.metadata.clean_0.75_0.03[colnames(US.phrog.abundance.clean_0.75_0.03), , drop = FALSE]
+
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+US.y <- DGEList(counts = US.phrog.abundance.clean_0.75_0.03, samples = US.phrog.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+US.y <- US.y[rowSums(US.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+
+# Library-size normalization (robust for sparse data)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (uses effective library sizes = lib.size * norm.factors)
+US.cpm_mat <- edgeR::cpm(US.y, normalized.lib.sizes = TRUE)
+
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+US.present_logical <- (US.cpm_mat >= US.target_cpm) & (US.y$counts >= US.min_reads_floor)
+table(US.present_logical)
+#  FALSE   TRUE 
+# 763387  36236
+
+# every non-zero count passed
+
+# Convert to 0/1 matrix with dimnames preserved
+US.PA <- matrix(
+  as.integer(US.present_logical),
+  nrow = nrow(US.present_logical),
+  ncol = ncol(US.present_logical),
+  dimnames = dimnames(US.present_logical)
+)
+
+dim(US.PA)
+# 4059  197
+
+
+```
+
+
+# create Italy PA table
+```{r generate Italy PA table}
+
+
+Italy.target_cpm      <- 0.5   # e.g., 0.25–1.0 for very sparse data
+Italy.min_reads_floor <- 3L    # guard against singletons
+
+## ---- 1) Align samples ------------------------------------------------------
+stopifnot(all(colnames(Italy.phrog.abundance.clean_0.75_0.03) %in% rownames(Italy.phrog.metadata.clean_0.75_0.03)))
+# Reorder metadata to match counts columns
+Italy.phrog.metadata.clean_0.75_0.03 <- Italy.phrog.metadata.clean_0.75_0.03[colnames(Italy.phrog.abundance.clean_0.75_0.03), , drop = FALSE]
+
+## ---- 2) Build DGEList & normalize (TMMwsp) --------------------------------
+
+Italy.y <- DGEList(counts = Italy.phrog.abundance.clean_0.75_0.03, samples = Italy.phrog.metadata.clean_0.75_0.03)
+# Optional: drop genes with all zeros (purely empty rows)
+Italy.y <- Italy.y[rowSums(Italy.y$counts) > 0, , keep.lib.sizes = FALSE]
+
+# Library-size normalization (robItalyt for sparse data)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+
+## ---- 3) CPM-anchored presence/absence -------------------------------------
+# Normalized CPMs (Italyes effective library sizes = lib.size * norm.factors)
+Italy.cpm_mat <- edgeR::cpm(Italy.y, normalized.lib.sizes = TRUE)
+
+# Presence rule: CPM >= target_cpm AND raw count >= min_reads_floor
+Italy.present_logical <- (Italy.cpm_mat >= Italy.target_cpm) & (Italy.y$counts >= Italy.min_reads_floor)
+
+# Convert to 0/1 matrix with dimnames preserved
+Italy.PA <- matrix(
+  as.integer(Italy.present_logical),
+  nrow = nrow(Italy.present_logical),
+  ncol = ncol(Italy.present_logical),
+  dimnames = dimnames(Italy.present_logical)
+)
+
+dim(Italy.PA)
+# 2901  111
+
+```
+
+
+
+######################################################### PA ##################################################
+
+
+# PA model - glmmTMB (Mixed-effects logistic) - logit link
+When: Default choice for pooled-over-time models with within-patient correlation.
+Why: True random intercept (and optional random slope), fast, flexible links.
+Pros: Handles complex fixed effects; supports cloglog link (family = binomial("cloglog")) if events are very rare.
+Cons: Can struggle with extreme sparsity/separation—try GEE or Bayesian if convergence issues persist.
+
+## Total cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_total}
+library(glmmTMB)
+library(broom.mixed)
+
+# Create long-format data for total cohort
+total_pa_long <- total.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(total.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+# Fit model for each phrog
+total_glmmTMB_logit_results <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+
+total.adjusted.results <- total_glmmTMB_logit_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# Save results
+#write.csv(total_glmmTMB_logit_results, "total_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+
+write.csv(total.adjusted.results, "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_Contig_Phrog_compositional/phrog_contig_results_figures/total_phrog_noCluster_PA_model1_glmmTMB_logit_adjusted.csv", row.names = FALSE)
+```
+
+
+## get differences between control and case at each timepoint
+```{r}
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+total_phrog_PA_models <- total_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        PA ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = binomial(link = "logit"), data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+total_phrog_PA_contrast_results <- total_phrog_PA_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+total_phrog_PA_contrast_results <- total_phrog_PA_contrast_results %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+total_phrog_PA_contrast_results <- total_phrog_PA_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+View(total_phrog_PA_contrast_results %>% filter(p.adj < 0.05))
+# 0 significant phrogs
+
+```
+
+
+
+## US cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_US}
+# Create long-format data for US cohort
+US_pa_long <- US.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(US.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+# Fit model for each phrog
+US_glmmTMB_logit_results <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+
+US.adjusted.results <- US_glmmTMB_logit_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# Save results
+#write.csv(US_glmmTMB_logit_results, "US_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+
+write.csv(US.adjusted.results, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_PA_model1_glmmTMB_logit_adjusted.csv", row.names = FALSE)
+```
+
+
+## get differences between control and case at each timepoint
+```{r}
+
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+US_phrog_PA_models <- US_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = binomial(link = "logit"), data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+US_phrog_PA_contrast_results <- US_phrog_PA_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+US_phrog_PA_contrast_results <- US_phrog_PA_contrast_results %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+US_phrog_PA_contrast_results <- US_phrog_PA_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+View(US_phrog_PA_contrast_results %>% filter(p.adj < 0.05))
+# 0 significant phrog
+
+```
+
+
+
+## Italy cohort - glmmTMB logit
+```{r PA_glmmTMB_logit_Italy}
+# Create long-format data for Italy cohort
+Italy_pa_long <- Italy.PA %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "PA") %>%
+  left_join(Italy.phrog.metadata.clean_0.75_0.03 %>% rownames_to_column("sample_id"), by = "sample_id")
+
+# Fit model for each phrog
+Italy_glmmTMB_logit_results <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+                family = binomial(link = "logit"), data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+Italy.adjusted.results <- Italy_glmmTMB_logit_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+
+# Save results
+#write.csv(Italy_glmmTMB_logit_results, "Italy_PA_glmmTMB_logit_results.csv", row.names = FALSE)
+
+write.csv(Italy.adjusted.results, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_PA_model1_glmmTMB_logit_adjusted.csv", row.names = FALSE)
+```
+
+
+## get differences between control and case at each timepoint
+```{r}
+
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+Italy_phrog_PA_models <- Italy_pa_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        PA ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = binomial(link = "logit"), data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+Italy_phrog_PA_contrast_results <- Italy_phrog_PA_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+Italy_phrog_PA_contrast_results <- Italy_phrog_PA_contrast_results %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+Italy_phrog_PA_contrast_results <- Italy_phrog_PA_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+View(Italy_phrog_PA_contrast_results %>% filter(p.adj < 0.05))
+# 0 significant phrog
+
+```
+
+
+
+## Timepoint-specific Results (every timepoint compare to t0)
+
+```{r PA_timepoint_results}
+# Extract timepoint results for all PA models
+
+
+# Total cohort PA models
+if(exists("total_glmmTMB_logit_results")) {
+
+  
+  total_pa_timepoints <- extract_timepoint_results(total_glmmTMB_logit_results, "PA_glmmTMB_logit")
+  write.csv(total_pa_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_PA_glmmTMB_logit_timepoint_results_padj.csv",row.names = FALSE)
+  
+}
+
+
+
+# US cohort PA models
+if(exists("US_glmmTMB_logit_results")) {
+
+  
+  US_pa_timepoints <- extract_timepoint_results(US_glmmTMB_logit_results, "PA_glmmTMB_logit")
+  write.csv(US_pa_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_PA_model1_glmmTMB_logit_timepoint_specific_results_padj.csv", row.names = FALSE)
+  
+  
+}
+
+
+
+# Italy cohort PA models
+if(exists("Italy_glmmTMB_logit_results")) {
+
+  
+  Italy_pa_timepoints <- extract_timepoint_results(Italy_glmmTMB_logit_results, "PA_glmmTMB_logit")
+  write.csv(Italy_pa_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_PA_model1_glmmTMB_logit_timepoint_specific_results_padj.csv", row.names = FALSE)
+  
+}
+
+
+```
+
+
+# Create heatmap for significant PA results (every timepoint compare to t0)
+```{r}
+
+create_phrog_heatmap <- function(timepoint_data, cohort_name, output_dir = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/"){
+  
+  print("test1")
+  sig_data <- timepoint_data %>%
+    filter(!is.na(p.adj) & p.adj < 0.05)
+
+    timepoint_order <- c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")
+
+    
+  print("test2")  
+    heatmap_data <- sig_data %>%
+                    select(gene, timepoint, estimate) %>%
+                    mutate(timepoint = factor(timepoint, levels = timepoint_order)) %>%
+                    filter(timepoint %in% timepoint_order) %>%
+                    tidyr::pivot_wider(names_from = timepoint, values_from = estimate, values_fill = 0) %>%
+                    column_to_rownames("gene")
+
+  print("test3") 
+     mat <- as.matrix(heatmap_data)
+     
+     print("test4") 
+
+     m <- max(abs(mat), na.rm = TRUE)
+     
+     print("test5") 
+      if (!is.finite(m) || m == 0) m <- 1  # safe fallback if all zeros
+     
+     print("test6") 
+      cols   <- colorRampPalette(c("#2c7bb6", "white", "#d7191c"))(101)
+      print("test7") 
+      breaks <- seq(-m, m, length.out = length(cols) + 1)
+
+      print("test8") 
+      p <- pheatmap(
+        mat,
+        color        = cols,
+        breaks       = breaks,      # <- key change: diverging scale centered at 0
+        scale        = "none",
+        cluster_cols = FALSE,       # keep chronological order
+        cluster_rows = TRUE,
+        fontsize     = 8,
+        main         = paste(cohort_name, "Cohort - phrog PA Analysis\nLog Odds Ratios (CONTROL vs CELIAC)"),
+        na_col       = "grey90"
+      )
+
+      print("test9") 
+
+      return(p)
+
+}
+
+
+total_heatmap <- create_phrog_heatmap(total_pa_timepoints, "total")
+ggsave(total_heatmap,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_PA_model1_phrog_heatmap_selfmade.pdf",dpi = 600,width = 6,height = 7)
+
+
+US_heatmap <- create_phrog_heatmap(US_pa_timepoints, "US")
+ggsave(US_heatmap,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_PA_model1_phrog_heatmap_selfmade.pdf",dpi = 600,width = 6,height = 7)
+
+Italy_heatmap <- create_phrog_heatmap(Italy_pa_timepoints, "Italy")
+# no significant phrog
+
+```
+
+
+######################################################### Abundance (Negative Binomial GLMM) ##################################################
+
+
+## Total cohort - Negative Binomial GLMM
+```{r abundance_NB_total}
+library(edgeR)
+library(glmmTMB)
+
+# Prepare DGEList and normalization for total cohort
+total.y <- DGEList(counts = total.phrog.abundance.clean_0.75_0.03, samples = total.phrog.metadata.clean_0.75_0.03)
+total.y <- calcNormFactors(total.y, method = "TMMwsp")
+total.lib_eff <- with(total.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+total_abundance_long <- total.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(total.y$samples %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  dplyr::mutate(offset = log(lib.size * norm.factors))
+
+# Fit NB model for each phrog
+total_nb_results <- total_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+total.adjusted.results <- total_nb_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# Save results
+#write.csv(total_nb_results, "total_abundance_NB_results.csv", row.names = FALSE)
+
+write.csv(total.adjusted.results, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_abundance_model1_nbinom_adjusted.csv", row.names = FALSE)
+```
+
+## get differences between control and case at each timepoint
+```{r}
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+total_phrog_Abundance_models <- total_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        count ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = nbinom2, data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+total_phrog_Abundance_contrast_results <- total_phrog_Abundance_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+total_phrog_Abundance_contrast_results <- total_phrog_Abundance_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+View(total_phrog_Abundance_contrast_results %>% filter(p.adj < 0.05))
+# 2 significant
+
+write.csv(total_phrog_Abundance_contrast_results,"../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_abundance_model1_nbinom_contrast_results_padj.csv", row.names = FALSE)
+
+```
+
+
+## US cohort - Negative Binomial GLMM
+```{r abundance_NB_US}
+# Prepare DGEList and normalization for US cohort
+US.y <- DGEList(counts = US.phrog.abundance.clean_0.75_0.03, samples = US.phrog.metadata.clean_0.75_0.03)
+US.y <- calcNormFactors(US.y, method = "TMMwsp")
+US.lib_eff <- with(US.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+US_abundance_long <- US.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(US.y$samples %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  dplyr::mutate(offset = log(lib.size * norm.factors))
+
+# Fit NB model for each phrog
+US_nb_results <- US_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+
+US.adjusted.results <- US_nb_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+
+# Save results
+#write.csv(US_nb_results, "US_abundance_NB_results.csv", row.names = FALSE)
+
+write.csv(US.adjusted.results, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_abundance_model1_nbinom_adjusted.csv", row.names = FALSE)
+```
+
+
+## get differences between control and case at each timepoint
+```{r}
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+US_phrog_Abundance_models <- US_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = nbinom2, data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+US_phrog_Abundance_contrast_results <- US_phrog_Abundance_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+US_phrog_Abundance_contrast_results <- US_phrog_Abundance_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+View(US_phrog_Abundance_contrast_results %>% filter(p.adj < 0.05))
+# 0 significant
+
+```
+
+
+## Italy cohort - Negative Binomial GLMM
+```{r abundance_NB_Italy}
+# Prepare DGEList and normalization for Italy cohort
+Italy.y <- DGEList(counts = Italy.phrog.abundance.clean_0.75_0.03, samples = Italy.phrog.metadata.clean_0.75_0.03)
+Italy.y <- calcNormFactors(Italy.y, method = "TMMwsp")
+Italy.lib_eff <- with(Italy.y$samples, lib.size * norm.factors)
+
+# Create long-format data for abundance modeling
+Italy_abundance_long <- Italy.phrog.abundance.clean_0.75_0.03 %>%
+  as.data.frame() %>%
+  rownames_to_column("phrog_id") %>%
+  pivot_longer(cols = -phrog_id, names_to = "sample_id", values_to = "count") %>%
+  left_join(Italy.y$samples %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  dplyr::mutate(offset = log(lib.size * norm.factors))
+
+# Fit NB model for each phrog
+Italy_nb_results <- Italy_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ {
+      tryCatch({
+        glmmTMB(count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. + 
+                HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID) + offset(offset),
+                family = nbinom2, data = .x)
+      }, error = function(e) NULL)
+    }),
+    tidy_results = map(model, ~ {
+      if (!is.null(.x)) {
+        tryCatch(tidy(.x, conf.int = TRUE), error = function(e) NULL)
+      } else NULL
+    })
+  ) %>%
+  select(phrog_id, tidy_results) %>%
+  unnest(tidy_results)
+
+Italy.adjusted.results <- Italy_nb_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(term) %>%   # often you adjust per term of interest
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+# Save results
+#write.csv(Italy_nb_results, "Italy_abundance_NB_results.csv", row.names = FALSE)
+
+write.csv(Italy.adjusted.results, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_abundance_model1_nbinom_adjusted.csv", row.names = FALSE)
+```
+
+
+## get differences between control and case at each timepoint
+```{r}
+
+library(emmeans)
+library(tidyverse)
+library(purrr)
+
+# 1) Build models (you already have this as US_models)
+Italy_phrog_Abundance_models <- Italy_abundance_long %>%
+  group_by(phrog_id) %>%
+  nest() %>%
+  mutate(
+    model = map(data, ~ tryCatch(
+      glmmTMB(
+        count ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+          HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID),
+        family = nbinom2, data = .x
+      ),
+      error = function(e) NULL
+    ))
+  )
+
+# 2) Extract contrasts WITHOUT adding phrog_id inside
+extract_contrasts <- function(fit) {
+  if (is.null(fit)) return(tibble())
+
+  emm <- tryCatch(
+    emmeans(fit, ~ Dx.Status | onset_timeline_combined),
+    error = function(e) NULL
+  )
+  if (is.null(emm)) return(tibble())
+
+  contr <- tryCatch(
+    contrast(emm, method = "revpairwise", by = "onset_timeline_combined", adjust = "none"),
+    error = function(e) NULL
+  )
+  if (is.null(contr)) return(tibble())
+
+  s  <- as_tibble(summary(contr))         # includes estimate, SE, df (maybe), p.value
+  ci <- as_tibble(confint(contr)) %>%
+        select(any_of(c("contrast","onset_timeline_combined","lower.CL","upper.CL")))
+
+  # choose join keys that exist in both
+  keys <- intersect(names(s), names(ci))
+  if (!all(c("contrast","onset_timeline_combined") %in% keys)) {
+    # fall back to safest return (no CI)
+    out <- s
+  } else {
+    out <- left_join(s, ci, by = keys)
+  }
+
+  # add odds ratios (on link = logit scale)
+  out %>%
+    mutate(
+      odds_ratio  = exp(estimate),
+      conf.low.OR = if ("lower.CL" %in% names(.)) exp(lower.CL) else NA_real_,
+      conf.high.OR= if ("upper.CL" %in% names(.)) exp(upper.CL) else NA_real_
+    )
+}
+
+# 2) Map across your models and unnest
+Italy_phrog_Abundance_contrast_results <- Italy_phrog_Abundance_models %>%
+  mutate(contrasts = map(model, extract_contrasts)) %>%
+  select(phrog_id, contrasts) %>%
+  tidyr::unnest(contrasts)
+
+
+# 3) BH adjust p-values per timepoint
+Italy_phrog_Abundance_contrast_results <- Italy_phrog_Abundance_contrast_results %>%
+  filter(!is.na(p.value)) %>%
+  group_by(onset_timeline_combined) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+View(Italy_phrog_Abundance_contrast_results %>% filter(p.adj < 0.05))
+# 0 significant
+
+```
+
+
+## create heatmap for model contrast results
+```{r}
+
+create_phrog_heatmap <- function(timepoint_data, cohort_name, output_dir = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/"){
+  
+  print("test1")
+  sig_data <- timepoint_data %>%
+    filter(!is.na(p.adj) & p.adj < 0.05)
+
+    timepoint_order <- c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")
+
+    heatmap_data <- sig_data %>%
+                    select(phrog_id, onset_timeline_combined, estimate) %>%
+                    mutate(onset_timeline_combined = factor(onset_timeline_combined, levels = timepoint_order)) %>%
+                    filter(onset_timeline_combined %in% timepoint_order) %>%
+                    tidyr::pivot_wider(names_from = onset_timeline_combined, values_from = estimate, values_fill = 0) %>%
+                    column_to_rownames("phrog_id")
+
+
+     mat <- as.matrix(heatmap_data)
+
+     m <- max(abs(mat), na.rm = TRUE)
+     
+      if (!is.finite(m) || m == 0) m <- 1  # safe fallback if all zeros
+     
+      cols   <- colorRampPalette(c("#2c7bb6", "white", "#d7191c"))(101)
+
+      breaks <- seq(-m, m, length.out = length(cols) + 1)
+      
+      p <- pheatmap(
+        mat,
+        color        = cols,
+        breaks       = breaks,      # <- key change: diverging scale centered at 0
+        scale        = "none",
+        cluster_cols = FALSE,       # keep chronological order
+        cluster_rows = TRUE,
+        fontsize     = 8,
+        main         = paste(cohort_name, "Cohort - phrog PA Analysis\nLog Odds Ratios (CONTROL vs CELIAC)"),
+        na_col       = "grey90"
+      )
+
+      return(p)
+
+}
+
+total_contrast_heatmap <- create_phrog_heatmap(total_phrog_Abundance_contrast_results, "total")
+ggsave(total_contrast_heatmap,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_Abundance_contrast_heatmap_selfmade.pdf",dpi = 600,width = 6,height = 7)
+
+
+```
+
+
+
+## Timepoint-specific Results (every timepoint compres to t0)
+```{r abundance_timepoint_results}
+# Extract timepoint results for all abundance models
+
+# Total cohort abundance timepoints
+if(exists("total_nb_results")) {
+  total_abundance_timepoints <- extract_timepoint_results(total_nb_results, "abundance_nbinom")
+ write.csv(total_abundance_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_abundance_model1_nbinom_timepoint_specific_results_padj.csv", row.names = FALSE)
+}
+# 4 significant
+
+
+# US cohort abundance timepoints
+if(exists("US_nb_results")) {
+  US_abundance_timepoints <- extract_timepoint_results(US_nb_results, "abundance_nbinom")
+  write.csv(US_abundance_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_abundance_model1_nbinom_timepoint_specific_results_padj.csv", row.names = FALSE)
+}
+# 1 significant
+
+# Italy cohort abundance timepoints
+if(exists("Italy_nb_results")) {
+  Italy_abundance_timepoints <- extract_timepoint_results(Italy_nb_results, "abundance_nbinom")
+  write.csv(Italy_abundance_timepoints, "../phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_abundance_model1_nbinom_timepoint_specific_results_p.adj.csv", row.names = FALSE)
+}
+# 0 significant
+
+
+```
+
+
+# Create heatmap for significant Abundance results
+```{r}
+
+create_phrog_heatmap <- function(timepoint_data, cohort_name, output_dir = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/"){
+  
+  print("test1")
+  sig_data <- timepoint_data %>%
+    filter(!is.na(p.adj) & p.adj < 0.05)
+
+    timepoint_order <- c("t0-over42", "t0-36", "t0-30", "t0-24", "t0-18", "t0-12", "t0-6", "t0")
+
+    
+  print("test2")  
+    heatmap_data <- sig_data %>%
+                    select(gene, timepoint, estimate) %>%
+                    mutate(timepoint = factor(timepoint, levels = timepoint_order)) %>%
+                    filter(timepoint %in% timepoint_order) %>%
+                    tidyr::pivot_wider(names_from = timepoint, values_from = estimate, values_fill = 0) %>%
+                    column_to_rownames("gene")
+
+  print("test3") 
+     mat <- as.matrix(heatmap_data)
+     
+     print("test4") 
+
+     m <- max(abs(mat), na.rm = TRUE)
+     
+     print("test5") 
+      if (!is.finite(m) || m == 0) m <- 1  # safe fallback if all zeros
+     
+     print("test6") 
+      cols   <- colorRampPalette(c("#2c7bb6", "white", "#d7191c"))(101)
+      print("test7") 
+      breaks <- seq(-m, m, length.out = length(cols) + 1)
+
+      print("test8") 
+      p <- pheatmap(
+        mat,
+        color        = cols,
+        breaks       = breaks,      # <- key change: diverging scale centered at 0
+        scale        = "none",
+        cluster_cols = FALSE,       # keep chronological order
+        cluster_rows = TRUE,
+        fontsize     = 8,
+        main         = paste(cohort_name, "Cohort - phrog PA Analysis\nLog Odds Ratios (CONTROL vs CELIAC)"),
+        na_col       = "grey90"
+      )
+
+      print("test9") 
+
+      return(p)
+
+}
+
+
+total_heatmap <- create_phrog_heatmap(total_abundance_timepoints, "total")
+ggsave(total_heatmap,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_Abundance_longitudinal_heatmap_selfmade.pdf",dpi = 600,width = 6,height = 7)
+
+
+US_heatmap <- create_phrog_heatmap(US_abundance_timepoints, "US")
+ggsave(US_heatmap,file = "~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_Abundance_longitudinal_heatmap_selfmade.pdf",dpi = 600,width = 6,height = 7)
+
+Italy_heatmap <- create_phrog_heatmap(Italy_pa_timepoints, "Italy")
+# no significant phrog
+
+```
+
+
+
+######################################################### Compositional ##################################################
+
+# Compositional analysis selfmade - Alpha
+
+# total - per time point contrast
+```{r}
+
+# ── Packages ───────────────────────────────────────────────────────────────────
+library(tidyverse)
+library(phyloseq)
+library(glmmTMB)
+library(lme4)
+library(emmeans)
+library(broom.mixed)
+
+# ── 0) Inputs: counts + metadata ───────────────────────────────────────────────
+# counts: rows=phrogs (features), cols=samples (counts)
+count_mat <- total.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta_df   <- total.phrog.metadata.clean_0.75_0.03 %>% as.data.frame()
+
+stopifnot(!is.null(rownames(count_mat)), !is.null(colnames(count_mat)))
+stopifnot(!is.null(rownames(meta_df)))
+
+# align by common samples
+common_samples <- intersect(colnames(count_mat), rownames(meta_df))
+count_mat <- count_mat[, common_samples, drop = FALSE]
+meta_df   <- meta_df[common_samples, , drop = FALSE]
+
+# ── 1) Build phyloseq (no tree needed) ────────────────────────────────────────
+OTU <- otu_table(count_mat, taxa_are_rows = TRUE)
+SAM <- sample_data(meta_df)
+ps  <- phyloseq(OTU, SAM)
+
+# exposure / library size (replace with effective lib size if you have it)
+lib_size <- sample_sums(ps)
+sample_data(ps)$eff_libsize <- as.numeric(lib_size)
+sample_data(ps)$offset_log  <- log(pmax(sample_data(ps)$eff_libsize, 1))
+
+# ── 2) Alpha diversity per sample ─────────────────────────────────────────────
+otu_samp_taxa <- t(otu_table(ps))                    # samples x taxa
+observed <- vegan::specnumber(otu_samp_taxa)
+shannon  <- vegan::diversity(otu_samp_taxa, index = "shannon")
+
+alpha_tbl <- tibble(
+  sample_id = names(observed),
+  Observed  = as.numeric(observed),
+  Shannon   = as.numeric(shannon)
+)
+
+
+alpha_all <- alpha_tbl %>%
+  left_join(meta_df %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(
+    eff_libsize = as.numeric(lib_size[sample_id]),
+    offset_log  = log(pmax(eff_libsize, 1)),
+    # factors to match your other models
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Country = forcats::fct_relevel(as.factor(Country), "ITALY"),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  ) %>%
+  drop_na(Dx.Status, onset_timeline_combined, patientID)
+
+
+# ── 3) GLOBAL models (same structure as PA/abundance) ─────────────────────────
+# Observed richness ~ NB with offset + random intercept
+fit_obs <- glmmTMB(
+  Observed ~ Dx.Status * onset_timeline_combined +
+    Country + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID) + offset(offset_log),
+  family = nbinom2,
+  data = alpha_all
+)
+
+
+
+# Shannon ~ Gaussian LMM with random intercept
+fit_shan <- glmmTMB(
+  Shannon ~ Dx.Status * onset_timeline_combined +
+    Country + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID),
+  family = gaussian(),   # <- key change
+  data = alpha_all
+)
+
+library(emmeans)
+library(tidyverse)
+
+# Observed richness: hold offset at 0 so contrasts are rate ratios (IRR)
+rg_obs <- ref_grid(fit_obs, at = list(offset_log = 0))
+emm_obs <- emmeans(rg_obs, ~ Dx.Status | onset_timeline_combined)
+ctr_obs <- contrast(emm_obs, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+# Shannon diversity: Gaussian GLMM, direct emmeans
+emm_shan <- emmeans(fit_shan, ~ Dx.Status | onset_timeline_combined)
+ctr_shan <- contrast(emm_shan, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+
+
+# Observed: log(IRR), plus exponentiated IRR
+sum_obs <- as_tibble(summary(ctr_obs, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_obs)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(
+    metric = "Observed",
+    IRR      = exp(estimate),
+    IRR.low  = exp(asymp.LCL),
+    IRR.high = exp(asymp.UCL)
+  )
+
+
+# Shannon: difference in mean Shannon between groups
+sum_shan <- as_tibble(summary(ctr_shan, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_shan)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(metric = "Shannon")
+
+
+# Combine results and adjust p-values
+alpha_contrasts <- bind_rows(sum_obs, sum_shan) %>%
+  filter(grepl("CELIAC", contrast) & grepl("CONTROL", contrast)) %>%
+  dplyr::rename(timepoint = onset_timeline_combined) %>%
+  group_by(metric) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# make plot for Observed
+total_observed_contrast <- alpha_contrasts %>%
+  filter(metric == "Observed") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = IRR)) +
+  geom_errorbarh(aes(xmin = IRR.low, xmax = IRR.high), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(
+    x = "IRR (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "Total Observed richness: per-timepoint IRR with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(total_observed_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_observed_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+
+# make plot for Observed
+total_shannon_contrast <- alpha_contrasts %>%
+  filter(metric == "Shannon") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = estimate)) +
+  geom_errorbarh(aes(xmin = lower.CL, xmax = upper.CL), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    x = "Shannon difference (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "Total Shannon diversity: per-timepoint difference with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(total_shannon_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_shannon_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+```
+
+# total - all terms
+```{r}
+
+library(broom.mixed)
+library(dplyr)
+library(tibble)
+library(stringr)
+library(forcats)
+library(ggplot2)
+
+# --- 1) Tidy all fixed effects (exclude intercept & RE summaries) -------------
+tidy_all_shan <- tidy(fit_shan, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Shannon")
+
+tidy_all_obs <- tidy(fit_obs, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Observed (log scale)",
+         IRR = exp(estimate),
+         IRR.low  = exp(conf.low),
+         IRR.high = exp(conf.high))
+
+# --- 2) Combine and compute BH FDR within each model --------------------------
+all_terms <- bind_rows(tidy_all_shan, tidy_all_obs) %>%
+  group_by(model) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup() %>%
+  mutate(sig = !is.na(p.adj) & p.adj < 0.05)
+
+
+# --- 3) Make human-friendly term labels ---------------------------------------
+pretty_label <- function(x) {
+  x %>%
+    # Interaction first (keep it readable)
+    str_replace("^Dx\\.StatusCELIAC:onset_timeline_combined", "Dx: CELIAC × TP: ") %>%
+    # Main effects for the interaction components
+    str_replace("^Dx\\.StatusCELIAC$", "Dx: CELIAC (vs CONTROL)") %>%
+    str_replace("^onset_timeline_combined", "TP: ") %>%
+    # Other categorical covariates (adjust names if your levels differ)
+    str_replace("^SexMale$", "Sex: Male (vs Female)") %>%
+    str_replace("^HLA\\.CategoryHigh Risk$", "HLA: High Risk (vs Ref)") %>%
+    str_replace("^HLA\\.CategoryLow/No Risk$", "HLA: Low/No Risk (vs Ref)") %>%
+    str_replace("^feeding_first_yearFormula$", "Feeding: Formula (vs Breastmilk)") %>%
+    str_replace("^feeding_first_yearBreastmilk_and_formula$", "Feeding: Mixed (vs Breastmilk)") %>%
+    str_replace("^Delivery\\.ModeC-Section$", "Delivery: C-Section (vs Vaginal)") %>%
+    # Continuous covariate
+    str_replace("^Age\\.at\\.Gluten\\.Introduction\\.\\.months\\.$", "Age at gluten intro (months)")
+}
+
+
+all_terms <- all_terms %>%
+  mutate(term_label = pretty_label(term))
+
+# Optional: order terms in logical groups (interactions, then mains, then others)
+all_terms <- all_terms %>%
+  mutate(group =
+           case_when(
+             str_detect(term, "^Dx\\.Status.*:onset_timeline_combined") ~ "Interaction: Dx × TP",
+             str_detect(term, "^onset_timeline_combined")               ~ "Main: Timepoint (vs baseline)",
+             str_detect(term, "^Dx\\.Status")                            ~ "Main: Dx",
+             TRUE                                                        ~ "Other covariates"
+           ))
+
+
+
+# 1) Define the desired panel order for 'group'
+group_levels <- c(
+  "Interaction: Dx × TP",
+  "Main: Timepoint (vs baseline)",
+  "Main: Dx",
+  "Other covariates"
+)
+
+# 2) Build stable ordering keys first, then arrange
+all_terms <- all_terms %>%
+  # make sure term_label is plain character for ordering
+  mutate(
+    group = factor(group, levels = group_levels),
+    term_label = as.character(term_label),
+    .by = NULL
+  ) %>%
+  arrange(model, group, term_label) %>%
+  group_by(model) %>%
+  # now freeze the y-axis order within each model
+  mutate(term_label = factor(term_label, levels = unique(term_label))) %>%
+  ungroup()
+
+
+
+# --- 4) Forest plots ----------------------------------------------------------
+## A) Shannon (difference; 0 = no effect)
+total_phrog_shannon_allTerms <- all_terms %>%
+  filter(model == "Shannon") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "Total Shannon diversity — all fixed terms",
+    x = "Estimate (difference in Shannon)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+ggsave(total_phrog_shannon_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_shannon_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+## B) Observed richness (log scale; 0 = no effect)
+total_phrog_observed_allTerms <- all_terms %>%
+  filter(model == "Observed (log scale)") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "Total Observed richness — all fixed terms",
+    x = "Estimate (log rate ratio)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+
+ggsave(total_phrog_observed_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_observed_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+```
+
+
+# US - per time point contrast
+```{r}
+
+
+# ── 0) Inputs: counts + metadata ───────────────────────────────────────────────
+# counts: rows=phrogs (features), cols=samples (counts)
+count_mat <- US.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta_df   <- US.phrog.metadata.clean_0.75_0.03 %>% as.data.frame()
+
+stopifnot(!is.null(rownames(count_mat)), !is.null(colnames(count_mat)))
+stopifnot(!is.null(rownames(meta_df)))
+
+# align by common samples
+common_samples <- intersect(colnames(count_mat), rownames(meta_df))
+count_mat <- count_mat[, common_samples, drop = FALSE]
+meta_df   <- meta_df[common_samples, , drop = FALSE]
+
+# ── 1) Build phyloseq (no tree needed) ────────────────────────────────────────
+OTU <- otu_table(count_mat, taxa_are_rows = TRUE)
+SAM <- sample_data(meta_df)
+ps  <- phyloseq(OTU, SAM)
+
+# exposure / library size (replace with effective lib size if you have it)
+lib_size <- sample_sums(ps)
+sample_data(ps)$eff_libsize <- as.numeric(lib_size)
+sample_data(ps)$offset_log  <- log(pmax(sample_data(ps)$eff_libsize, 1))
+
+# ── 2) Alpha diversity per sample ─────────────────────────────────────────────
+otu_samp_taxa <- t(otu_table(ps))                    # samples x taxa
+observed <- vegan::specnumber(otu_samp_taxa)
+shannon  <- vegan::diversity(otu_samp_taxa, index = "shannon")
+
+alpha_tbl <- tibble(
+  sample_id = names(observed),
+  Observed  = as.numeric(observed),
+  Shannon   = as.numeric(shannon)
+)
+
+
+alpha_all <- alpha_tbl %>%
+  left_join(meta_df %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(
+    eff_libsize = as.numeric(lib_size[sample_id]),
+    offset_log  = log(pmax(eff_libsize, 1)),
+    # factors to match your other models
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  ) %>%
+  drop_na(Dx.Status, onset_timeline_combined, patientID)
+
+
+# ── 3) GLOBAL models (same structure as PA/abundance) ─────────────────────────
+# Observed richness ~ NB with offset + random intercept
+fit_obs <- glmmTMB(
+  Observed ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID) + offset(offset_log),
+  family = nbinom2,
+  data = alpha_all
+)
+
+# Shannon ~ Gaussian LMM with random intercept
+fit_shan <- glmmTMB(
+  Shannon ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID),
+  family = gaussian(),   # <- key change
+  data = alpha_all
+)
+
+library(emmeans)
+library(tidyverse)
+
+# Observed richness: hold offset at 0 so contrasts are rate ratios (IRR)
+rg_obs <- ref_grid(fit_obs, at = list(offset_log = 0))
+emm_obs <- emmeans(rg_obs, ~ Dx.Status | onset_timeline_combined)
+ctr_obs <- contrast(emm_obs, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+# Shannon diversity: Gaussian GLMM, direct emmeans
+emm_shan <- emmeans(fit_shan, ~ Dx.Status | onset_timeline_combined)
+ctr_shan <- contrast(emm_shan, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+
+
+# Observed: log(IRR), plus exponentiated IRR
+sum_obs <- as_tibble(summary(ctr_obs, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_obs)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(
+    metric = "Observed",
+    IRR      = exp(estimate),
+    IRR.low  = exp(asymp.LCL),
+    IRR.high = exp(asymp.UCL)
+  )
+
+
+# Shannon: difference in mean Shannon between groups
+sum_shan <- as_tibble(summary(ctr_shan, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_shan)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(metric = "Shannon")
+
+
+# Combine results and adjust p-values
+alpha_contrasts <- bind_rows(sum_obs, sum_shan) %>%
+  filter(grepl("CELIAC", contrast) & grepl("CONTROL", contrast)) %>%
+  dplyr::rename(timepoint = onset_timeline_combined) %>%
+  group_by(metric) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# make plot for Observed
+US_observed_contrast <- alpha_contrasts %>%
+  filter(metric == "Observed") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = IRR)) +
+  geom_errorbarh(aes(xmin = IRR.low, xmax = IRR.high), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(
+    x = "IRR (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "US Observed richness: per-timepoint IRR with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(US_observed_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_observed_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+
+# make plot for Observed
+US_shannon_contrast <- alpha_contrasts %>%
+  filter(metric == "Shannon") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = estimate)) +
+  geom_errorbarh(aes(xmin = lower.CL, xmax = upper.CL), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    x = "Shannon difference (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "US Shannon diversity: per-timepoint difference with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(US_shannon_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_shannon_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+
+```
+
+# US - all terms
+```{r}
+
+# --- 1) Tidy all fixed effects (exclude intercept & RE summaries) -------------
+tidy_all_shan <- tidy(fit_shan, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Shannon")
+
+tidy_all_obs <- tidy(fit_obs, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Observed (log scale)",
+         IRR = exp(estimate),
+         IRR.low  = exp(conf.low),
+         IRR.high = exp(conf.high))
+
+# --- 2) Combine and compute BH FDR within each model --------------------------
+all_terms <- bind_rows(tidy_all_shan, tidy_all_obs) %>%
+  group_by(model) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup() %>%
+  mutate(sig = !is.na(p.adj) & p.adj < 0.05)
+
+
+# --- 3) Make human-friendly term labels ---------------------------------------
+pretty_label <- function(x) {
+  x %>%
+    # Interaction first (keep it readable)
+    str_replace("^Dx\\.StatusCELIAC:onset_timeline_combined", "Dx: CELIAC × TP: ") %>%
+    # Main effects for the interaction components
+    str_replace("^Dx\\.StatusCELIAC$", "Dx: CELIAC (vs CONTROL)") %>%
+    str_replace("^onset_timeline_combined", "TP: ") %>%
+    # Other categorical covariates (adjust names if your levels differ)
+    str_replace("^SexMale$", "Sex: Male (vs Female)") %>%
+    str_replace("^HLA\\.CategoryHigh Risk$", "HLA: High Risk (vs Ref)") %>%
+    str_replace("^HLA\\.CategoryLow/No Risk$", "HLA: Low/No Risk (vs Ref)") %>%
+    str_replace("^feeding_first_yearFormula$", "Feeding: Formula (vs Breastmilk)") %>%
+    str_replace("^feeding_first_yearBreastmilk_and_formula$", "Feeding: Mixed (vs Breastmilk)") %>%
+    str_replace("^Delivery\\.ModeC-Section$", "Delivery: C-Section (vs Vaginal)") %>%
+    # Continuous covariate
+    str_replace("^Age\\.at\\.Gluten\\.Introduction\\.\\.months\\.$", "Age at gluten intro (months)")
+}
+
+
+all_terms <- all_terms %>%
+  mutate(term_label = pretty_label(term))
+
+# Optional: order terms in logical groups (interactions, then mains, then others)
+all_terms <- all_terms %>%
+  mutate(group =
+           case_when(
+             str_detect(term, "^Dx\\.Status.*:onset_timeline_combined") ~ "Interaction: Dx × TP",
+             str_detect(term, "^onset_timeline_combined")               ~ "Main: Timepoint (vs baseline)",
+             str_detect(term, "^Dx\\.Status")                            ~ "Main: Dx",
+             TRUE                                                        ~ "Other covariates"
+           ))
+
+
+
+# 1) Define the desired panel order for 'group'
+group_levels <- c(
+  "Interaction: Dx × TP",
+  "Main: Timepoint (vs baseline)",
+  "Main: Dx",
+  "Other covariates"
+)
+
+# 2) Build stable ordering keys first, then arrange
+all_terms <- all_terms %>%
+  # make sure term_label is plain character for ordering
+  mutate(
+    group = factor(group, levels = group_levels),
+    term_label = as.character(term_label),
+    .by = NULL
+  ) %>%
+  arrange(model, group, term_label) %>%
+  group_by(model) %>%
+  # now freeze the y-axis order within each model
+  mutate(term_label = factor(term_label, levels = unique(term_label))) %>%
+  ungroup()
+
+
+
+# --- 4) Forest plots ----------------------------------------------------------
+## A) Shannon (difference; 0 = no effect)
+US_phrog_shannon_allTerms <- all_terms %>%
+  filter(model == "Shannon") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "US Shannon diversity — all fixed terms",
+    x = "Estimate (difference in Shannon)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+ggsave(US_phrog_shannon_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_shannon_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+## B) Observed richness (log scale; 0 = no effect)
+US_phrog_observed_allTerms <- all_terms %>%
+  filter(model == "Observed (log scale)") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "US Observed richness — all fixed terms",
+    x = "Estimate (log rate ratio)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+
+ggsave(US_phrog_observed_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/US_phrog_observed_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+```
+
+
+# Italy - per time point contrast
+```{r}
+
+
+# ── 0) Inputs: counts + metadata ───────────────────────────────────────────────
+# counts: rows=phrogs (features), cols=samples (counts)
+count_mat <- Italy.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta_df   <- Italy.phrog.metadata.clean_0.75_0.03 %>% as.data.frame()
+
+stopifnot(!is.null(rownames(count_mat)), !is.null(colnames(count_mat)))
+stopifnot(!is.null(rownames(meta_df)))
+
+# align by common samples
+common_samples <- intersect(colnames(count_mat), rownames(meta_df))
+count_mat <- count_mat[, common_samples, drop = FALSE]
+meta_df   <- meta_df[common_samples, , drop = FALSE]
+
+# ── 1) Build phyloseq (no tree needed) ────────────────────────────────────────
+OTU <- otu_table(count_mat, taxa_are_rows = TRUE)
+SAM <- sample_data(meta_df)
+ps  <- phyloseq(OTU, SAM)
+
+# exposure / library size (replace with effective lib size if you have it)
+lib_size <- sample_sums(ps)
+sample_data(ps)$eff_libsize <- as.numeric(lib_size)
+sample_data(ps)$offset_log  <- log(pmax(sample_data(ps)$eff_libsize, 1))
+
+# ── 2) Alpha diversity per sample ─────────────────────────────────────────────
+otu_samp_taxa <- t(otu_table(ps))                    # samples x taxa
+observed <- vegan::specnumber(otu_samp_taxa)
+shannon  <- vegan::diversity(otu_samp_taxa, index = "shannon")
+
+alpha_tbl <- tibble(
+  sample_id = names(observed),
+  Observed  = as.numeric(observed),
+  Shannon   = as.numeric(shannon)
+)
+
+
+alpha_all <- alpha_tbl %>%
+  left_join(meta_df %>% rownames_to_column("sample_id"), by = "sample_id") %>%
+  mutate(
+    eff_libsize = as.numeric(lib_size[sample_id]),
+    offset_log  = log(pmax(eff_libsize, 1)),
+    # factors to match your other models
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  ) %>%
+  drop_na(Dx.Status, onset_timeline_combined, patientID)
+
+
+# ── 3) GLOBAL models (same structure as PA/abundance) ─────────────────────────
+# Observed richness ~ NB with offset + random intercept
+fit_obs <- glmmTMB(
+  Observed ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID) + offset(offset_log),
+  family = nbinom2,
+  data = alpha_all
+)
+
+# Shannon ~ Gaussian LMM with random intercept
+fit_shan <- glmmTMB(
+  Shannon ~ Dx.Status * onset_timeline_combined + Sex + Age.at.Gluten.Introduction..months. +
+    HLA.Category + feeding_first_year + Delivery.Mode +
+    (1 | patientID),
+  family = gaussian(),   # <- key change
+  data = alpha_all
+)
+
+
+
+# Observed richness: hold offset at 0 so contrasts are rate ratios (IRR)
+rg_obs <- ref_grid(fit_obs, at = list(offset_log = 0))
+emm_obs <- emmeans(rg_obs, ~ Dx.Status | onset_timeline_combined)
+ctr_obs <- contrast(emm_obs, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+# Shannon diversity: Gaussian GLMM, direct emmeans
+emm_shan <- emmeans(fit_shan, ~ Dx.Status | onset_timeline_combined)
+ctr_shan <- contrast(emm_shan, method = "revpairwise", by = "onset_timeline_combined", adjust = "none")
+
+
+
+# Observed: log(IRR), plus exponentiated IRR
+sum_obs <- as_tibble(summary(ctr_obs, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_obs)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(
+    metric = "Observed",
+    IRR      = exp(estimate),
+    IRR.low  = exp(asymp.LCL),
+    IRR.high = exp(asymp.UCL)
+  )
+
+
+# Shannon: difference in mean Shannon between groups
+sum_shan <- as_tibble(summary(ctr_shan, infer = c(TRUE, TRUE))) %>%
+  left_join(as_tibble(confint(ctr_shan)) %>%
+              select(contrast, onset_timeline_combined),
+            by = c("contrast","onset_timeline_combined")) %>%
+  mutate(metric = "Shannon")
+
+
+# Combine results and adjust p-values
+alpha_contrasts <- bind_rows(sum_obs, sum_shan) %>%
+  filter(grepl("CELIAC", contrast) & grepl("CONTROL", contrast)) %>%
+  dplyr::rename(timepoint = onset_timeline_combined) %>%
+  group_by(metric) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup()
+
+
+# make plot for Observed
+Italy_observed_contrast <- alpha_contrasts %>%
+  filter(metric == "Observed") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = IRR)) +
+  geom_errorbarh(aes(xmin = IRR.low, xmax = IRR.high), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(
+    x = "IRR (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "Italy Observed richness: per-timepoint IRR with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(Italy_observed_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_observed_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+
+# make plot for Observed
+Italy_shannon_contrast <- alpha_contrasts %>%
+  filter(metric == "Shannon") %>%
+  mutate(
+    timepoint = factor(timepoint, levels = unique(timepoint)),
+    sig = !is.na(p.adj) & p.adj < 0.05
+  ) %>%
+  ggplot(aes(y = timepoint, x = estimate)) +
+  geom_errorbarh(aes(xmin = lower.CL, xmax = upper.CL), height = 0.25) +
+  geom_point(aes(color = sig), size = 2.6) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    x = "Shannon difference (CONTROL vs CELIAC)",
+    y = "Timepoint",
+    title = "Italy Shannon diversity: per-timepoint difference with 95% CI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(Italy_shannon_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_shannon_contrast.pdf",dpi = 600,width = 6,height=6)
+
+
+
+```
+
+
+# Italy - all terms
+```{r}
+
+# --- 1) Tidy all fixed effects (exclude intercept & RE summaries) -------------
+tidy_all_shan <- tidy(fit_shan, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Shannon")
+
+tidy_all_obs <- tidy(fit_obs, effects = "fixed", conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(model = "Observed (log scale)",
+         IRR = exp(estimate),
+         IRR.low  = exp(conf.low),
+         IRR.high = exp(conf.high))
+
+# --- 2) Combine and compute BH FDR within each model --------------------------
+all_terms <- bind_rows(tidy_all_shan, tidy_all_obs) %>%
+  group_by(model) %>%
+  mutate(p.adj = p.adjust(p.value, method = "BH")) %>%
+  ungroup() %>%
+  mutate(sig = !is.na(p.adj) & p.adj < 0.05)
+
+
+# --- 3) Make human-friendly term labels ---------------------------------------
+pretty_label <- function(x) {
+  x %>%
+    # Interaction first (keep it readable)
+    str_replace("^Dx\\.StatusCELIAC:onset_timeline_combined", "Dx: CELIAC × TP: ") %>%
+    # Main effects for the interaction components
+    str_replace("^Dx\\.StatusCELIAC$", "Dx: CELIAC (vs CONTROL)") %>%
+    str_replace("^onset_timeline_combined", "TP: ") %>%
+    # Other categorical covariates (adjust names if your levels differ)
+    str_replace("^SexMale$", "Sex: Male (vs Female)") %>%
+    str_replace("^HLA\\.CategoryHigh Risk$", "HLA: High Risk (vs Ref)") %>%
+    str_replace("^HLA\\.CategoryLow/No Risk$", "HLA: Low/No Risk (vs Ref)") %>%
+    str_replace("^feeding_first_yearFormula$", "Feeding: Formula (vs Breastmilk)") %>%
+    str_replace("^feeding_first_yearBreastmilk_and_formula$", "Feeding: Mixed (vs Breastmilk)") %>%
+    str_replace("^Delivery\\.ModeC-Section$", "Delivery: C-Section (vs Vaginal)") %>%
+    # Continuous covariate
+    str_replace("^Age\\.at\\.Gluten\\.Introduction\\.\\.months\\.$", "Age at gluten intro (months)")
+}
+
+
+all_terms <- all_terms %>%
+  mutate(term_label = pretty_label(term))
+
+# Optional: order terms in logical groups (interactions, then mains, then others)
+all_terms <- all_terms %>%
+  mutate(group =
+           case_when(
+             str_detect(term, "^Dx\\.Status.*:onset_timeline_combined") ~ "Interaction: Dx × TP",
+             str_detect(term, "^onset_timeline_combined")               ~ "Main: Timepoint (vs baseline)",
+             str_detect(term, "^Dx\\.Status")                            ~ "Main: Dx",
+             TRUE                                                        ~ "Other covariates"
+           ))
+
+
+
+# 1) Define the desired panel order for 'group'
+group_levels <- c(
+  "Interaction: Dx × TP",
+  "Main: Timepoint (vs baseline)",
+  "Main: Dx",
+  "Other covariates"
+)
+
+# 2) Build stable ordering keys first, then arrange
+all_terms <- all_terms %>%
+  # make sure term_label is plain character for ordering
+  mutate(
+    group = factor(group, levels = group_levels),
+    term_label = as.character(term_label),
+    .by = NULL
+  ) %>%
+  arrange(model, group, term_label) %>%
+  group_by(model) %>%
+  # now freeze the y-axis order within each model
+  mutate(term_label = factor(term_label, levels = unique(term_label))) %>%
+  ungroup()
+
+
+
+# --- 4) Forest plots ----------------------------------------------------------
+## A) Shannon (difference; 0 = no effect)
+Italy_phrog_shannon_allTerms <- all_terms %>%
+  filter(model == "Shannon") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "Italy Shannon diversity — all fixed terms",
+    x = "Estimate (difference in Shannon)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+ggsave(Italy_phrog_shannon_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Italy_phrog_shannon_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+## B) Observed richness (log scale; 0 = no effect)
+Itayl_phrog_observed_allTerms <- all_terms %>%
+  filter(model == "Observed (log scale)") %>%
+  ggplot(aes(y = fct_rev(term_label), x = estimate)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.22) +
+  geom_point(aes(color = p.adj < 0.05), size = 2.7) +
+  scale_color_manual(values = c(`TRUE` = "red", `FALSE` = "black")) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(
+    title = "Italy Observed richness — all fixed terms",
+    x = "Estimate (log rate ratio)",
+    y = NULL,
+    caption = "Red: BH FDR < 0.05"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text.y = element_text(face = "bold"))
+
+
+ggsave(Itayl_phrog_observed_allTerms,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/Itayl_phrog_observed_allTerms.pdf",dpi = 600,width = 6,height=12)
+
+
+```
+
+
+
+# Compositional analysis selfmade - Beta
+
+# total - per timepoint contrast
+```{r}
+
+
+# Packages
+library(tidyverse)
+library(vegan)
+library(MDMR)
+
+# ---- Inputs ----
+counts <- total.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta   <- total.phrog.metadata.clean_0.75_0.03 %>% as.data.frame() %>% tibble::rownames_to_column("sample_id")
+
+# Align samples
+common <- intersect(colnames(counts), meta$sample_id)
+counts <- counts[, common, drop = FALSE]
+meta   <- meta  %>% filter(sample_id %in% common)
+
+# Bray–Curtis on relative abundances
+X        <- t(counts)  # samples x phrogs
+row_sums <- rowSums(X)
+X_rel    <- sweep(X, 1, pmax(row_sums, 1e-12), "/")
+D_bray   <- vegdist(X_rel, method = "bray")
+
+# Reorder metadata to match distance matrix
+ord_ids <- rownames(as.matrix(D_bray))
+meta    <- meta %>% slice(match(ord_ids, sample_id))
+
+# Coerce factors (important)
+meta <- meta %>%
+  mutate(
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    Country = forcats::fct_relevel(as.factor(Country), "ITALY"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  )
+
+# ---- mixed MDMR: fixed effects + random intercept for patientID ----
+fmla_mixed <- ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. +
+               HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+
+# Tip for Bray (non-Euclidean): use.ssd ~ 0.99 can speed up
+fit_mmdmr <- mixed.mdmr(
+  fmla = fmla_mixed,
+  data = meta,
+  D    = D_bray,
+  use.ssd = 0.99,   # set to 1.00 if you prefer full SSD (slower)
+  ncores = 1        # >1 uses forking; keep 1 on Windows
+)
+
+# Results
+res_tab <- summary(fit_mmdmr)           # Statistic, Numer DF, p-value per term
+res_tab <- data.frame(res_tab) %>%
+  rownames_to_column("term") %>%
+  mutate(p.adj = p.adjust(`p.value`, method = "BH"))
+
+
+
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+
+# Helper that runs MDMR for ONE timepoint, adjusting for covariates
+run_mdmr_tp <- function(tp, meta, D_full, ord_ids, use_perm_p = FALSE, nperm = 4999, seed = 1L) {
+  print(tp)
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  D_tp <- as.dist(as.matrix(D_full)[idx, idx, drop = FALSE])
+
+
+  # Quick degeneracy check (all pairwise distances == 0)
+  M <- as.matrix(D_tp); U <- upper.tri(M, diag = FALSE)
+  if (!any(U) || all(M[U] == 0)) {
+    print("test")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  # Build X as a DATA FRAME with factors kept as factors
+  X_df <- df %>%
+    transmute(
+      Dx.Status = factor(Dx.Status),
+      Country = factor(Country),
+      Sex = factor(Sex),
+      Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.),
+      HLA.Category = factor(HLA.Category),
+      feeding_first_year = factor(feeding_first_year),
+      Delivery.Mode = factor(Delivery.Mode)
+    )
+
+  # mdmr() expects X= (matrix or data.frame) and D=/G=
+  # Use analytic p-values by default; or set use_perm_p = TRUE for permutation p's
+  set.seed(seed)
+  fit <- tryCatch(
+    MDMR::mdmr(
+      X = X_df,
+      D = D_tp,
+      perm.p = use_perm_p,
+      nperm = if (use_perm_p) nperm else 500  # ignored if perm.p=FALSE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) {
+    print("fit is still null")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  
+  sm <- data.frame(summary(fit)) %>%
+        rownames_to_column("term") %>%
+    filter(term == "Dx.Status1") %>%
+    mutate(timepoint = tp) %>%
+    select(timepoint,Statistic,Numer.DF,Pseudo.R2,Analytic.p.value)
+
+
+}
+
+
+# Run across timepoints (no random effect needed within TP)
+tp_levels <- levels(meta$onset_timeline_combined)
+
+per_tp_dx <- purrr::map_dfr(
+  tp_levels,
+  ~ run_mdmr_tp(.x, meta = meta, D_full = D_bray, ord_ids = ord_ids, use_perm_p = FALSE)
+) %>%
+  dplyr::mutate(p.adj = ifelse(all(is.na(Analytic.p.value)), NA_real_, p.adjust(Analytic.p.value, method = "BH")))
+
+per_tp_dx
+#   timepoint  Statistic Numer.DF  Pseudo.R2 Analytic.p.value     p.adj
+# 1        t0 0.01882650        1 0.01591231        0.6606958 0.7550809
+# 2      t0-6 0.04802794        1 0.03108970        0.8658763 0.7550809
+# 3     t0-12 0.04507872        1 0.03591940        0.1087494 0.7550809
+# 4     t0-18 0.09820395        1 0.05283506        0.4670523 0.7550809
+# 5     t0-24 0.09111564        1 0.05661518        0.2078437 0.7550809
+# 6     t0-30 0.06125077        1 0.03941115        0.4701198 0.7550809
+# 7     t0-36 0.06864050        1 0.04807131        0.2207682 0.7550809
+# 8 t0-over42 0.06607252        1 0.04063349        0.0364879 0.7550809
+
+
+# make plot
+library(tidyverse)
+library(vegan)
+library(ggplot2)
+
+# Assumes:
+# D_bray : dist with rows/cols == meta$sample_id
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+meta <- droplevels(meta)
+
+cap_one_tp <- function(tp, meta, D_full, ord_ids) {
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) return(NULL)
+
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) return(NULL)
+
+  subM <- as.matrix(D_full)[idx, idx, drop = FALSE]
+  U <- upper.tri(subM, diag = FALSE)
+  if (!any(U) || all(subM[U] == 0)) return(NULL)  # degenerate
+
+  D_tp <- as.dist(subM)
+
+  # CAP with Dx constrained, covariates conditioned (partialled out)
+  cap <- capscale(
+    D_tp ~ Dx.Status +
+      Condition(Sex + Age.at.Gluten.Introduction..months. +
+                HLA.Category + feeding_first_year + Delivery.Mode),
+    data = df,
+    add = TRUE
+  )
+
+  # Permutation test for Dx (marginal)
+  aov_dx <- tryCatch(anova(cap, by = "margin", permutations = 9999), error = function(e) NULL)
+  p_dx   <- if (!is.null(aov_dx) && "Dx.Status" %in% rownames(aov_dx)) aov_dx["Dx.Status", "Pr(>F)"] else NA_real_
+
+  # Scores (CAP1/2)
+  scr <- scores(cap, display = "sites", choices = 1:2)
+  CAP1 <- scr[, 1]
+  CAP2 <- if (ncol(scr) >= 2) scr[, 2] else rep(0, length(CAP1))
+
+  # % variance on constrained axes (for labels)
+  eig <- cap$CCA$eig
+  varex <- if (length(eig)) 100 * eig / sum(eig) else numeric(0)
+  v1 <- if (length(varex) >= 1) varex[1] else NA_real_
+  v2 <- if (length(varex) >= 2) varex[2] else NA_real_
+
+  tibble(
+    sample_id = df$sample_id,
+    timepoint = as.character(tp),
+    Dx.Status = df$Dx.Status,
+    CAP1 = CAP1,
+    CAP2 = CAP2,
+    p_dx = p_dx,          # carry p with the rows (same value within TP)
+    pct_CAP1 = v1,
+    pct_CAP2 = v2
+  )
+}
+
+tp_levels <- levels(meta$onset_timeline_combined)
+if (is.null(tp_levels)) tp_levels <- unique(meta$onset_timeline_combined)
+
+cap_list <- lapply(tp_levels, cap_one_tp, meta = meta, D_full = D_bray, ord_ids = ord_ids)
+cap_df   <- bind_rows(cap_list)   # drops NULLs safely
+
+# Make sure we actually have rows
+stopifnot(nrow(cap_df) > 0)
+
+tp_order <- c("t0","t0-6","t0-12","t0-18","t0-24","t0-30","t0-36","t0-over42")
+
+# 1) Harmonize key type
+## Rebuild per-TP FDR straight from cap_df (cap_df has one p_dx per TP carried on rows)
+cap_df <- cap_df %>%
+  mutate(timepoint = factor(timepoint, levels = tp_order))
+
+p_tbl <- cap_df %>%
+  dplyr::distinct(timepoint, p_dx) %>%
+  dplyr::mutate(p.adj = ifelse(all(is.na(p_dx)), NA_real_, p.adjust(p_dx, method = "BH")))
+
+## Axis labels (% variance) – median across TPs
+pct_tbl <- cap_df %>%
+  dplyr::distinct(timepoint, pct_CAP1, pct_CAP2) %>%
+  mutate(timepoint = factor(timepoint, levels = tp_order))
+
+lab_x <- sprintf("CAP1 (%.1f%%)", median(pct_tbl$pct_CAP1, na.rm = TRUE))
+lab_y <- sprintf("CAP2 (%.1f%%)", median(pct_tbl$pct_CAP2, na.rm = TRUE))
+
+## Label positions – MAKE SURE timepoint stays in the result
+lab_pos <- cap_df %>%
+  dplyr::group_by(timepoint) %>%
+  dplyr::summarise(
+    timepoint = dplyr::first(timepoint),   # <- keep the key explicitly
+    x = max(CAP1, na.rm = TRUE),
+    y = max(CAP2, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  dplyr::left_join(p_tbl, by = "timepoint") %>%
+  dplyr::mutate(
+    label = ifelse(
+      is.finite(p.adj),
+      sprintf("FDR = %.3g%s", p.adj, ifelse(p.adj < 0.05, " *", "")),
+      "FDR = NA"
+    )
+  )
+
+## Centroids (and group sizes) — qualify n()
+centroids <- cap_df %>%
+  dplyr::group_by(timepoint, Dx.Status) %>%
+  dplyr::summarise(
+    cx = mean(CAP1),
+    cy = mean(CAP2),
+    n  = dplyr::n(),
+    .groups = "drop"
+  )
+
+## Which timepoints have >=3 per Dx group for ellipses
+tmp_counts <- cap_df %>% dplyr::count(timepoint, Dx.Status, name = "n")
+tp_for_ellipse <- tmp_counts %>%
+  dplyr::group_by(timepoint) %>%
+  dplyr::summarise(ok = all(n >= 3), .groups = "drop") %>%
+  dplyr::filter(ok) %>%
+  dplyr::pull(timepoint)
+
+## Plot
+total_phrog_beta_contrast <- ggplot(cap_df, aes(CAP1, CAP2, color = Dx.Status)) +
+  geom_point(size = 2, alpha = 0.9) +
+  stat_ellipse(
+  data = subset(cap_df, timepoint %in% tp_for_ellipse),
+  aes(group = Dx.Status),
+  type = "t",
+  level = 0.68,
+  linewidth = 0.5,
+  alpha = 0.18
+) +
+  geom_point(
+    data = centroids, aes(cx, cy, color = Dx.Status),
+    shape = 4, stroke = 1.2, size = 3, inherit.aes = FALSE
+  ) +
+  facet_wrap(~ timepoint, scales = "free") +
+  geom_text(
+    data = lab_pos, aes(x = x, y = y, label = label),
+    inherit.aes = FALSE, hjust = 1, vjust = 1, size = 3.3
+  ) +
+  labs(
+    title = "CAP (distance-based RDA) by timepoint",
+    subtitle = "Dx.Status constrained; covariates conditioned. FDR = BH across timepoints",
+    x = lab_x, y = lab_y, color = "Dx.Status"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+ggsave(total_phrog_beta_contrast,file="~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog_phrog_Phrog_compositional/phrog_phrog_results_figures/total_phrog_beta_contrast.pdf",dpi = 600,width = 10,height=10)
+
+
+
+```
+
+
+# total - all terms
+```{r}
+
+
+```
+
+
+# US - per timepoint contrast
+```{r}
+
+# Packages
+library(tidyverse)
+library(vegan)
+library(MDMR)
+
+# ---- Inputs ----
+counts <- US.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta   <- US.phrog.metadata.clean_0.75_0.03 %>% as.data.frame() %>% tibble::rownames_to_column("sample_id")
+
+# Align samples
+common <- intersect(colnames(counts), meta$sample_id)
+counts <- counts[, common, drop = FALSE]
+meta   <- meta  %>% filter(sample_id %in% common)
+
+# Bray–Curtis on relative abundances
+X        <- t(counts)  # samples x phrogs
+row_sums <- rowSums(X)
+X_rel    <- sweep(X, 1, pmax(row_sums, 1e-12), "/")
+D_bray   <- vegdist(X_rel, method = "bray")
+
+# Reorder metadata to match distance matrix
+ord_ids <- rownames(as.matrix(D_bray))
+meta    <- meta %>% slice(match(ord_ids, sample_id))
+
+# Coerce factors (important)
+meta <- meta %>%
+  mutate(
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    Country = forcats::fct_relevel(as.factor(Country), "ITALY"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  )
+
+# ---- mixed MDMR: fixed effects + random intercept for patientID ----
+fmla_mixed <- ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. +
+               HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+
+# Tip for Bray (non-Euclidean): use.ssd ~ 0.99 can speed up
+fit_mmdmr <- mixed.mdmr(
+  fmla = fmla_mixed,
+  data = meta,
+  D    = D_bray,
+  use.ssd = 0.99,   # set to 1.00 if you prefer full SSD (slower)
+  ncores = 1        # >1 uses forking; keep 1 on Windows
+)
+
+# Results
+res_tab <- summary(fit_mmdmr)           # Statistic, Numer DF, p-value per term
+res_tab <- data.frame(res_tab) %>%
+  rownames_to_column("term") %>%
+  mutate(p.adj = p.adjust(`p.value`, method = "BH"))
+
+
+
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+
+# Helper that runs MDMR for ONE timepoint, adjusting for covariates
+run_mdmr_tp <- function(tp, meta, D_full, ord_ids, use_perm_p = FALSE, nperm = 4999, seed = 1L) {
+  print(tp)
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  D_tp <- as.dist(as.matrix(D_full)[idx, idx, drop = FALSE])
+
+
+  # Quick degeneracy check (all pairwise distances == 0)
+  M <- as.matrix(D_tp); U <- upper.tri(M, diag = FALSE)
+  if (!any(U) || all(M[U] == 0)) {
+    print("test")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  # Build X as a DATA FRAME with factors kept as factors
+  X_df <- df %>%
+    transmute(
+      Dx.Status = factor(Dx.Status),
+      Country = factor(Country),
+      Sex = factor(Sex),
+      Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.),
+      HLA.Category = factor(HLA.Category),
+      feeding_first_year = factor(feeding_first_year),
+      Delivery.Mode = factor(Delivery.Mode)
+    )
+
+  # mdmr() expects X= (matrix or data.frame) and D=/G=
+  # Use analytic p-values by default; or set use_perm_p = TRUE for permutation p's
+  set.seed(seed)
+  fit <- tryCatch(
+    MDMR::mdmr(
+      X = X_df,
+      D = D_tp,
+      perm.p = use_perm_p,
+      nperm = if (use_perm_p) nperm else 500  # ignored if perm.p=FALSE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) {
+    print("fit is still null")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  
+  sm <- data.frame(summary(fit)) %>%
+        rownames_to_column("term") %>%
+    filter(term == "Dx.Status1") %>%
+    mutate(timepoint = tp) %>%
+    select(timepoint,Statistic,Numer.DF,Pseudo.R2,Analytic.p.value)
+
+
+}
+
+
+# Run across timepoints (no random effect needed within TP)
+tp_levels <- levels(meta$onset_timeline_combined)
+
+per_tp_dx <- purrr::map_dfr(
+  tp_levels,
+  ~ run_mdmr_tp(.x, meta = meta, D_full = D_bray, ord_ids = ord_ids, use_perm_p = FALSE)
+) %>%
+  dplyr::mutate(p.adj = ifelse(all(is.na(Analytic.p.value)), NA_real_, p.adjust(Analytic.p.value, method = "BH")))
+
+per_tp_dx
+#   timepoint  Statistic Numer.DF  Pseudo.R2 Analytic.p.value     p.adj
+# 1        t0 0.01882650        1 0.01591231        0.6606958 0.7550809
+# 2      t0-6 0.04802794        1 0.03108970        0.8658763 0.7550809
+# 3     t0-12 0.04507872        1 0.03591940        0.1087494 0.7550809
+# 4     t0-18 0.09820395        1 0.05283506        0.4670523 0.7550809
+# 5     t0-24 0.09111564        1 0.05661518        0.2078437 0.7550809
+# 6     t0-30 0.06125077        1 0.03941115        0.4701198 0.7550809
+# 7     t0-36 0.06864050        1 0.04807131        0.2207682 0.7550809
+# 8 t0-over42 0.06607252        1 0.04063349        0.0364879 0.7550809
+
+
+# make plot
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+meta <- droplevels(meta)
+
+cap_one_tp <- function(tp, meta, D_full, ord_ids) {
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) return(NULL)
+
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) return(NULL)
+
+  subM <- as.matrix(D_full)[idx, idx, drop = FALSE]
+  U <- upper.tri(subM, diag = FALSE)
+  if (!any(U) || all(subM[U] == 0)) return(NULL)  # degenerate
+
+  D_tp <- as.dist(subM)
+
+  # CAP: Dx as constrained term, adjust (Condition) for covariates
+  cap <- capscale(
+    D_tp ~ Dx.Status +
+      Condition(Sex + Age.at.Gluten.Introduction..months. +
+                HLA.Category + feeding_first_year + Delivery.Mode),
+    data = df, add = TRUE # add=TRUE (Cailliez) guards non-Euclidean cases
+  )
+
+  # Permutation test for Dx
+  aov_dx <- anova(cap, by = "margin", permutations = 9999)
+  p_dx <- tryCatch(aov_dx["Dx.Status", "Pr(>F)"], error = function(e) NA_real_)
+  p_dx_adj <- p_dx  # (we’ll BH-adjust across TPs after mapping)
+
+  # Scores on constrained axes (CAP1/CAP2)
+  scr <- scores(cap, display = "sites", choices = 1:2)
+  df_out <- tibble(
+    sample_id = df$sample_id,
+    timepoint = as.character(tp),
+    Dx.Status = df$Dx.Status,
+    CAP1 = scr[,1],
+    CAP2 = if (ncol(scr) >= 2) scr[,2] else 0
+  )
+
+  # percent variance for constrained axes
+  eig <- cap$CCA$eig
+  varex <- if (length(eig)) 100 * eig / sum(eig) else c()
+  attr(df_out, "p_dx") <- as.numeric(p_dx)
+  attr(df_out, "%CAP1") <- if (length(varex) >= 1) varex[1] else NA_real_
+  attr(df_out, "%CAP2") <- if (length(varex) >= 2) varex[2] else NA_real_
+  df_out
+}
+
+tp_levels <- levels(meta$onset_timeline_combined)
+cap_list <- lapply(tp_levels, cap_one_tp, meta = meta, D_full = D_bray, ord_ids = ord_ids)
+cap_df <- bind_rows(cap_list)
+
+# Collect per-TP p-values and BH adjust
+p_tbl <- tibble(
+  timepoint = map_chr(cap_list, ~ if (is.null(.x)) NA_character_ else unique(.x$timepoint))) %>%
+  filter(!is.na(timepoint)) %>%
+  mutate(p.value = map_dbl(cap_list[!map_lgl(cap_list, is.null)], ~ attr(.x, "p_dx"))) %>%
+  mutate(p.adj = ifelse(all(is.na(p.value)), NA_real_, p.adjust(p.value, method = "BH")))
+
+# Axis labels: use median % across TPs for readability
+pct_tbl <- tibble(
+  timepoint = map_chr(cap_list, ~ if (is.null(.x)) NA_character_ else unique(.x$timepoint)),
+  cap1 = map_dbl(cap_list, ~ if (is.null(.x)) NA_real_ else attr(.x, "%CAP1")),
+  cap2 = map_dbl(cap_list, ~ if (is.null(.x)) NA_real_ else attr(.x, "%CAP2"))
+) %>% filter(!is.na(timepoint))
+
+lab_x <- sprintf("CAP1 (%.1f%%)", median(pct_tbl$cap1, na.rm = TRUE))
+lab_y <- sprintf("CAP2 (%.1f%%)", median(pct_tbl$cap2, na.rm = TRUE))
+
+
+# Label positions + FDR
+lab_pos <- cap_df %>%
+  group_by(timepoint) %>%
+  #summarise(x = max(CAP1, na.rm = TRUE), y = max(CAP2, na.rm = TRUE), .groups = "drop") %>%
+  left_join(p_tbl, by = "timepoint") %>%
+  mutate(label = ifelse(is.finite(p.adj),
+                        sprintf("FDR = %.3g%s", p.adj, ifelse(p.adj < 0.05, " *", "")),
+                        "FDR = NA"))
+
+# Plot (points, centroids, ellipses where n>=3 per group)
+centroids <- cap_df %>%
+  group_by(timepoint, Dx.Status) %>%
+  mutate(cx = mean(CAP1), cy = mean(CAP2), n = n(), .groups = "drop")
+
+tp_for_ellipse <- cap_df %>%
+  count(timepoint, Dx.Status) %>%
+  group_by(timepoint) %>%
+  summarise(ok = all(n >= 3), .groups = "drop") %>%
+  filter(ok) %>% pull(timepoint)
+
+US_phrog_beta_contrast <- ggplot(cap_df, aes(CAP1, CAP2, color = Dx.Status)) +
+  geom_point(size = 2, alpha = 0.9) +
+  geom_stat_ellipse(data = subset(cap_df, timepoint %in% tp_for_ellipse),
+                    aes(group = Dx.Status), type = "t", level = 0.68, linewidth = 0.5, alpha = 0.18) +
+  geom_point(data = centroids, aes(cx, cy, color = Dx.Status), shape = 4, stroke = 1.2, size = 3, inherit.aes = FALSE) +
+  facet_wrap(~ timepoint, scales = "free") +
+  geom_text(data = lab_pos, aes(x = x, y = y, label = label),
+            inherit.aes = FALSE, hjust = 1, vjust = 1, size = 3.3) +
+  labs(title = "US CAP (distance-based RDA) by timepoint",
+       subtitle = "Dx.Status constrained, covariates conditioned; FDR from per-TP PERMANOVA on CAP model",
+       x = lab_x, y = lab_y, color = "Dx.Status") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+
+```
+
+# US - all terms
+```{r}
+
+
+```
+
+
+# Italy - per timepoint contrast
+```{r}
+
+# Packages
+library(tidyverse)
+library(vegan)
+library(MDMR)
+
+# ---- Inputs ----
+counts <- Italy.phrog.abundance.clean_0.75_0.03 %>% as.data.frame() %>% as.matrix()
+meta   <- Italy.phrog.metadata.clean_0.75_0.03 %>% as.data.frame() %>% tibble::rownames_to_column("sample_id")
+
+# Align samples
+common <- intersect(colnames(counts), meta$sample_id)
+counts <- counts[, common, drop = FALSE]
+meta   <- meta  %>% filter(sample_id %in% common)
+
+# Bray–Curtis on relative abundances
+X        <- t(counts)  # samples x phrogs
+row_sums <- rowSums(X)
+X_rel    <- sweep(X, 1, pmax(row_sums, 1e-12), "/")
+D_bray   <- vegdist(X_rel, method = "bray")
+
+# Reorder metadata to match distance matrix
+ord_ids <- rownames(as.matrix(D_bray))
+meta    <- meta %>% slice(match(ord_ids, sample_id))
+
+# Coerce factors (important)
+meta <- meta %>%
+  mutate(
+    Dx.Status = forcats::fct_relevel(as.factor(Dx.Status), "CONTROL"),
+    Country = forcats::fct_relevel(as.factor(Country), "ITALY"),
+    onset_timeline_combined = as.factor(onset_timeline_combined),
+    patientID = as.factor(patientID),
+    Sex = as.factor(Sex),
+    HLA.Category = as.factor(HLA.Category),
+    feeding_first_year = as.factor(feeding_first_year),
+    Delivery.Mode = as.factor(Delivery.Mode),
+    Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.)
+  )
+
+# ---- mixed MDMR: fixed effects + random intercept for patientID ----
+fmla_mixed <- ~ Dx.Status * onset_timeline_combined + Country + Sex + Age.at.Gluten.Introduction..months. +
+               HLA.Category + feeding_first_year + Delivery.Mode + (1 | patientID)
+
+# Tip for Bray (non-Euclidean): use.ssd ~ 0.99 can speed up
+fit_mmdmr <- mixed.mdmr(
+  fmla = fmla_mixed,
+  data = meta,
+  D    = D_bray,
+  use.ssd = 0.99,   # set to 1.00 if you prefer full SSD (slower)
+  ncores = 1        # >1 uses forking; keep 1 on Windows
+)
+
+# Results
+res_tab <- summary(fit_mmdmr)           # Statistic, Numer DF, p-value per term
+res_tab <- data.frame(res_tab) %>%
+  rownames_to_column("term") %>%
+  mutate(p.adj = p.adjust(`p.value`, method = "BH"))
+
+
+
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+
+# Helper that runs MDMR for ONE timepoint, adjusting for covariates
+run_mdmr_tp <- function(tp, meta, D_full, ord_ids, use_perm_p = FALSE, nperm = 4999, seed = 1L) {
+  print(tp)
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) {
+    return(tibble(timepoint = tp, term = "Dx.Status", Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+  D_tp <- as.dist(as.matrix(D_full)[idx, idx, drop = FALSE])
+
+
+  # Quick degeneracy check (all pairwise distances == 0)
+  M <- as.matrix(D_tp); U <- upper.tri(M, diag = FALSE)
+  if (!any(U) || all(M[U] == 0)) {
+    print("test")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  # Build X as a DATA FRAME with factors kept as factors
+  X_df <- df %>%
+    transmute(
+      Dx.Status = factor(Dx.Status),
+      Country = factor(Country),
+      Sex = factor(Sex),
+      Age.at.Gluten.Introduction..months. = as.numeric(Age.at.Gluten.Introduction..months.),
+      HLA.Category = factor(HLA.Category),
+      feeding_first_year = factor(feeding_first_year),
+      Delivery.Mode = factor(Delivery.Mode)
+    )
+
+  # mdmr() expects X= (matrix or data.frame) and D=/G=
+  # Use analytic p-values by default; or set use_perm_p = TRUE for permutation p's
+  set.seed(seed)
+  fit <- tryCatch(
+    MDMR::mdmr(
+      X = X_df,
+      D = D_tp,
+      perm.p = use_perm_p,
+      nperm = if (use_perm_p) nperm else 500  # ignored if perm.p=FALSE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) {
+    print("fit is still null")
+    return(tibble(timepoint = tp, term = "Dx.Status",
+                  Statistic = NA_real_, Numer.DF = NA_real_, p.value = NA_real_))
+  }
+
+  
+  sm <- data.frame(summary(fit)) %>%
+        rownames_to_column("term") %>%
+    filter(term == "Dx.Status1") %>%
+    mutate(timepoint = tp) %>%
+    select(timepoint,Statistic,Numer.DF,Pseudo.R2,Analytic.p.value)
+
+
+}
+
+
+# Run across timepoints (no random effect needed within TP)
+tp_levels <- levels(meta$onset_timeline_combined)
+
+per_tp_dx <- purrr::map_dfr(
+  tp_levels,
+  ~ run_mdmr_tp(.x, meta = meta, D_full = D_bray, ord_ids = ord_ids, use_perm_p = FALSE)
+) %>%
+  dplyr::mutate(p.adj = ifelse(all(is.na(Analytic.p.value)), NA_real_, p.adjust(Analytic.p.value, method = "BH")))
+
+per_tp_dx
+#   timepoint  Statistic Numer.DF  Pseudo.R2 Analytic.p.value     p.adj
+# 1        t0 0.01882650        1 0.01591231        0.6606958 0.7550809
+# 2      t0-6 0.04802794        1 0.03108970        0.8658763 0.7550809
+# 3     t0-12 0.04507872        1 0.03591940        0.1087494 0.7550809
+# 4     t0-18 0.09820395        1 0.05283506        0.4670523 0.7550809
+# 5     t0-24 0.09111564        1 0.05661518        0.2078437 0.7550809
+# 6     t0-30 0.06125077        1 0.03941115        0.4701198 0.7550809
+# 7     t0-36 0.06864050        1 0.04807131        0.2207682 0.7550809
+# 8 t0-over42 0.06607252        1 0.04063349        0.0364879 0.7550809
+
+
+# make plot
+ord_ids <- rownames(as.matrix(D_bray))
+stopifnot(identical(meta$sample_id, ord_ids))
+meta <- droplevels(meta)
+
+cap_one_tp <- function(tp, meta, D_full, ord_ids) {
+  df <- meta %>% filter(onset_timeline_combined == tp) %>% droplevels()
+  if (nrow(df) < 3 || n_distinct(df$Dx.Status) < 2) return(NULL)
+
+  idx <- match(df$sample_id, ord_ids)
+  if (any(is.na(idx))) return(NULL)
+
+  subM <- as.matrix(D_full)[idx, idx, drop = FALSE]
+  U <- upper.tri(subM, diag = FALSE)
+  if (!any(U) || all(subM[U] == 0)) return(NULL)  # degenerate
+
+  D_tp <- as.dist(subM)
+
+  # CAP: Dx as constrained term, adjust (Condition) for covariates
+  cap <- capscale(
+    D_tp ~ Dx.Status +
+      Condition(Sex + Age.at.Gluten.Introduction..months. +
+                HLA.Category + feeding_first_year + Delivery.Mode),
+    data = df, add = TRUE # add=TRUE (Cailliez) guards non-Euclidean cases
+  )
+
+  # Permutation test for Dx
+  aov_dx <- anova(cap, by = "margin", permutations = 9999)
+  p_dx <- tryCatch(aov_dx["Dx.Status", "Pr(>F)"], error = function(e) NA_real_)
+  p_dx_adj <- p_dx  # (we’ll BH-adjust across TPs after mapping)
+
+  # Scores on constrained axes (CAP1/CAP2)
+  scr <- scores(cap, display = "sites", choices = 1:2)
+  df_out <- tibble(
+    sample_id = df$sample_id,
+    timepoint = as.character(tp),
+    Dx.Status = df$Dx.Status,
+    CAP1 = scr[,1],
+    CAP2 = if (ncol(scr) >= 2) scr[,2] else 0
+  )
+
+  # percent variance for constrained axes
+  eig <- cap$CCA$eig
+  varex <- if (length(eig)) 100 * eig / sum(eig) else c()
+  attr(df_out, "p_dx") <- as.numeric(p_dx)
+  attr(df_out, "%CAP1") <- if (length(varex) >= 1) varex[1] else NA_real_
+  attr(df_out, "%CAP2") <- if (length(varex) >= 2) varex[2] else NA_real_
+  df_out
+}
+
+tp_levels <- levels(meta$onset_timeline_combined)
+cap_list <- lapply(tp_levels, cap_one_tp, meta = meta, D_full = D_bray, ord_ids = ord_ids)
+cap_df <- bind_rows(cap_list)
+
+# Collect per-TP p-values and BH adjust
+p_tbl <- tibble(
+  timepoint = map_chr(cap_list, ~ if (is.null(.x)) NA_character_ else unique(.x$timepoint))) %>%
+  filter(!is.na(timepoint)) %>%
+  mutate(p.value = map_dbl(cap_list[!map_lgl(cap_list, is.null)], ~ attr(.x, "p_dx"))) %>%
+  mutate(p.adj = ifelse(all(is.na(p.value)), NA_real_, p.adjust(p.value, method = "BH")))
+
+# Axis labels: use median % across TPs for readability
+pct_tbl <- tibble(
+  timepoint = map_chr(cap_list, ~ if (is.null(.x)) NA_character_ else unique(.x$timepoint)),
+  cap1 = map_dbl(cap_list, ~ if (is.null(.x)) NA_real_ else attr(.x, "%CAP1")),
+  cap2 = map_dbl(cap_list, ~ if (is.null(.x)) NA_real_ else attr(.x, "%CAP2"))
+) %>% filter(!is.na(timepoint))
+
+lab_x <- sprintf("CAP1 (%.1f%%)", median(pct_tbl$cap1, na.rm = TRUE))
+lab_y <- sprintf("CAP2 (%.1f%%)", median(pct_tbl$cap2, na.rm = TRUE))
+
+
+# Label positions + FDR
+lab_pos <- cap_df %>%
+  group_by(timepoint) %>%
+  #summarise(x = max(CAP1, na.rm = TRUE), y = max(CAP2, na.rm = TRUE), .groups = "drop") %>%
+  left_join(p_tbl, by = "timepoint") %>%
+  mutate(label = ifelse(is.finite(p.adj),
+                        sprintf("FDR = %.3g%s", p.adj, ifelse(p.adj < 0.05, " *", "")),
+                        "FDR = NA"))
+
+# Plot (points, centroids, ellipses where n>=3 per group)
+centroids <- cap_df %>%
+  group_by(timepoint, Dx.Status) %>%
+  mutate(cx = mean(CAP1), cy = mean(CAP2), n = n(), .groups = "drop")
+
+tp_for_ellipse <- cap_df %>%
+  count(timepoint, Dx.Status) %>%
+  group_by(timepoint) %>%
+  summarise(ok = all(n >= 3), .groups = "drop") %>%
+  filter(ok) %>% pull(timepoint)
+
+Italy_phrog_beta_contrast <- ggplot(cap_df, aes(CAP1, CAP2, color = Dx.Status)) +
+  geom_point(size = 2, alpha = 0.9) +
+  geom_stat_ellipse(data = subset(cap_df, timepoint %in% tp_for_ellipse),
+                    aes(group = Dx.Status), type = "t", level = 0.68, linewidth = 0.5, alpha = 0.18) +
+  geom_point(data = centroids, aes(cx, cy, color = Dx.Status), shape = 4, stroke = 1.2, size = 3, inherit.aes = FALSE) +
+  facet_wrap(~ timepoint, scales = "free") +
+  geom_text(data = lab_pos, aes(x = x, y = y, label = label),
+            inherit.aes = FALSE, hjust = 1, vjust = 1, size = 3.3) +
+  labs(title = "Italy CAP (distance-based RDA) by timepoint",
+       subtitle = "Dx.Status constrained, covariates conditioned; FDR from per-TP PERMANOVA on CAP model",
+       x = lab_x, y = lab_y, color = "Dx.Status") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+
+```
+
+# Italy - all terms
+```{r}
+
+
+```
+
+
+
+# annotation files
+```{r}
+
+phrog_annotation <- read.delim("~/Handley Lab Dropbox/16S/Celiac/Phage/phage_detection_pipeline_new_assembly/Virome/phrog/annotation_files/genomes_and_unresolved_edges_mmseqs_lca.tsv",header = FALSE)
+
+View(phrog_annotation)
+
+```
+
+
+
+

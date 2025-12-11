@@ -1,0 +1,96 @@
+LOCUS       MW091352                2298 bp    DNA     circular VRL 31-DEC-2023
+DEFINITION  Chicken anemia virus strain 18R014B, complete genome.
+ACCESSION   MW091352
+VERSION     MW091352.1
+KEYWORDS    .
+SOURCE      Chicken anemia virus
+  ORGANISM  Chicken anemia virus
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Gyrovirus; Gyrovirus
+            chickenanemia.
+REFERENCE   1  (bases 1 to 2298)
+  AUTHORS   Song,H., Kim,H., Kim,C., Kwon,Y. and Kim,H.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (09-OCT-2020) Avian Disease Research Division, Animal and
+            Plant Quarantine Agency, 177, Hyeoksin 8-ro, Gimcheon,
+            Gyeongsangbukdo 39660, Korea
+COMMENT     ##Assembly-Data-START##
+            Sequencing Technology :: Sanger dideoxy sequencing
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2298
+                     /organism="Chicken anemia virus"
+                     /mol_type="genomic DNA"
+                     /strain="18R014B"
+                     /host="chicken"
+                     /db_xref="taxon:12618"
+                     /geo_loc_name="South Korea"
+     CDS             359..1009
+                     /codon_start=1
+                     /product="VP2"
+                     /protein_id="UTY70360.1"
+                     /translation="MHGNGGQPAAGGSESALSREGQPGPSGAAQGQVISNERSPRRYS
+                     TRTINGVQATNKFTAVGNPSLQRDPDWYRWNYNHSIAVWLRECSRSHAKICNCGQFRK
+                     HWFQECAGLEDRSTQASLEEAILRPLRVQGKRAKRKLDYHYSQPTPNRKKVYKTVRWQ
+                     DELADREADFTPSEEDGGTSSSDFDEDINFDIGGDSGIVDELLGRPFTTPAPVRIV"
+     CDS             465..830
+                     /codon_start=1
+                     /product="VP3"
+                     /protein_id="UTY70361.1"
+                     /translation="MNALQEDTPPGPSTVFRPPTSSRPLETPHCREIRIGIAGITITL
+                     SLCGCANARAPTLRSATADNSESTGFKNVPDLRTDQPKPPSKKRSCDPSEYRVSELKE
+                     SLITTTPSRPRTARRCIRL"
+     CDS             832..2181
+                     /codon_start=1
+                     /product="VP1"
+                     /protein_id="UTY70362.1"
+                     /translation="MARRARRPRGRFYAFRRGRWHQLKRLRRRYKFRHRRRQRYRRRA
+                     FRKAFHNPRPGTYSVRLPNPQSTMTIRFQGIIFLTEGLILPKNSTAGGYADHLYGARV
+                     AKISVNLKEFLLASMNLTYVSKIGGPIAGELIADGSQSQAAQNWPNCWLPLDNNVPSA
+                     TPSAWWRWALMMMQPTDSCRFFNHPKQMTLQDMGRMFGGWHLFRHIETRFQLLATKNE
+                     GSFSPVASLLSQGEYLTRRDDVKYSSDHQNRWRKGEQPMTGGIAYATGKMRPDEQQYP
+                     AMPPDPPIITTTTAQGTQVRCMNSTQAWWSWDTYMSFATLTALGAQWSFPPGQRSVSR
+                     RSFNHHKARGAGDPKGQRWHTLVPLGTETITDSYMSAPASELDTNFFTLYVAQGTNKS
+                     QQYKFGTATYALKEPVMKSDAWAVVRVQSVWQLGNRQRPYPWDVNWANSTMYWGSQP"
+ORIGIN      
+        1 gcattccgag tggttactat tccatcacca ttctagcctg tacacagaaa gtcaagatgg
+       61 acgaatcgct cgacttcgct cgcgattcgt cgaaggcggg gggccggagg ccccccggtg
+      121 gcccccctcc aacgagtgga gcatgtacag gggggtacgt catccgtaca ggggggtacg
+      181 tcacaaatag gcgttcccgt acaggggggt acgtcacgcg tacagggggg tacgtcacag
+      241 ccaatcagaa gctgccacgt tgcgaaagtg acgtttcgaa aatgggcggc gcgagcctct
+      301 ctatatattg agcgcacata ccggtcggca gtaggtatac gcaaggcggt ccgggtggat
+      361 gcacgggaac ggcggacaac cggccgctgg gggcagtgaa tcggcgctta gccgagaggg
+      421 gcaacctggg cccagcggag ccgcgcaggg gcaagtaatt tcaaatgaac gctctccaag
+      481 aagatactcc accaggacca tcaacggtgt tcaggccacc aacaagttca cggccgttgg
+      541 aaacccctca ctgcagagag atccggattg gtatcgctgg aattacaatc actctatcgc
+      601 tgtgtggctg cgcgaatgct cgcgctccca cgctaagatc tgcaactgcg gacaattcag
+      661 aaagcactgg tttcaagaat gtgccggact tgaggaccga tcaacccaag cctccctcga
+      721 agaagcgatc ctgcgacccc tccgagtaca gggtaagcga gctaaaagaa agcttgatta
+      781 ccactactcc cagccgaccc cgaaccgcaa gaaggtgtat aagactgtaa gatggcaaga
+      841 cgagctcgca gaccgagagg ccgattttac gccttcagaa gaggacggtg gcaccagctc
+      901 aagcgacttc gacgaagata taaatttcga catcggagga gacagcggta tcgtagacga
+      961 gcttttagga aggcctttca caacccccgc cccggtacgt atagtgtgag gctgccgaac
+     1021 ccccagtcaa cgatgactat ccgctttcaa ggcatcattt ttcttaccga aggactcatt
+     1081 ctgcctaaaa acagcacagc ggggggatat gcagaccacc tgtacggggc gagagtcgcc
+     1141 aagatctcag tgaacctgaa agagttcctc ctagcgtcaa tgaacctgac atacgtgagc
+     1201 aaaataggag gccccatcgc cggtgagttg attgcggacg ggtctcaatc acaagcagcg
+     1261 caaaattggc ctaattgctg gctgccgcta gataataacg tgccctccgc tacaccatcg
+     1321 gcatggtgga gatgggcttt aatgatgatg cagcccacgg actcttgccg gttctttaat
+     1381 caccctaaac aaatgaccct gcaagacatg ggtcggatgt tcgggggctg gcacctgttc
+     1441 cgacacattg aaacccgctt tcagctcctt gccactaaga atgagggatc cttcagcccc
+     1501 gtggcgagtc ttctctccca gggagagtac ctcacgcgtc gggacgatgt taagtacagc
+     1561 agcgatcacc agaaccgctg gcgaaaaggc gagcaaccga tgacgggggg tattgcttat
+     1621 gcgacgggga aaatgagacc cgacgagcaa cagtaccctg ctatgccccc cgaccccccg
+     1681 atcatcacca ctaccacagc gcaaggcacg caagtccgct gcatgaatag cacgcaagct
+     1741 tggtggtcgt gggacacata tatgagcttt gcaacactca cagcgctcgg tgcacaatgg
+     1801 tctttccctc cagggcaacg ttcagtttct agacgctcgt tcaaccacca caaagcgaga
+     1861 ggggccgggg accccaaggg acagagatgg cacacccttg ttccgctcgg cacagagacc
+     1921 atcaccgaca gctacatgag tgcaccggca tcagagctgg acactaactt ctttacgctt
+     1981 tacgtagcgc aaggcacaaa taagtcgcag cagtacaagt tcggaacagc tacatacgcg
+     2041 ttaaaggaac cggtaatgaa gagcgatgca tgggcggtgg tacgcgtcca gtcggtgtgg
+     2101 caactgggta acaggcaaag gccataccca tgggacgtca actgggccaa cagcaccatg
+     2161 tactgggggt cgcagccctg aaaagggggg ggggctaaag cccccccccc ttgaaccccc
+     2221 ccctgggggg gattcccccc cagacccccc ctttaaatag cactcaataa acgcagcaaa
+     2281 tgcttttacc gcacaatc
+//
+

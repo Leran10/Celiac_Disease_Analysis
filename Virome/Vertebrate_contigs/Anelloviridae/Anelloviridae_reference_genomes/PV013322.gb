@@ -1,0 +1,95 @@
+LOCUS       PV013322                2818 bp    DNA     linear   VRL 18-MAR-2025
+DEFINITION  Betatorquevirus sp. 'homini301' isolate GE-1995-24-0419 ORF1 gene,
+            complete cds.
+ACCESSION   PV013322
+VERSION     PV013322.1
+KEYWORDS    .
+SOURCE      Betatorquevirus sp. 'homini301'
+  ORGANISM  Betatorquevirus sp. 'homini301'
+            Viruses; Monodnaviria; Shotokuvirae; Commensaviricota;
+            Cardeaviricetes; Sanitavirales; Anelloviridae; Betatorquevirus.
+REFERENCE   1  (bases 1 to 2818)
+  AUTHORS   Laubscher,F., Chudzinski,V., Cordey,S. and L'Huillier,A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-JAN-2025) Laboratory of Virology, University
+            Hospitals of Geneva, Rue Gabrielle-Perret-Gentil 4, Geneva, Geneva
+            1205, Switzerland
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: IDBA-UD v. 1.1.3
+            Sequencing Technology :: Illumina
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..2818
+                     /organism="Betatorquevirus sp. 'homini301'"
+                     /mol_type="genomic DNA"
+                     /isolate="GE-1995-24-0419"
+                     /isolation_source="blood"
+                     /host="Homo sapiens"
+                     /db_xref="taxon:3402324"
+                     /geo_loc_name="Switzerland"
+     CDS             485..2482
+                     /codon_start=1
+                     /product="ORF1"
+                     /protein_id="XPU79224.1"
+                     /translation="MPYYWRRRTRWRPYRRYRYRPFRRDTRRRPFRQPLRTTFRRRRR
+                     RVRKRRFYKNYKRKLKTIVLREWQPKTIRKCKIRGYKCLFQGAHGRFSNNYAQFQLSY
+                     TPEYWPGGGGWGLFVFSLDALYEEFLHLNNWWTASNKGLPLARYKGCTFKFFRQPNTD
+                     YIINYYTCFPMTDTPLTHANSTPQNMLLARRRLIIPSLKRKPRGKPYIKKRIYPPSQM
+                     SNKWYFQTDICKTSLLLLTATATDLDSYYISPFAESNSITLYCLNPLTFQKKNFQRPS
+                     ETTGYQPRSGLYLYGTKAAGTPKYGDLIYLGWTGPMREGEPFKSYNQSTYTKEHWGNP
+                     FHPDWISQNYKIYKSNQQYTAILTDTNKDKPIETTKLTLAETPLLLPVRYTPNKDTGQ
+                     NNVVYLVNNIDDNAIAVPNDNNIKIEGFPLHISLWGYLDWQRKLAYLHHIDTDYLVVI
+                     QTDFFDPKESFYILLDKAFADGHGPYNTPAESISLSNKTHWYPKIMYQQQSIDTLCMT
+                     TPGACKGTNKKSIQAHCEYKFNFLWGGCPAPMENISNPCSQPKFPVPNNILQRLQVQD
+                     PETPPETEIHYFDERHSTITKRAIQRIQDYTTTKECSLTDTSKSDPRTKTQTQALQEA
+                     LQSEDQEEEKKTLHQQLQQHRLQQQLLKRCLLRLIQPQDIE"
+ORIGIN      
+        1 gtttttattg gttggtttaa aggcgcgaac cacacccccg catttaaacc aaccaataaa
+       61 aacaaacctc attaacataa tacataattc ataatgggcg gagacttaac tgtatataac
+      121 taactgcact tccgaatggc tgagttttcg ccgccagacg gagcgcagaa cggagtctca
+      181 gcgctgattc agggcgggtg ccgaaggtga gtgaaaccac cgaagtcaag gggcttatcg
+      241 ggctgaatca gtcttggcgg aacgggcaag aaacttaaaa taacttttat tttacagata
+      301 tgtctttctc taaaccatca ccatactccc taaagcgaaa gaacctagaa tggcttaaca
+      361 tctgctacat gacccacgac ctgcactgcg gctgccacga ccctgctaga cacctaattt
+      421 ctacaattct ggaaaaatcc ctggataccg cacttaccac agaacaaaag gatacaatta
+      481 aaaaatgcct tattactgga gaagacgaac aagatggaga ccataccgcc gttaccgcta
+      541 cagaccattc agacgagata ctagaagacg gccttttaga caacctcttc gcacaacctt
+      601 tcgacgaaga agacgaaggg taagaaagag acgcttttat aaaaactata aaagaaagct
+      661 taagactatt gtacttagag aatggcaacc taagactatc agaaaatgca aaataagagg
+      721 ctataaatgt ctatttcaag gagcacatgg cagattctct aataactatg ctcaatttca
+      781 attgtcatat actcctgaat actggcctgg gggaggagga tggggattgt ttgtattttc
+      841 tttagatgct ttgtatgaag aattcttaca cttaaataac tggtggacag ctagtaacaa
+      901 aggactaccg ctagctagat ataaaggatg cacatttaaa ttctttagac aacctaacac
+      961 agactacata attaactact atacatgctt tccaatgaca gacacaccac taacacatgc
+     1021 taacagcaca ccacaaaaca tgctactagc cagaagaaga ctaataatac caagcttaaa
+     1081 aagaaaacca agaggaaagc catatattaa aaaaagaatc tatccaccat ctcaaatgtc
+     1141 aaataaatgg tactttcaaa cagacatttg caaaacttcc ttactgttac taaccgcaac
+     1201 cgcaactgac ctagacagtt attacattag tccgtttgcg gaaagcaata gtattacatt
+     1261 atattgccta aacccactaa catttcaaaa gaagaacttc caacgaccat cagaaaccac
+     1321 aggatatcaa cctagatcag gactatattt atatggaaca aaagcagcag gcactcctaa
+     1381 atatggagat ttaatatatt taggatggac aggcccaatg agagaaggtg aaccattcaa
+     1441 atcatacaat caatctacat atactaaaga acactgggga aatccttttc atccagactg
+     1501 gatatcacaa aattataaaa tatacaagtc taatcaacaa tatacagcta tactaacaga
+     1561 tacaaacaaa gacaaaccaa tagaaacaac aaagttaaca cttgcagaaa caccactact
+     1621 actaccagta agatacacac caaacaaaga cacaggacaa aacaatgtag tatacttagt
+     1681 aaataacata gatgacaatg ccattgcagt acctaatgac aacaatataa aaatagaagg
+     1741 ctttccacta cacatatcac tatggggata cttagactgg caaagaaaac tagcttactt
+     1801 acatcatata gatacagact acttagtagt aatacaaaca gacttctttg atcctaaaga
+     1861 gtcattctat atacttttag acaaagcttt cgcagatggt catggcccat acaacacacc
+     1921 tgcggaatca atttccttat ctaacaaaac acactggtat ccaaagataa tgtaccaaca
+     1981 acaaagtatc gatacactct gtatgactac tcctggggcc tgcaaaggaa ctaacaaaaa
+     2041 atcaatacaa gcccactgcg aatacaaatt taacttttta tggggaggct gtcctgcacc
+     2101 aatggaaaac atatctaatc cttgttcaca gccaaaattt cccgtcccca ataacatcct
+     2161 ccaaagactt caagtccagg atccagaaac accaccagaa acagaaattc actactttga
+     2221 tgaaagacac agcacaatta caaaaagagc tatccaaaga atccaagact acacaactac
+     2281 taaagaatgt tctcttacag acacatcaaa atcagatcca agaacgaaaa cccagacaca
+     2341 agcactacaa gaagcactcc aatcggagga ccaggaagaa gagaaaaaga ccctccacca
+     2401 gcagctccag cagcaccgcc tccaacagca gctactcaag cgatgcctcc tcagactaat
+     2461 acaaccacaa gatatagaat aactcaaact cattgtacta taaacttatt tggggacatt
+     2521 gaaccaaaaa ataggagaat gactcctcaa gaagaagaag atgaaaaatt ttgggccact
+     2581 ctgtttaaaa ggcccagacg ctcttatatt cttgataaac ctatatatcc ttatgtaccc
+     2641 acacctcctc ctcctactaa atgtatggta aattttgacc taaactatcc ataaaggcca
+     2701 actgtaattc acttagtggt gtctgtttat attatttcat acttaaataa acatccaccg
+     2761 gtgaattaca gttggccttt atggatagtt taggtcaaaa tttaccatac atttagta
+//
+

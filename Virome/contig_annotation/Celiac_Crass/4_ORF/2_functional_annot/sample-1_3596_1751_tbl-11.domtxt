@@ -1,0 +1,15 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+sample-1_3596_1751|54|1 -             54 TerL                 -            780   7.9e-12   32.6   0.0   1   1   1.4e-12   8.5e-12   32.4   0.0   246   285    13    53     9    54 0.93 -
+sample-1_3596_1751|54|1 -             54 VP00412              -            717   7.5e-08   19.4   0.0   1   1   1.3e-08   7.9e-08   19.4   0.0   207   245    14    51    10    54 0.89 -
+#
+# Program:         hmmsearch
+# Version:         3.2.1 (June 2018)
+# Pipeline mode:   SEARCH
+# Query file:      resources/CrassUS_db/functional_annot/yutin_and_markers.hmm
+# Target file:     results/Celiac/4_ORF/1_best_coding/sample-1_3596_1751_tbl-11.faa
+# Option settings: hmmsearch -o results/Celiac/4_ORF/2_functional_annot/sample-1_3596_1751_tbl-11.hmmtxt --domtblout results/Celiac/4_ORF/2_functional_annot/sample-1_3596_1751_tbl-11.domtxt -E 0.001 --cpu 2 resources/CrassUS_db/functional_annot/yutin_and_markers.hmm results/Celiac/4_ORF/1_best_coding/sample-1_3596_1751_tbl-11.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:26 2025
+# [ok]

@@ -1,0 +1,17 @@
+#                                                                               --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name              accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----    -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VP02211              -            490 sample-1_3423_1921|31|1 -             31   5.7e-16   48.1   0.1   1   1   1.4e-16   5.9e-16   48.1   0.1   461   490     1    30     1    30 0.97 -
+VP02584              -            490 sample-1_3423_1921|31|1 -             31   1.7e-15   46.5   0.0   1   1   4.1e-16   1.7e-15   46.5   0.0   461   490     1    30     1    30 0.97 -
+MCP                  -            486 sample-1_3423_1921|31|1 -             31   6.4e-09   24.8   0.0   1   1   1.5e-09   6.6e-09   24.8   0.0   458   485     1    28     1    29 0.96 -
+VP02209              -            504 sample-1_3423_1921|31|1 -             31   2.3e-05   13.0   0.0   1   1   5.5e-06   2.3e-05   12.9   0.0   476   503     1    28     1    29 0.96 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_3423_1921_tbl-11_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:37 2025
+# [ok]

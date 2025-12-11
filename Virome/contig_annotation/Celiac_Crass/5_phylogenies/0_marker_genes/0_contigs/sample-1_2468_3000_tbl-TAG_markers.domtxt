@@ -1,0 +1,20 @@
+#                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VP02585              -            853 sample-1_2468_3000|236|1 -            236  1.7e-137  449.8   6.3   1   1  3.4e-138  1.9e-137  449.6   6.3    16   250     1   236     1   236 0.99 -
+portal               -            808 sample-1_2468_3000|236|1 -            236   1.9e-91  297.5   7.1   1   1   3.7e-92   2.1e-91  297.3   7.1    18   246     1   236     1   236 0.99 -
+VP00410              -            789 sample-1_2468_3000|236|1 -            236     1e-80  261.9   6.4   1   1     2e-81   1.1e-80  261.7   6.4    17   247     2   235     1   236 0.98 -
+VP02579              -            684 sample-1_2468_3000|694|2 -            694         0 1292.5  20.1   1   1         0         0 1292.3  20.1     1   684     1   693     1   693 1.00 -
+TerL                 -            780 sample-1_2468_3000|694|2 -            694    5e-289  950.7  20.9   1   1  1.3e-289  5.5e-289  950.6  20.9    81   760     5   685     1   693 0.98 -
+VP00412              -            717 sample-1_2468_3000|694|2 -            694  7.3e-240  787.9  19.3   1   1  2.2e-240  9.2e-240  787.5  19.3    47   709     2   681     1   688 0.96 -
+VP02686              -            761 sample-1_2468_3000|694|2 -            694  8.2e-103  334.8  13.4   1   1    3e-103  1.3e-102  334.1  13.4    92   709    11   665     3   684 0.85 -
+#
+# Program:         hmmscan
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SCAN
+# Query file:      results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2468_3000_tbl-TAG_markers.faa
+# Target file:     resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm
+# Option settings: hmmscan -o results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2468_3000_tbl-TAG_markers.hmmtxt --domtblout results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2468_3000_tbl-TAG_markers.domtxt --cpu 2 resources/CrassUS_db/marker_profiles/custom_yutin_markers.hmm results/Celiac/5_phylogenies/0_marker_genes/0_contigs/sample-1_2468_3000_tbl-TAG_markers.faa 
+# Current dir:     /ref/sahlab/software/CrassUS
+# Date:            Thu Oct 16 14:56:35 2025
+# [ok]
